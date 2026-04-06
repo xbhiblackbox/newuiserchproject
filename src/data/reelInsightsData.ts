@@ -100,25 +100,25 @@ const defaultInsights = (i: number): ReelInsights => ({
 // Generate 20 posts for just4abhii with unique thumbnails
 const just4abhiiThumbnails = [
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
   "/thumbnails/thumb-4.png",
   "/thumbnails/thumb-5.png",
   "/thumbnails/thumb-6.png",
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
   "/thumbnails/thumb-4.png",
   "/thumbnails/thumb-5.png",
   "/thumbnails/thumb-6.png",
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
   "/thumbnails/thumb-4.png",
   "/thumbnails/thumb-5.png",
   "/thumbnails/thumb-6.png",
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
+  "/thumbnails/thumb-3.png",
+  "/thumbnails/thumb-4.png",
+  "/thumbnails/thumb-5.png",
+  "/thumbnails/thumb-6.png",
 ];
 
 const defaultCaptions = [
@@ -151,7 +151,7 @@ export const defaultJust4abhiiReels: ExtendedPostItem[] = Array.from({ length: 2
 }));
 
 // localStorage key — bump version to force refresh with new video URLs
-const STORAGE_KEY = "just4abhii_reels_data_v4";
+const STORAGE_KEY = "just4abhii_reels_data_v5";
 
 export const loadReelsData = (): ExtendedPostItem[] => {
   try {
