@@ -284,26 +284,26 @@ export const currentUser: UserProfile = {
 
 export const userPostImages = [
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
   "/thumbnails/thumb-4.png",
   "/thumbnails/thumb-5.png",
   "/thumbnails/thumb-6.png",
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
   "/thumbnails/thumb-4.png",
   "/thumbnails/thumb-5.png",
   "/thumbnails/thumb-6.png",
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
   "/thumbnails/thumb-4.png",
   "/thumbnails/thumb-5.png",
   "/thumbnails/thumb-6.png",
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
+  "/thumbnails/thumb-4.png",
+  "/thumbnails/thumb-5.png",
+  "/thumbnails/thumb-6.png",
+  "/thumbnails/thumb-1.png",
 ];
 
 // Post item with thumbnail + optional video URL
