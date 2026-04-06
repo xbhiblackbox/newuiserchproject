@@ -130,9 +130,9 @@ const InteractionsDetailScreen = () => {
           <div className="text-[14px] font-bold text-foreground flex items-center gap-1">
              {isEditing ? (
                 <>
-                  <input className="w-12 bg-gray-100 rounded text-center outline-none" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
-                  <span>-</span>
-                  <input className="w-12 bg-gray-100 rounded text-center outline-none" value={data.endDate} onChange={e => updateField('endDate', e.target.value)} />
+                   <input className="w-12 bg-secondary rounded text-center outline-none text-foreground" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
+                   <span>-</span>
+                   <input className="w-12 bg-secondary rounded text-center outline-none text-foreground" value={data.endDate} onChange={e => updateField('endDate', e.target.value)} />
                 </>
              ) : (
                 <span>{data.startDate} - {data.endDate}</span>
