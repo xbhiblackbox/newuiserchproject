@@ -315,7 +315,7 @@ const InteractionsDetailScreen = () => {
                    </div>
                    <div className="text-center">
                       {isEditing ? (
-                        <input className="bg-gray-100 rounded text-[12px] w-full text-center font-medium outline-none" value={reel.date} onChange={e => {
+                        <input className="bg-secondary rounded text-[12px] w-full text-center font-medium outline-none text-foreground" value={reel.date} onChange={e => {
                            const nt = [...data.topReels]; nt[i].date = e.target.value; updateField('topReels', nt);
                         }} />
                       ) : (
