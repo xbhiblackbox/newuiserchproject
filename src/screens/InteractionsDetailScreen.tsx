@@ -31,14 +31,14 @@ const defaultData: InteractionsData = {
     { label: "Likes", value: "2,383" },
     { label: "Comments", value: "163" },
     { label: "Saves", value: "376" },
-    { label: "Shares", value: "120" },
-    { label: "Reposts", value: "77" },
+    { label: "Shares", value: "552" },
+    { label: "Reposts", value: "68" },
   ],
   topReels: [
-    { image: "https://images.unsplash.com/photo-1501432377862-3d0432b87a14?w=200&h=260&fit=crop", count: "257", date: "17 Feb" },
-    { image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=260&fit=crop", count: "167", date: "1 Mar" },
-    { image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=260&fit=crop", count: "162", date: "14 Feb" },
-    { image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=260&fit=crop", count: "72", date: "12 Feb" },
+    { image: "https://images.unsplash.com/photo-1501432377862-3d0432b87a14?w=200&h=260&fit=crop", count: "310", date: "3 Apr" },
+    { image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=260&fit=crop", count: "214", date: "16 Mar" },
+    { image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=260&fit=crop", count: "149", date: "31 Mar" },
+    { image: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=200&h=260&fit=crop", count: "120", date: "16 Mar" },
   ],
 };
 
