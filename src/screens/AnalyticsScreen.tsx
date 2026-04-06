@@ -62,7 +62,7 @@ const AnalyticsScreen = () => {
     { label: "Best practices", icon: <GraduationCap size={24} strokeWidth={1.5} /> },
     { label: "Inspiration", icon: <Lightbulb size={24} strokeWidth={1.5} /> },
     { label: "Branded content", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7 21v-1a5 5 0 0 1 10 0v1"/></svg> },
-    { label: "Partnership ads", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><line x1="7.5" y1="7.5" x2="10.5" y2="16.5"/><line x1="16.5" y1="7.5" x2="13.5" y2="16.5"/></svg> },
+    { label: "Partnership ads", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="7" cy="6" r="2.5"/><path d="M2 20v-1a5 5 0 0 1 5-5h0"/><circle cx="17" cy="6" r="2.5"/><path d="M22 20v-1a5 5 0 0 0-5-5h0"/></svg> },
     { label: "Ad tools", icon: <TrendingUp size={24} strokeWidth={1.5} /> },
     { label: "Trial reels", icon: <Tv size={24} strokeWidth={1.5} />, badge: "New" },
     { label: "Gifts", icon: <Gift size={24} strokeWidth={1.5} /> },
