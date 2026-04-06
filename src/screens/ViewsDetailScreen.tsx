@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronDown, Check, Film, Camera, Info } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import reelsIcon from "@/assets/reels-icon.png";
 
 interface ViewsData {
   views: number;
