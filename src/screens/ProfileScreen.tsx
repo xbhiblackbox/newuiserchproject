@@ -59,7 +59,7 @@ const ProfileScreen = () => {
   // Show/hide highlights toggle
   const [showHighlights, setShowHighlights] = useState(() => {
     const saved = localStorage.getItem('showHighlights');
-    return saved !== null ? saved === 'true' : true;
+    return saved !== null ? saved === 'true' : false;
   });
 
   const toggleHighlights = useCallback((val: boolean) => {
