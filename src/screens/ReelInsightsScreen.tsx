@@ -659,7 +659,7 @@ const ReelInsightsScreen = () => {
           className="flex flex-col items-center gap-1.5 cursor-pointer"
           onClick={() => isEditMode && setEditModal({ label: "Comments", value: String(comments), onSave: setEditComments })}
         >
-          <MessageCircle size={24} className="text-foreground fill-foreground -scale-x-100" />
+          <MessageCircle size={20} className="text-foreground fill-foreground -scale-x-100" />
           <span className="text-[13px] font-medium text-foreground">{fmtNum(comments)}</span>
         </div>
         {/* Send */}
