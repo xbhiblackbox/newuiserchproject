@@ -453,7 +453,7 @@ const ViewsDetailScreen = () => {
                     <p className="text-[13px] text-foreground mb-1.5">{range.range}</p>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max((range.pct / Math.max(...data.ageRanges.map(r => r.pct))) * 100, 3)}%` }} />
+                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${range.pct}%` }} />
                       </div>
                       <span className="text-[13px] text-foreground w-10 text-right">{range.pct}%</span>
                     </div>
