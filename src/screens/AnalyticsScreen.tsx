@@ -70,7 +70,7 @@ const AnalyticsScreen = () => {
   ];
 
   const tipItems = [
-    { label: "Trending audio", icon: <TrendingUp size={24} strokeWidth={1.5} /> },
+    { label: "Trending audio", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 17 7 13 11 16 17 7 21 11"/></svg> },
     { label: "Other helpful resources", icon: <Link2 size={24} strokeWidth={1.5} /> },
   ];
 
