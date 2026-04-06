@@ -74,6 +74,7 @@ const defaultData: FollowersData = {
   ],
   chartData: [130, 110, 100, 105, 140, 85, 110, 95, 110, 110, 105, 85, 115, 100, 130],
   chartAxis: { max: "19", mid: "0", min: "-19" },
+  chartDates: ["8 Mar", "21 Mar", "4 Apr"],
   topContent: [
     { image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=260&fit=crop", count: "1", date: "1 Apr" },
   ],
