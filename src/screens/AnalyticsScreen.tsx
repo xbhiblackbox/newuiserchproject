@@ -178,7 +178,7 @@ const AnalyticsScreen = () => {
                   </div>
                   <div className="flex items-center gap-2 ml-2 shrink-0">
                     {tool.badge && (
-                      <span className="bg-green-600 text-white text-[11px] font-bold px-2 py-[1px] rounded-full">
+                      <span className="bg-[#3B82F6] text-white text-[11px] font-bold px-2 py-[1px] rounded-full">
                         {tool.badge}
                       </span>
                     )}
