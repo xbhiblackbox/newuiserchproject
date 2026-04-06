@@ -274,7 +274,7 @@ export const currentUser: UserProfile = {
   username: "Organicsmm.pro",
   fullName: "OrganicSMM",
   avatar: "https://i.pravatar.cc/150?img=33",
-  bio: "ᴛʜᴇ ᴜʟᴛɪᴍᴀᴛᴇ ᴄʀᴇᴀᴛᴏʀ ᴛᴏᴏʟ 🛠️\nᴄᴜꜱᴛᴏᴍɪᴢᴇ ʏᴏᴜʀ ɪɢ ᴀɴᴀʟʏᴛɪᴄꜱ 📊\nɢʟᴏʙᴀʟ ʀᴇᴀᴄʜ ꜱɪᴍᴜʟᴀᴛᴏʀ 🌍\n👇 ᴄʜᴀɴɢᴇ ʏᴏᴜʀ ꜱᴛᴀᴛꜱ ᴛᴏᴅᴀʏ",
+  bio: "THE ULTIMATE CREATOR TOOL 🛠✨\nCUSTOMIZE YOUR IG ANALYTICS 📊\nGLOBAL REACH SIMULATOR 🌍\n👇 CHANGE YOUR STATS TODAY",
   posts: 21,
   followers: 12530,
   following: 12,
