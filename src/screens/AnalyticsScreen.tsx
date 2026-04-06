@@ -62,9 +62,9 @@ const AnalyticsScreen = () => {
     { label: "Best practices", icon: <GraduationCap size={24} strokeWidth={1.5} /> },
     { label: "Inspiration", icon: <Lightbulb size={24} strokeWidth={1.5} /> },
     { label: "Branded content", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7 21v-1a5 5 0 0 1 10 0v1"/></svg> },
-    { label: "Partnership ads", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 8.5l2.2 2.2L10 6.4"/><circle cx="15.5" cy="7.5" r="3"/><path d="M9.5 19.5v-.7c0-3.15 2.55-5.8 5.7-5.8h.6c3.15 0 5.7 2.65 5.7 5.8v.7"/></svg> },
-    { label: "Ad tools", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 16.5 8 12l3.2 3.2L18 8.5"/><path d="M14.5 8.5H18v3.5"/></svg> },
-    { label: "Trial reels", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 4.5h8"/><path d="M8 19.5h8"/><rect x="4.5" y="6.5" width="15" height="11" rx="4" strokeDasharray="3 2"/></svg>, badge: "New" },
+    { label: "Partnership ads", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 9.5 6.2 11.7 10 7.9"/><circle cx="16" cy="7.5" r="3"/><path d="M10.5 19.5v-.8c0-3.15 2.55-5.7 5.7-5.7h.2c3.15 0 5.6 2.55 5.6 5.7v.8"/></svg> },
+    { label: "Ad tools", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M3.5 16.5 8 12l3.3 3.2L18 8.5"/><path d="M14.7 8.5H18v3.3"/></svg> },
+    { label: "Trial reels", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M8 5h8"/><rect x="4.5" y="6.5" width="15" height="11" rx="4" strokeDasharray="3 2"/><path d="M8 19h8"/></svg>, badge: "New" },
     { label: "Gifts", icon: <Gift size={24} strokeWidth={1.5} /> },
     { label: "Saved replies", icon: <Send size={24} strokeWidth={1.5} />, subtitle: "Save replies to common questions" },
   ];
