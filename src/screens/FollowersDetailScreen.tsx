@@ -334,35 +334,35 @@ const FollowersDetailScreen = () => {
         <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Age Range Section */}
-        <div className="px-4 py-8">
-           <h3 className="text-[18px] font-bold mb-7 text-foreground">Age range</h3>
-           <div className="flex gap-2 mb-9">
+        <div className="px-4 py-5">
+           <h3 className="text-[15px] font-bold mb-4 text-foreground">Age range</h3>
+           <div className="flex gap-2 mb-5">
               {["All", "Men", "Women"].map(t => (
                  <button key={t} onClick={() => setAgeTab(t)}
-                   className={cn("px-5 py-2 rounded-full text-[14px] font-bold border transition-colors",
-                     ageTab === t ? "bg-white text-[#000000] border-transparent" : "bg-[#262626] text-white border-transparent"
+                   className={cn("px-3.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors",
+                     ageTab === t ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground border-border"
                    )}>
                    {t}
                  </button>
               ))}
            </div>
 
-           <div className="space-y-8">
+           <div className="space-y-4">
               {data.ageRanges.map((age, i) => (
                 <div key={i}>
-                   <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[14px] font-medium">{age.range}</span>
-                      <span className="text-[14px] font-bold">{age.pct}%</span>
+                   <div className="flex justify-between items-center mb-1">
+                      <span className="text-[13px] font-semibold text-foreground">{age.range}</span>
+                      <span className="text-[12px] font-semibold text-foreground">{age.pct}%</span>
                    </div>
-                   <div className="h-[10px] w-full bg-secondary/50 rounded-full overflow-hidden">
+                   <div className="h-[5px] w-full bg-secondary rounded-full overflow-hidden">
                       <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${age.pct}%` }} />
                    </div>
                    {isEditing && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                         <input className="bg-secondary/50 rounded px-2 text-[12px] py-1" value={age.range} onChange={e => {
+                      <div className="mt-1.5 grid grid-cols-2 gap-2">
+                         <input className="bg-secondary rounded px-1.5 py-0.5 text-[10px] outline-none text-foreground" value={age.range} onChange={e => {
                            const n = [...data.ageRanges]; n[i].range = e.target.value; updateField('ageRanges', n);
                          }} />
-                         <input className="bg-secondary/50 rounded px-2 text-[12px] py-1" type="number" value={age.pct} onChange={e => {
+                         <input className="bg-secondary rounded px-1.5 py-0.5 text-[10px] outline-none text-foreground" type="number" value={age.pct} onChange={e => {
                            const n = [...data.ageRanges]; n[i].pct = parseFloat(e.target.value) || 0; updateField('ageRanges', n);
                          }} />
                       </div>
