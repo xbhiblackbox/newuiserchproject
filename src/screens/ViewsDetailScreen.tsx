@@ -159,7 +159,7 @@ const ViewsDetailScreen = () => {
           </div>
         </div>
         <div className="flex items-center justify-between px-4 py-2.5">
-          <button className="flex items-center gap-1 border border-border rounded-full px-3 py-1 text-[13px] font-medium text-foreground">
+          <button className="flex items-center gap-1 bg-secondary border border-border rounded-full px-3 py-1 text-[13px] font-medium text-foreground">
             {isEditing ? (
               <input className="bg-transparent text-[13px] font-medium outline-none w-20 text-foreground" value={data.dateRange} onChange={e => updateField('dateRange', e.target.value)} />
             ) : data.dateRange} <ChevronDown size={14} strokeWidth={2} />
