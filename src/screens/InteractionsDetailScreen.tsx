@@ -193,7 +193,7 @@ const InteractionsDetailScreen = () => {
           </div>
         </div>
 
-        <div className="h-[0.5px] bg-gray-100 mx-4" />
+        <div className="h-[0.5px] bg-border mx-4" />
 
         {/* By content type */}
         <div className="px-4 py-8">
