@@ -127,12 +127,12 @@ const InteractionsDetailScreen = () => {
           <button className="flex items-center gap-1 bg-secondary/50 rounded-[10px] px-3 py-1.5 text-[14px] font-bold text-foreground">
             {data.dateRange} <ChevronDown size={18} strokeWidth={2.5} />
           </button>
-          <div className="text-[14px] font-bold text-black flex items-center gap-1">
+          <div className="text-[14px] font-bold text-foreground flex items-center gap-1">
              {isEditing ? (
                 <>
-                  <input className="w-12 bg-gray-100 rounded text-center outline-none" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
-                  <span>-</span>
-                  <input className="w-12 bg-gray-100 rounded text-center outline-none" value={data.endDate} onChange={e => updateField('endDate', e.target.value)} />
+                   <input className="w-12 bg-secondary rounded text-center outline-none text-foreground" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
+                   <span>-</span>
+                   <input className="w-12 bg-secondary rounded text-center outline-none text-foreground" value={data.endDate} onChange={e => updateField('endDate', e.target.value)} />
                 </>
              ) : (
                 <span>{data.startDate} - {data.endDate}</span>
@@ -140,13 +140,13 @@ const InteractionsDetailScreen = () => {
           </div>
         </div>
 
-        <div className="h-[0.5px] bg-gray-100 mx-4 mt-2" />
+        <div className="h-[0.5px] bg-border mx-4 mt-2" />
 
         {/* Donut Area */}
         <div className="flex justify-center py-12">
           <div className="relative w-[230px] h-[230px]">
             <svg viewBox="0 0 200 200" className="w-full h-full -rotate-90">
-              <circle cx="100" cy="100" r="85" fill="none" stroke="#F2F2F2" strokeWidth="8" />
+              <circle cx="100" cy="100" r="85" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
               <circle cx="100" cy="100" r="85" fill="none" stroke="#B025C3" strokeWidth="10"
                 strokeDasharray={`${(data.followerPct / 100) * 2 * Math.PI * 85} ${2 * Math.PI * 85}`}
                 strokeLinecap="round" />
@@ -162,7 +162,7 @@ const InteractionsDetailScreen = () => {
                    type="number"
                    value={data.interactions} 
                    onChange={e => updateField('interactions', parseInt(e.target.value) || 0)}
-                   className="text-[32px] font-bold text-black bg-gray-100 rounded px-1 outline-none w-32 text-center"
+                   className="text-[32px] font-bold text-foreground bg-secondary rounded px-1 outline-none w-32 text-center"
                  />
               ) : (
                 <span className="text-[32px] font-bold text-foreground tracking-tight">{data.interactions.toLocaleString()}</span>
@@ -179,7 +179,7 @@ const InteractionsDetailScreen = () => {
               <span className="text-[15px] font-medium">Followers</span>
             </div>
             {isEditing ? (
-               <input className="w-16 bg-gray-100 rounded text-right text-[15px] font-bold outline-none" value={data.followerPct} onChange={e => updateField('followerPct', parseFloat(e.target.value) || 0)} />
+               <input className="w-16 bg-secondary rounded text-right text-[15px] font-bold outline-none text-foreground" value={data.followerPct} onChange={e => updateField('followerPct', parseFloat(e.target.value) || 0)} />
             ) : (
                <span className="text-[15px] font-medium">{data.followerPct}%</span>
             )}
@@ -193,7 +193,7 @@ const InteractionsDetailScreen = () => {
           </div>
         </div>
 
-        <div className="h-[0.5px] bg-gray-100 mx-4" />
+        <div className="h-[0.5px] bg-border mx-4" />
 
         {/* By content type */}
         <div className="px-4 py-8">
@@ -217,7 +217,7 @@ const InteractionsDetailScreen = () => {
                       <span className="text-[15px] font-medium">{type.name}</span>
                       <div className="flex items-center gap-1">
                          {isEditing ? (
-                            <input className="w-12 bg-gray-100 rounded text-right text-[15px] font-bold outline-none" value={type.total} onChange={e => {
+                            <input className="w-12 bg-secondary rounded text-right text-[15px] font-bold outline-none text-foreground" value={type.total} onChange={e => {
                               const n = [...data.contentTypes]; n[i].total = parseFloat(e.target.value) || 0; updateField('contentTypes', n);
                             }} />
                          ) : (
@@ -233,13 +233,13 @@ const InteractionsDetailScreen = () => {
                      <div className="mt-2 grid grid-cols-2 gap-4">
                         <div className="flex items-center gap-2">
                            <div className="h-2 w-2 rounded-full bg-[#B025C3]" />
-                           <input className="w-12 bg-gray-100 rounded text-[11px] font-bold outline-none" value={type.followerPct} onChange={e => {
+                           <input className="w-12 bg-secondary rounded text-[11px] font-bold outline-none text-foreground" value={type.followerPct} onChange={e => {
                              const n = [...data.contentTypes]; n[i].followerPct = parseFloat(e.target.value) || 0; updateField('contentTypes', n);
                            }} />
                         </div>
                         <div className="flex items-center gap-2">
                            <div className="h-2 w-2 rounded-full bg-[#4B12C2]" />
-                           <input className="w-12 bg-gray-100 rounded text-[11px] font-bold outline-none" value={type.nonFollowerPct} onChange={e => {
+                           <input className="w-12 bg-secondary rounded text-[11px] font-bold outline-none text-foreground" value={type.nonFollowerPct} onChange={e => {
                              const n = [...data.contentTypes]; n[i].nonFollowerPct = parseFloat(e.target.value) || 0; updateField('contentTypes', n);
                            }} />
                         </div>
@@ -250,18 +250,18 @@ const InteractionsDetailScreen = () => {
            </div>
 
            <div className="flex justify-center gap-10 mt-10">
-              <div className="flex items-center gap-2">
-                 <div className="h-2 w-2 rounded-full bg-[#B025C3]" />
-                 <span className="text-[13px] text-white font-bold">Followers</span>
-              </div>
-              <div className="flex items-center gap-2">
-                 <div className="h-2 w-2 rounded-full bg-[#4B12C2]" />
-                 <span className="text-[13px] text-white font-bold">Non-followers</span>
-              </div>
+               <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-[#B025C3]" />
+                  <span className="text-[13px] text-foreground font-bold">Followers</span>
+               </div>
+               <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-[#4B12C2]" />
+                  <span className="text-[13px] text-foreground font-bold">Non-followers</span>
+               </div>
            </div>
         </div>
 
-        <div className="h-[0.5px] bg-gray-100 mx-4" />
+        <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Stats List */}
         <div className="px-4 py-6 space-y-6">
@@ -269,7 +269,7 @@ const InteractionsDetailScreen = () => {
              <div key={item.label} className="flex justify-between items-center">
                 <span className="text-[15px] font-medium">{item.label}</span>
                 {isEditing ? (
-                   <input className="w-20 bg-gray-100 rounded text-right font-bold outline-none" value={item.value} onChange={e => {
+                   <input className="w-20 bg-secondary rounded text-right font-bold outline-none text-foreground" value={item.value} onChange={e => {
                      const nb = [...data.breakdown]; nb[i].value = e.target.value; updateField('breakdown', nb);
                    }} />
                 ) : (
@@ -279,7 +279,7 @@ const InteractionsDetailScreen = () => {
            ))}
         </div>
 
-        <div className="h-[0.5px] bg-gray-100 mx-4" />
+        <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Top reels */}
         <div className="px-4 py-8">
@@ -315,7 +315,7 @@ const InteractionsDetailScreen = () => {
                    </div>
                    <div className="text-center">
                       {isEditing ? (
-                        <input className="bg-gray-100 rounded text-[12px] w-full text-center font-medium outline-none" value={reel.date} onChange={e => {
+                        <input className="bg-secondary rounded text-[12px] w-full text-center font-medium outline-none text-foreground" value={reel.date} onChange={e => {
                            const nt = [...data.topReels]; nt[i].date = e.target.value; updateField('topReels', nt);
                         }} />
                       ) : (

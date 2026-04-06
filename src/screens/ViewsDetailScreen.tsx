@@ -197,7 +197,7 @@ const ViewsDetailScreen = () => {
                 strokeLinecap="round" />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[14px] text-white font-medium mb-1">Views</span>
+              <span className="text-[14px] text-foreground font-medium mb-1">Views</span>
               {isEditing ? (
                 <input 
                   type="number"
@@ -230,7 +230,7 @@ const ViewsDetailScreen = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-2.5 w-2.5 rounded-full bg-[#5B21B6]" />
-              <span className="text-[15px] text-white font-medium">Non-followers</span>
+              <span className="text-[15px] text-foreground font-medium">Non-followers</span>
             </div>
             {isEditing ? (
                <div className="flex items-center gap-1">
@@ -377,24 +377,24 @@ const ViewsDetailScreen = () => {
 
           <div className="flex gap-4 overflow-x-auto hide-scrollbar px-4 pb-4">
             {/* Towns/Cities */}
-            <div className="flex-shrink-0 w-[300px] bg-white dark:bg-[#0F0F0F] text-black dark:text-white rounded-[16px] border border-gray-100 dark:border-gray-800 p-3 shadow-sm transition-colors">
-                <h4 className="text-[17px] font-bold mb-6">Top towns/cities</h4>
-                <div className="space-y-6">
+            <div className="flex-shrink-0 w-[280px] bg-card rounded-[16px] border border-border p-4">
+                <h4 className="text-[16px] font-bold text-foreground mb-5">Top towns/cities</h4>
+                <div className="space-y-5">
                     {data.cities.map((city, i) => (
                         <div key={city.name}>
-                            <p className="text-[14px] font-medium mb-1.5">{city.name}</p>
-                            <div className="flex items-center gap-4">
-                                <div className="flex-1 h-3 bg-secondary/30 dark:bg-[#262629] rounded-full overflow-hidden">
-                                    <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${city.pct}%` }} />
+                            <p className="text-[14px] font-semibold text-foreground mb-1.5">{city.name}</p>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 h-[10px] bg-secondary rounded-full overflow-hidden">
+                                    <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${Math.max(city.pct * 3, 4)}%` }} />
                                 </div>
-                                <span className="text-[13px] font-bold w-10 text-right">{city.pct}%</span>
+                                <span className="text-[13px] font-semibold text-foreground w-10 text-right">{city.pct}%</span>
                             </div>
                             {isEditing && (
                                 <div className="mt-2 grid grid-cols-2 gap-2">
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" value={city.name} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" value={city.name} onChange={e => {
                                         const n = [...data.cities]; n[i].name = e.target.value; updateField('cities', n);
                                     }} />
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" type="number" value={city.pct} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" type="number" value={city.pct} onChange={e => {
                                         const n = [...data.cities]; n[i].pct = parseFloat(e.target.value) || 0; updateField('cities', n);
                                     }} />
                                 </div>
@@ -405,24 +405,24 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Countries */ }
-            <div className="flex-shrink-0 w-[300px] bg-white dark:bg-[#0F0F0F] text-black dark:text-white rounded-[16px] border border-gray-100 dark:border-gray-800 p-3 shadow-sm transition-colors">
-                <h4 className="text-[17px] font-bold mb-6">Top countries</h4>
-                <div className="space-y-6">
+            <div className="flex-shrink-0 w-[280px] bg-card rounded-[16px] border border-border p-4">
+                <h4 className="text-[16px] font-bold text-foreground mb-5">Top countries</h4>
+                <div className="space-y-5">
                     {data.countries.map((country, i) => (
                         <div key={country.name}>
-                            <p className="text-[14px] font-medium mb-1.5">{country.name}</p>
-                            <div className="flex items-center gap-4">
-                                <div className="flex-1 h-3 bg-secondary/30 dark:bg-[#262629] rounded-full overflow-hidden">
-                                    <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${country.pct}%` }} />
+                            <p className="text-[14px] font-semibold text-foreground mb-1.5">{country.name}</p>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 h-[10px] bg-secondary rounded-full overflow-hidden">
+                                    <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${Math.max(country.pct, 4)}%` }} />
                                 </div>
-                                <span className="text-[13px] font-bold w-10 text-right">{country.pct}%</span>
+                                <span className="text-[13px] font-semibold text-foreground w-10 text-right">{country.pct}%</span>
                             </div>
                             {isEditing && (
                                 <div className="mt-2 grid grid-cols-2 gap-2">
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" value={country.name} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" value={country.name} onChange={e => {
                                         const n = [...data.countries]; n[i].name = e.target.value; updateField('countries', n);
                                     }} />
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" type="number" value={country.pct} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" type="number" value={country.pct} onChange={e => {
                                         const n = [...data.countries]; n[i].pct = parseFloat(e.target.value) || 0; updateField('countries', n);
                                     }} />
                                 </div>
@@ -433,24 +433,24 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Age Ranges */}
-            <div className="flex-shrink-0 w-[300px] bg-white dark:bg-[#0F0F0F] text-black dark:text-white rounded-[16px] border border-gray-100 dark:border-gray-800 p-3 shadow-sm transition-colors">
-                <h4 className="text-[17px] font-bold mb-6">Top age ranges</h4>
-                <div className="space-y-6">
+            <div className="flex-shrink-0 w-[280px] bg-card rounded-[16px] border border-border p-4">
+                <h4 className="text-[16px] font-bold text-foreground mb-5">Top age ranges</h4>
+                <div className="space-y-5">
                     {data.ageRanges.map((range, i) => (
                         <div key={range.range}>
-                            <p className="text-[14px] font-medium mb-1.5">{range.range}</p>
-                            <div className="flex items-center gap-4">
-                                <div className="flex-1 h-3 bg-secondary/30 dark:bg-[#262629] rounded-full overflow-hidden">
+                            <p className="text-[14px] font-semibold text-foreground mb-1.5">{range.range}</p>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 h-[10px] bg-secondary rounded-full overflow-hidden">
                                     <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${range.pct}%` }} />
                                 </div>
-                                <span className="text-[13px] font-bold w-10 text-right">{range.pct}%</span>
+                                <span className="text-[13px] font-semibold text-foreground w-10 text-right">{range.pct}%</span>
                             </div>
                             {isEditing && (
                                 <div className="mt-2 grid grid-cols-2 gap-2">
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" value={range.range} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" value={range.range} onChange={e => {
                                         const n = [...data.ageRanges]; n[i].range = e.target.value; updateField('ageRanges', n);
                                     }} />
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" type="number" value={range.pct} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" type="number" value={range.pct} onChange={e => {
                                         const n = [...data.ageRanges]; n[i].pct = parseFloat(e.target.value) || 0; updateField('ageRanges', n);
                                     }} />
                                 </div>
@@ -461,24 +461,24 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Gender */}
-            <div className="flex-shrink-0 w-[300px] bg-white dark:bg-[#0F0F0F] text-black dark:text-white rounded-[16px] border border-gray-100 dark:border-gray-800 p-3 shadow-sm transition-colors">
-                <h4 className="text-[17px] font-bold mb-6">Gender</h4>
-                <div className="space-y-6 mt-12">
+            <div className="flex-shrink-0 w-[280px] bg-card rounded-[16px] border border-border p-4">
+                <h4 className="text-[16px] font-bold text-foreground mb-5">Gender</h4>
+                <div className="space-y-5 mt-8">
                     {data.gender.map((g, i) => (
                         <div key={g.name}>
-                            <p className="text-[14px] font-medium mb-1.5">{g.name}</p>
-                            <div className="flex items-center gap-4">
-                                <div className="flex-1 h-3 bg-secondary/30 dark:bg-[#262629] rounded-full overflow-hidden">
+                            <p className="text-[14px] font-semibold text-foreground mb-1.5">{g.name}</p>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 h-[10px] bg-secondary rounded-full overflow-hidden">
                                     <div className="h-full rounded-full" style={{ width: `${g.pct}%`, backgroundColor: g.color }} />
                                 </div>
-                                <span className="text-[13px] font-bold w-10 text-right">{g.pct}%</span>
+                                <span className="text-[13px] font-semibold text-foreground w-10 text-right">{g.pct}%</span>
                             </div>
                             {isEditing && (
                                 <div className="mt-2 grid grid-cols-2 gap-2">
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" value={g.name} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" value={g.name} onChange={e => {
                                         const n = [...data.gender]; n[i].name = e.target.value; updateField('gender', n);
                                     }} />
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" type="number" value={g.pct} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" type="number" value={g.pct} onChange={e => {
                                         const n = [...data.gender]; n[i].pct = parseFloat(e.target.value) || 0; updateField('gender', n);
                                     }} />
                                 </div>
