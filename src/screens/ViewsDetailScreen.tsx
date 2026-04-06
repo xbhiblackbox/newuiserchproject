@@ -384,7 +384,7 @@ const ViewsDetailScreen = () => {
             <Info size={16} strokeWidth={1.5} className="text-muted-foreground" />
           </div>
 
-          <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 pb-3">
+          <div className="flex gap-1.5 overflow-x-auto hide-scrollbar px-4 pb-3">
             {/* Towns/Cities */}
             <div className="flex-shrink-0 w-[72vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top towns/cities</h4>
