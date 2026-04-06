@@ -506,8 +506,7 @@ const ViewsDetailScreen = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h3 className="text-[15px] font-bold text-foreground">Profile activity</h3>
-              <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-foreground/50 flex items-center justify-center">
-                <span className="text-[9px] font-semibold text-foreground/50 leading-none">i</span>
+              <Info size={16} strokeWidth={1.5} className="text-muted-foreground" />
               </div>
             </div>
             <div className="text-right">
