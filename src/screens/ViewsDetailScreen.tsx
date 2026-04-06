@@ -137,7 +137,7 @@ const ViewsDetailScreen = () => {
   const gap = C * 0.005;
 
   return (
-    <div className="pb-24 min-h-screen bg-background select-none overflow-x-hidden relative text-foreground">
+    <div className="pb-24 min-h-screen bg-background select-none relative text-foreground overflow-hidden">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background">
         <div className="flex items-center justify-between px-4 h-[44px]">
