@@ -127,7 +127,7 @@ const InteractionsDetailScreen = () => {
           <button className="flex items-center gap-1 bg-secondary/50 rounded-[10px] px-3 py-1.5 text-[14px] font-bold text-foreground">
             {data.dateRange} <ChevronDown size={18} strokeWidth={2.5} />
           </button>
-          <div className="text-[14px] font-bold text-black flex items-center gap-1">
+          <div className="text-[14px] font-bold text-foreground flex items-center gap-1">
              {isEditing ? (
                 <>
                   <input className="w-12 bg-gray-100 rounded text-center outline-none" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
