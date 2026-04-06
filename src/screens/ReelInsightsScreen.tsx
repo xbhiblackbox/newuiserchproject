@@ -530,6 +530,7 @@ const ReelInsightsScreen = () => {
             </button>
             <h1 className="text-[17px] font-bold text-foreground">Reel insights</h1>
           </div>
+          <div className="w-[29px] h-[29px] shrink-0" />
         </header>
         <div className="flex-1 flex items-center justify-center">
           <div className="h-7 w-7 rounded-full border-[1.5px] border-muted-foreground/25 border-t-muted-foreground/60 animate-spin" />
@@ -553,21 +554,23 @@ const ReelInsightsScreen = () => {
             Reel insights
           </h1>
         </div>
-        {!isEditMode ? (
-          <button 
-            onClick={() => { setIsActionMenuOpen(true); }}
-            className="p-1 text-foreground active:opacity-60"
-          >
-            <MoreVertical size={21} />
-          </button>
-        ) : (
-          <button 
-            onClick={() => { setIsEditMode(false); saveToSupabase(); persistEdits(); toast.success("All changes saved"); }}
-            className="text-[14px] font-bold text-[hsl(var(--ig-blue))] p-1"
-          >
-            Done
-          </button>
-        )}
+        <div className="w-[29px] h-[29px] shrink-0 flex items-center justify-end">
+          {!isEditMode ? (
+            <button 
+              onClick={() => { setIsActionMenuOpen(true); }}
+              className="p-1 text-foreground active:opacity-60"
+            >
+              <MoreVertical size={21} />
+            </button>
+          ) : (
+            <button 
+              onClick={() => { setIsEditMode(false); saveToSupabase(); persistEdits(); toast.success("All changes saved"); }}
+              className="text-[14px] font-bold text-[hsl(var(--ig-blue))] leading-none"
+            >
+              Done
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Reel Preview */}
