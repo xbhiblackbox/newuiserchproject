@@ -283,7 +283,7 @@ export const currentUser: UserProfile = {
 };
 
 export const userPostImages = [
-  "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1618641986557-1ecd230959aa?w=300&h=400&fit=crop",
   "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=300&h=400&fit=crop",
   "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&h=400&fit=crop",
   "https://images.unsplash.com/photo-1488161628813-04466f0cc7d4?w=300&h=400&fit=crop",
