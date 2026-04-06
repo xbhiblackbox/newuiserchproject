@@ -381,9 +381,7 @@ const ViewsDetailScreen = () => {
         <div className="py-4">
           <div className="px-4 flex items-center gap-2 mb-3">
             <h3 className="text-[15px] font-bold text-foreground">Audience</h3>
-            <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-foreground/50 flex items-center justify-center">
-              <span className="text-[9px] font-semibold text-foreground/50 leading-none">i</span>
-            </div>
+            <Info size={16} strokeWidth={1.5} className="text-muted-foreground" />
           </div>
 
           <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 pb-3">
