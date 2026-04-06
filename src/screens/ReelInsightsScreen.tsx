@@ -206,7 +206,7 @@ const ReelInsightsScreen = () => {
     { range: "13-17", pct: 32.3 }, { range: "18-24", pct: 35.9 }, { range: "25-34", pct: 20.2 }, { range: "35-44", pct: 7.1 }, { range: "45-54", pct: 2.3 }, { range: "55-64", pct: 0.8 }, { range: "65+", pct: 1.4 },
   ]);
   const [editSources, setEditSources] = useState(ins?.sources || [
-    { name: "Feed", pct: 63.4 }, { name: "Reels tab", pct: 11.1 }, { name: "Stories", pct: 10.6 }, { name: "Explore", pct: 7.4 }, { name: "Profile", pct: 6.0 },
+    { name: "Feed", pct: 63.4 }, { name: "Reels tab", pct: 11.1 }, { name: "Stories", pct: 10.6 }, { name: "Explore", pct: 7.4 },
   ]);
   const [editAccountsReached, setEditAccountsReached] = useState(ins?.accountsReached ?? 567);
   const [editFollows, setEditFollows] = useState(ins?.follows ?? 0);
