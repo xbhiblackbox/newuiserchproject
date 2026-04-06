@@ -22,6 +22,7 @@ import ReelDetailScreen from "@/screens/ReelDetailScreen";
 import ViewsDetailScreen from "@/screens/ViewsDetailScreen";
 import InteractionsDetailScreen from "@/screens/InteractionsDetailScreen";
 import FollowersDetailScreen from "@/screens/FollowersDetailScreen";
+import CreatorSettingsScreen from "@/screens/CreatorSettingsScreen";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
