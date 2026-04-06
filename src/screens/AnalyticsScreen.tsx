@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { ArrowLeft, ChevronRight, Check, History, GraduationCap, Lightbulb, TrendingUp, Gift, ArrowUpRight, Link2, Tv, Send } from "lucide-react";
+import { ArrowLeft, ChevronRight, Check, History, GraduationCap, Lightbulb, Gift, ArrowUpRight, Link2, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
