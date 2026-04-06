@@ -397,7 +397,7 @@ const ViewsDetailScreen = () => {
                     <p className="text-[13px] text-foreground mb-1.5">{city.name}</p>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max(city.pct * 5, 3)}%` }} />
+                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max((city.pct / Math.max(...data.cities.map(c => c.pct))) * 100, 3)}%` }} />
                       </div>
                       <span className="text-[13px] text-foreground w-10 text-right">{city.pct}%</span>
                     </div>
@@ -425,7 +425,7 @@ const ViewsDetailScreen = () => {
                     <p className="text-[13px] text-foreground mb-1.5">{country.name}</p>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max(country.pct, 3)}%` }} />
+                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max((country.pct / Math.max(...data.countries.map(c => c.pct))) * 100, 3)}%` }} />
                       </div>
                       <span className="text-[13px] text-foreground w-10 text-right">{country.pct}%</span>
                     </div>
@@ -453,7 +453,7 @@ const ViewsDetailScreen = () => {
                     <p className="text-[13px] text-foreground mb-1.5">{range.range}</p>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${range.pct}%` }} />
+                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max((range.pct / Math.max(...data.ageRanges.map(r => r.pct))) * 100, 3)}%` }} />
                       </div>
                       <span className="text-[13px] text-foreground w-10 text-right">{range.pct}%</span>
                     </div>
@@ -481,7 +481,7 @@ const ViewsDetailScreen = () => {
                     <p className="text-[13px] text-foreground mb-1.5">{g.name}</p>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${g.pct}%`, backgroundColor: g.color }} />
+                        <div className="h-full rounded-full" style={{ width: `${Math.max((g.pct / Math.max(...data.gender.map(x => x.pct))) * 100, 3)}%`, backgroundColor: g.color }} />
                       </div>
                       <span className="text-[13px] text-foreground w-10 text-right">{g.pct}%</span>
                     </div>
