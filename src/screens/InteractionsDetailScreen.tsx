@@ -273,16 +273,16 @@ const InteractionsDetailScreen = () => {
         <div className="h-[6px] bg-secondary/40" />
 
         {/* Stats List */}
-        <div className="px-4 py-4">
+        <div className="px-4 py-2">
           {data.breakdown.map((item, i) => (
-            <div key={item.label} className="flex justify-between items-center py-3 border-b border-border/40 last:border-b-0">
-              <span className="text-[14px] text-foreground">{item.label}</span>
+            <div key={item.label} className="flex justify-between items-center py-3.5 border-b border-border/30 last:border-b-0">
+              <span className="text-[15px] text-foreground">{item.label}</span>
               {isEditing ? (
-                <input className="w-20 bg-secondary rounded text-right font-semibold text-[14px] outline-none text-foreground" value={item.value} onChange={e => {
+                <input className="w-20 bg-secondary rounded text-right font-semibold text-[15px] outline-none text-foreground" value={item.value} onChange={e => {
                   const nb = [...data.breakdown]; nb[i].value = e.target.value; updateField('breakdown', nb);
                 }} />
               ) : (
-                <span className="text-[14px] font-semibold text-foreground">{item.value}</span>
+                <span className="text-[15px] text-foreground">{item.value}</span>
               )}
             </div>
           ))}
@@ -292,11 +292,11 @@ const InteractionsDetailScreen = () => {
 
         {/* Top reels */}
         <div className="px-4 py-4">
-          <div className="flex justify-between items-center mb-1">
+          <div className="flex justify-between items-center mb-0.5">
             <h3 className="text-[15px] font-bold text-foreground">Top reels</h3>
-            <button className="text-[13px] text-[#3B82F6] font-semibold">See All</button>
+            <button className="text-[14px] text-[#3B82F6] font-semibold">See All</button>
           </div>
-          <p className="text-[11px] text-muted-foreground mb-3">Based on likes</p>
+          <p className="text-[12px] text-muted-foreground mb-3">Based on likes</p>
 
           <div className="flex gap-2.5 overflow-x-auto hide-scrollbar pb-2">
             {data.topReels.map((reel, i) => (
