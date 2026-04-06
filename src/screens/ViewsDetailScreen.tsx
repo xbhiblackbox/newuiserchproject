@@ -336,24 +336,24 @@ const ViewsDetailScreen = () => {
             <button className="text-[13px] text-[#3B82F6] font-semibold">See All</button>
           </div>
           
-          <div className="flex gap-3 overflow-x-auto hide-scrollbar pb-2">
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
             {data.topContent.map((item, i) => (
-              <div key={i} className="flex-shrink-0 w-[130px]">
+              <div key={i} className="flex-shrink-0" style={{ width: 'calc((100% - 24px) / 4)' }}>
                 <div 
                   onClick={() => isEditing && handleImageUpload(i)}
-                  className={cn("relative rounded-[14px] overflow-hidden aspect-[3/4]", isEditing && "cursor-pointer ring-2 ring-[#0095f6]")}
+                  className={cn("relative rounded-[10px] overflow-hidden aspect-[3/4.5]", isEditing && "cursor-pointer ring-2 ring-[#0095f6]")}
                 >
                   <img src={item.image} alt="" className="w-full h-full object-cover" />
-                  {/* Carousel/multi icon top-right */}
-                  <div className="absolute top-2 right-2">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white" opacity="0.9">
-                      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
-                      <path d="M17 1H7v2h10V1z" opacity="0.6"/>
+                  {/* Reels play icon top-right */}
+                  <div className="absolute top-1.5 right-1.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="white" opacity="0.95">
+                      <path d="M9.5 16.5v-9l7 4.5-7 4.5z"/>
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
                     </svg>
                   </div>
-                  {/* Views count bottom-left */}
-                  <div className="absolute bottom-2 left-2">
-                    <span className="text-white text-[15px] font-bold drop-shadow-lg">{item.views}</span>
+                  {/* Views count bottom-center */}
+                  <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+                    <span className="text-white text-[13px] font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{item.views}</span>
                   </div>
                   {isEditing && (
                     <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1">
@@ -366,13 +366,13 @@ const ViewsDetailScreen = () => {
                     </div>
                   )}
                 </div>
-                <div className="mt-1.5 text-center">
+                <div className="mt-1 text-center">
                   {isEditing ? (
-                    <input className="bg-secondary rounded text-[11px] w-full text-center outline-none text-foreground" value={item.date} onChange={e => {
+                    <input className="bg-secondary rounded text-[10px] w-full text-center outline-none text-foreground" value={item.date} onChange={e => {
                       const n = [...data.topContent]; n[i].date = e.target.value; updateField('topContent', n);
                     }} />
                   ) : (
-                    <span className="text-[12px] text-muted-foreground">{item.date}</span>
+                    <span className="text-[11px] text-muted-foreground">{item.date}</span>
                   )}
                 </div>
               </div>
