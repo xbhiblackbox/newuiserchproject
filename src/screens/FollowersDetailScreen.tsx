@@ -22,6 +22,7 @@ interface FollowersData {
   activeTimes: { time: string; height: number }[];
   chartData: number[];
   chartAxis: { max: string; mid: string; min: string };
+  chartDates: string[];
   topContent: { image: string; count: string; date: string }[];
 }
 
@@ -73,6 +74,7 @@ const defaultData: FollowersData = {
   ],
   chartData: [130, 110, 100, 105, 140, 85, 110, 95, 110, 110, 105, 85, 115, 100, 130],
   chartAxis: { max: "19", mid: "0", min: "-19" },
+  chartDates: ["8 Mar", "21 Mar", "4 Apr"],
   topContent: [
     { image: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200&h=260&fit=crop", count: "1", date: "1 Apr" },
   ],
@@ -288,9 +290,13 @@ const FollowersDetailScreen = () => {
               )}
             </div>
             <div className="absolute left-10 right-0 bottom-[-24px] flex justify-between text-[11px] text-muted-foreground">
-              <span>8 Mar</span>
-              <span>21 Mar</span>
-              <span>4 Apr</span>
+              {isEditing ? data.chartDates.map((d, i) => (
+                <input key={i} className="w-14 bg-secondary/50 rounded text-center text-[11px] outline-none text-muted-foreground" value={d} onChange={e => {
+                  const n = [...data.chartDates]; n[i] = e.target.value; updateField('chartDates', n);
+                }} />
+              )) : data.chartDates.map((d, i) => (
+                <span key={i}>{d}</span>
+              ))}
             </div>
           </div>
         </div>
