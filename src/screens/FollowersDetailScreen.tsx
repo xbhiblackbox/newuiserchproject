@@ -306,22 +306,22 @@ const FollowersDetailScreen = () => {
                 ))}
            </div>
            
-           <div className="px-4 space-y-7">
+           <div className="px-4 space-y-4">
               {data.cities.map((city, i) => (
                 <div key={i}>
-                   <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[14px] font-medium">{city.name}</span>
-                      <span className="text-[14px] font-bold">{city.pct}%</span>
+                   <div className="flex justify-between items-center mb-1">
+                      <span className="text-[13px] font-semibold text-foreground">{city.name}</span>
+                      <span className="text-[12px] font-semibold text-foreground">{city.pct}%</span>
                    </div>
-                   <div className="h-[10px] w-full bg-secondary/50 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${city.pct * 10}%` }} />
+                   <div className="h-[5px] w-full bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${Math.max(city.pct * 4, 3)}%` }} />
                    </div>
                    {isEditing && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                         <input className="bg-secondary/50 rounded px-2 text-[12px] py-1" value={city.name} onChange={e => {
+                      <div className="mt-1.5 grid grid-cols-2 gap-2">
+                         <input className="bg-secondary rounded px-1.5 py-0.5 text-[10px] outline-none text-foreground" value={city.name} onChange={e => {
                            const n = [...data.cities]; n[i].name = e.target.value; updateField('cities', n);
                          }} />
-                         <input className="bg-secondary/50 rounded px-2 text-[12px] py-1" type="number" value={city.pct} onChange={e => {
+                         <input className="bg-secondary rounded px-1.5 py-0.5 text-[10px] outline-none text-foreground" type="number" value={city.pct} onChange={e => {
                            const n = [...data.cities]; n[i].pct = parseFloat(e.target.value) || 0; updateField('cities', n);
                          }} />
                       </div>
