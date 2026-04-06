@@ -401,27 +401,27 @@ const FollowersDetailScreen = () => {
         <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Most Active Times */}
-        <div className="px-4 py-8">
-           <h3 className="text-[18px] font-bold mb-7 text-foreground">Most active times</h3>
-           <div className="flex gap-2.5 mb-12">
+        <div className="px-4 py-5">
+           <h3 className="text-[15px] font-bold mb-5 text-foreground">Most active times</h3>
+           <div className="flex gap-2 mb-8">
               {data.activeDays.map(d => (
                 <button key={d} onClick={() => setActiveDayTab(d)}
-                  className={cn("w-10 h-10 rounded-full text-[13px] font-bold border flex items-center justify-center transition-colors",
-                    activeDayTab === d ? "bg-secondary/50 border-transparent text-foreground" : "bg-background border-border text-foreground"
+                  className={cn("w-9 h-9 rounded-full text-[12px] font-semibold border flex items-center justify-center transition-colors",
+                    activeDayTab === d ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground border-border"
                   )}>
                   {d}
                 </button>
               ))}
            </div>
 
-           <div className="flex items-end justify-between h-[160px] px-2 mb-10">
+           <div className="flex items-end justify-between h-[140px] px-1 mb-8">
               {data.activeTimes.map((t, i) => (
                  <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group relative cursor-pointer">
-                    <div className="w-[85%] bg-[#D32FE0] rounded-[4px] relative" style={{ height: `${t.height}%` }}>
+                    <div className="w-[80%] bg-[#D32FE0] rounded-[3px] relative" style={{ height: `${t.height}%` }}>
                        {isEditing && (
                           <input 
                              type="number"
-                             className="absolute -top-10 left-1/2 -translate-x-1/2 w-10 bg-foreground text-background text-[10px] rounded px-1 text-center font-bold outline-none"
+                             className="absolute -top-8 left-1/2 -translate-x-1/2 w-8 bg-foreground text-background text-[9px] rounded px-0.5 text-center font-bold outline-none"
                              value={t.height}
                              onChange={e => {
                                 const n = [...data.activeTimes]; n[i].height = Math.min(100, Math.max(0, parseInt(e.target.value) || 0)); updateField('activeTimes', n);
@@ -429,7 +429,7 @@ const FollowersDetailScreen = () => {
                           />
                        )}
                     </div>
-                    <span className="text-[12px] text-muted-foreground font-bold mt-4">{t.time}</span>
+                    <span className="text-[10px] text-muted-foreground mt-3">{t.time}</span>
                  </div>
               ))}
            </div>
