@@ -268,7 +268,7 @@ const ViewsDetailScreen = () => {
           <div className="flex gap-2 mb-4">
             {["All", "Followers", "Non-followers"].map(t => (
               <button key={t} onClick={() => setContentTab(t)}
-                className={cn("px-3 py-1.5 rounded-lg text-[13px] font-medium border transition-colors",
+                className={cn("px-4 py-1.5 rounded-full text-[13px] font-medium border transition-colors",
                   contentTab === t 
                     ? "bg-foreground text-background border-foreground" 
                     : "bg-transparent text-foreground border-border"
