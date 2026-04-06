@@ -271,7 +271,7 @@ const ViewsDetailScreen = () => {
               <button key={t} onClick={() => setContentTab(t)}
                 className={cn("px-4 py-1.5 rounded-full text-[13px] font-medium border transition-colors",
                   contentTab === t 
-                    ? "bg-foreground text-background border-foreground" 
+                    ? "bg-secondary text-foreground border-border font-semibold" 
                     : "bg-transparent text-foreground border-border"
                 )}>
                 {t}
