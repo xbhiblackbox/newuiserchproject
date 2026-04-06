@@ -269,7 +269,7 @@ const InteractionsDetailScreen = () => {
              <div key={item.label} className="flex justify-between items-center">
                 <span className="text-[15px] font-medium">{item.label}</span>
                 {isEditing ? (
-                   <input className="w-20 bg-gray-100 rounded text-right font-bold outline-none" value={item.value} onChange={e => {
+                   <input className="w-20 bg-secondary rounded text-right font-bold outline-none text-foreground" value={item.value} onChange={e => {
                      const nb = [...data.breakdown]; nb[i].value = e.target.value; updateField('breakdown', nb);
                    }} />
                 ) : (
