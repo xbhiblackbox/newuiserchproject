@@ -10,97 +10,11 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-      analytics_events: {
-        Row: {
-          created_at: string
-          event_data: Json | null
-          event_type: string
-          id: string
-          page_path: string | null
-          session_id: string
-        }
-        Insert: {
-          created_at?: string
-          event_data?: Json | null
-          event_type: string
-          id?: string
-          page_path?: string | null
-          session_id: string
-        }
-        Update: {
-          created_at?: string
-          event_data?: Json | null
-          event_type?: string
-          id?: string
-          page_path?: string | null
-          session_id?: string
-        }
-        Relationships: []
-      }
-      page_views: {
-        Row: {
-          created_at: string
-          duration_ms: number | null
-          id: string
-          page_path: string
-          referrer: string | null
-          session_id: string
-          user_agent: string | null
-        }
-        Insert: {
-          created_at?: string
-          duration_ms?: number | null
-          id?: string
-          page_path: string
-          referrer?: string | null
-          session_id: string
-          user_agent?: string | null
-        }
-        Update: {
-          created_at?: string
-          duration_ms?: number | null
-          id?: string
-          page_path?: string
-          referrer?: string | null
-          session_id?: string
-          user_agent?: string | null
-        }
-        Relationships: []
-      }
-      session_recordings: {
-        Row: {
-          duration_ms: number | null
-          ended_at: string | null
-          events: Json | null
-          id: string
-          page_count: number | null
-          session_id: string
-          started_at: string
-        }
-        Insert: {
-          duration_ms?: number | null
-          ended_at?: string | null
-          events?: Json | null
-          id?: string
-          page_count?: number | null
-          session_id: string
-          started_at?: string
-        }
-        Update: {
-          duration_ms?: number | null
-          ended_at?: string | null
-          events?: Json | null
-          id?: string
-          page_count?: number | null
-          session_id?: string
-          started_at?: string
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
