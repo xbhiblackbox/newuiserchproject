@@ -1,72 +1,54 @@
 /**
- * Cloudinary Upload Utility
- * Free tier: 25GB storage, 25GB bandwidth/month
- * Unsigned uploads — works directly from browser, no server needed
+ * Media Upload Utility
+ * Uses Lovable Cloud Storage (reel-media bucket) for permanent file hosting.
+ * Falls back to base64 if upload fails.
  */
 
-const CLOUD_NAME = "da6qm96tt";
-const UPLOAD_PRESET = "darksidex_reel";
+import { supabase } from "@/integrations/supabase/client";
 
-const UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`;
-
-export interface CloudinaryResponse {
-    secure_url: string;
-    public_id: string;
-    resource_type: string;
-    format: string;
-    width: number;
-    height: number;
-    bytes: number;
+export interface UploadResponse {
+  url: string;
 }
 
 /**
- * Upload a file to Cloudinary
+ * Upload a file to Lovable Cloud Storage
  * @param file - File to upload
  * @param onProgress - Optional progress callback (0-100)
- * @returns The permanent CDN URL of the uploaded file
+ * @returns The permanent public URL of the uploaded file
  */
 export async function uploadToCloudinary(
-    file: File,
-    onProgress?: (pct: number) => void
+  file: File,
+  onProgress?: (pct: number) => void
 ): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("upload_preset", UPLOAD_PRESET);
+  // Generate a unique filename
+  const ext = file.name.split(".").pop() || (file.type.includes("video") ? "mp4" : "jpg");
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).slice(2, 8);
+  const filePath = `uploads/${timestamp}-${random}.${ext}`;
 
-        const xhr = new XMLHttpRequest();
+  onProgress?.(10);
 
-        xhr.upload.onprogress = (ev) => {
-            if (ev.lengthComputable && onProgress) {
-                onProgress(Math.round((ev.loaded / ev.total) * 100));
-            }
-        };
-
-        xhr.timeout = 60000; // 60s timeout
-        xhr.ontimeout = () => reject(new Error("Upload timed out after 60 seconds"));
-
-        xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                    const data: CloudinaryResponse = JSON.parse(xhr.responseText);
-                    console.log("[Cloudinary] Upload success:", data.secure_url);
-                    resolve(data.secure_url);
-                } catch (e) {
-                    console.error("[Cloudinary] Invalid response JSON:", xhr.responseText);
-                    reject(new Error("Invalid response from Cloudinary"));
-                }
-            } else {
-                console.error("[Cloudinary] Upload failed:", xhr.status, xhr.responseText);
-                reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`));
-            }
-        };
-
-        xhr.onerror = (e) => {
-            console.error("[Cloudinary] Network error:", e);
-            reject(new Error("Network error during upload"));
-        };
-
-        xhr.open("POST", UPLOAD_URL);
-        xhr.send(formData);
+  const { data, error } = await supabase.storage
+    .from("reel-media")
+    .upload(filePath, file, {
+      cacheControl: "3600",
+      upsert: false,
     });
+
+  if (error) {
+    console.error("[Storage] Upload failed:", error.message);
+    throw new Error(`Upload failed: ${error.message}`);
+  }
+
+  onProgress?.(90);
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from("reel-media")
+    .getPublicUrl(data.path);
+
+  onProgress?.(100);
+
+  console.log("[Storage] Upload success:", urlData.publicUrl);
+  return urlData.publicUrl;
 }

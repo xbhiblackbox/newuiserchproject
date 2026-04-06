@@ -50,6 +50,33 @@ export type Database = {
         }
         Relationships: []
       }
+      reels_data: {
+        Row: {
+          account: string
+          created_at: string
+          data: Json
+          id: string
+          post_index: number
+          updated_at: string
+        }
+        Insert: {
+          account: string
+          created_at?: string
+          data?: Json
+          id?: string
+          post_index: number
+          updated_at?: string
+        }
+        Update: {
+          account?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          post_index?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
