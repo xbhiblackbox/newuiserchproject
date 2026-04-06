@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { getDeviceFingerprint, clearAuthSession, getAuthSession } from "@/lib/auth";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
 export default function KeyGuard({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
     const [isValidating, setIsValidating] = useState(true);
