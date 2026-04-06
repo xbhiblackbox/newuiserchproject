@@ -89,6 +89,7 @@ const App = () => {
                           <Route path="/analytics/views" element={<ViewsDetailScreen />} />
                           <Route path="/analytics/interactions" element={<InteractionsDetailScreen />} />
                           <Route path="/analytics/followers" element={<FollowersDetailScreen />} />
+                          <Route path="/analytics/settings" element={<CreatorSettingsScreen />} />
                           <Route path="/reel-insights/:id" element={<ReelInsightsScreen />} />
                           <Route path="/reel/:id" element={<ReelDetailScreen />} />
                           <Route path="*" element={<NotFound />} />
