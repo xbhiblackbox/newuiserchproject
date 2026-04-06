@@ -11,9 +11,30 @@ if (savedTheme === "dark") {
   document.documentElement.classList.add("dark");
 }
 
-// Register service worker for PWA
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js').catch(() => {});
-}
+const shouldRegisterServiceWorker = import.meta.env.PROD;
 
-ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+const resetPreviewCaches = async () => {
+  if (!("serviceWorker" in navigator)) return;
+
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(registrations.map((registration) => registration.unregister()));
+
+  if ("caches" in window) {
+    const cacheKeys = await caches.keys();
+    await Promise.all(cacheKeys.map((cacheKey) => caches.delete(cacheKey)));
+  }
+};
+
+const bootstrap = async () => {
+  if ("serviceWorker" in navigator) {
+    if (shouldRegisterServiceWorker) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    } else {
+      await resetPreviewCaches();
+    }
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+};
+
+bootstrap();
