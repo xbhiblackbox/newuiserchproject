@@ -363,7 +363,7 @@ const ReelInsightsScreen = () => {
   const avgWatchTime = editAvgWatchTime;
   const countries = editCountries;
   const ageGroups = editAgeGroups;
-  const sources = editSources;
+  const sources = editSources.slice(0, 4);
   const accountsReached = editAccountsReached;
   const follows = editFollows;
 
