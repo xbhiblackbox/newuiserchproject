@@ -1,26 +1,76 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
-    <title>Lovable App</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+<html lang="en" class="dark">
 
-    <!-- TODO: Update og:title to match your application name -->
-    <meta property="og:title" content="Lovable App" />
-    <meta property="og:description" content="Lovable Generated Project" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <title>Instagram</title>
+  <meta name="description" content="Instagram">
+  <meta name="author" content="Lovable" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Instagram" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@Lovable" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-  </head>
+  <meta property="og:type" content="website" />
+  <meta property="og:image"
+    content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/70e8db0a-4d17-4c24-8900-7342e133223f/id-preview-c6cb8b70--90dc7634-5d6f-4890-a933-9e7a569eb7d1.lovable.app-1771014256086.png">
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@Lovable" />
+  <meta name="twitter:image"
+    content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/70e8db0a-4d17-4c24-8900-7342e133223f/id-preview-c6cb8b70--90dc7634-5d6f-4890-a933-9e7a569eb7d1.lovable.app-1771014256086.png">
+  <meta property="og:title" content="Instagram">
+  <meta name="twitter:title" content="Instagram">
+  <meta property="og:description" content="Instagram">
+  <meta name="twitter:description" content="Instagram">
+</head>
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<body>
+  <div id="splash-native"
+    style="position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+    <img src="/icon-192.png" alt="" width="80" height="80" style="border-radius:18px;" />
+    <div style="position:absolute;bottom:40px;display:flex;flex-direction:column;align-items:center;gap:2px;">
+      <span style="font-size:14px;color:#a8a8a8;font-family:-apple-system,Helvetica Neue,Arial,sans-serif;">from</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <svg width="24" height="16" viewBox="0 0 100 64" fill="none">
+          <defs>
+            <linearGradient id="mg" x1="0" y1="50" x2="100" y2="10" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="#0668E1" />
+              <stop offset="30%" stop-color="#E1306C" />
+              <stop offset="70%" stop-color="#FA7E1E" />
+              <stop offset="100%" stop-color="#FEDA75" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M22 4C11 4 2 18 2 32c0 14 9 28 20 28 7 0 12-5 18-14l10-16c6-9 11-14 18-14 11 0 20 10 20 28 0 14-9 24-20 24-7 0-12-5-18-14L40 38c-6-9-11-14-18-14"
+            stroke="url(#mg)" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span
+          style="font-size:20px;font-weight:700;color:#E1306C;font-family:-apple-system,Helvetica Neue,Arial,sans-serif;">Meta</span>
+      </div>
+    </div>
+  </div>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+  <script>
+    window.__removeSplash = function () {
+      var s = document.getElementById('splash-native');
+      if (s) s.remove();
+    };
+    // Register service worker for PWA install
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/sw.js').then(function (reg) {
+          console.log('[SW] Registered:', reg.scope);
+        }).catch(function (err) {
+          console.log('[SW] Registration failed:', err);
+        });
+      });
+    }
+  </script>
+</body>
+
 </html>
