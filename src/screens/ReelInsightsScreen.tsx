@@ -547,7 +547,7 @@ const ReelInsightsScreen = () => {
             <ArrowLeft size={22} strokeWidth={1.8} />
           </button>
           <h1 
-            className="text-[17px] font-semibold text-foreground cursor-pointer"
+            className="text-[17px] font-bold text-foreground cursor-pointer"
             onClick={() => { if (!isEditMode) { setIsEditMode(true); toast.info("Edit mode active"); } }}
           >
             Reel insights
