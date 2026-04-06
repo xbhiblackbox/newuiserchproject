@@ -230,7 +230,7 @@ const ViewsDetailScreen = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-2.5 w-2.5 rounded-full bg-[#5B21B6]" />
-              <span className="text-[15px] text-white font-medium">Non-followers</span>
+              <span className="text-[15px] text-foreground font-medium">Non-followers</span>
             </div>
             {isEditing ? (
                <div className="flex items-center gap-1">
