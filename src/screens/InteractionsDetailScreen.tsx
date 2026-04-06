@@ -162,7 +162,7 @@ const InteractionsDetailScreen = () => {
                    type="number"
                    value={data.interactions} 
                    onChange={e => updateField('interactions', parseInt(e.target.value) || 0)}
-                   className="text-[32px] font-bold text-black bg-gray-100 rounded px-1 outline-none w-32 text-center"
+                   className="text-[32px] font-bold text-foreground bg-secondary rounded px-1 outline-none w-32 text-center"
                  />
               ) : (
                 <span className="text-[32px] font-bold text-foreground tracking-tight">{data.interactions.toLocaleString()}</span>
