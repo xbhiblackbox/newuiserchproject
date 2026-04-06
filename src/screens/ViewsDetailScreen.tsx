@@ -146,7 +146,7 @@ const ViewsDetailScreen = () => {
             <button onClick={() => navigate('/analytics')} className="text-foreground">
               <ArrowLeft size={24} strokeWidth={2} />
             </button>
-            <h1 className="text-[16px] font-bold text-foreground">Views</h1>
+            <h1 className="text-[16px] font-bold text-foreground cursor-pointer" onClick={() => { setIsEditing(e => !e); if (window.navigator.vibrate) window.navigator.vibrate(50); }}>Views</h1>
           </div>
           <div className="flex items-center gap-3">
             {isEditing && (
