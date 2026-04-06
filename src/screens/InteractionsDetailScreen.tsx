@@ -233,7 +233,7 @@ const InteractionsDetailScreen = () => {
                      <div className="mt-2 grid grid-cols-2 gap-4">
                         <div className="flex items-center gap-2">
                            <div className="h-2 w-2 rounded-full bg-[#B025C3]" />
-                           <input className="w-12 bg-gray-100 rounded text-[11px] font-bold outline-none" value={type.followerPct} onChange={e => {
+                           <input className="w-12 bg-secondary rounded text-[11px] font-bold outline-none text-foreground" value={type.followerPct} onChange={e => {
                              const n = [...data.contentTypes]; n[i].followerPct = parseFloat(e.target.value) || 0; updateField('contentTypes', n);
                            }} />
                         </div>
