@@ -32,7 +32,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const hideBottomNav = location.pathname.startsWith("/reel-insights/") || location.pathname.startsWith("/analytics");
   return (
-    <div className="mx-auto max-w-lg min-h-screen bg-background">
+    <div className="mx-auto max-w-[430px] min-h-screen bg-background relative shadow-2xl md:my-4 md:rounded-2xl md:min-h-[calc(100vh-2rem)] md:overflow-hidden md:border md:border-border/30">
       <AnalyticsTracker />
       {children}
       {!hideBottomNav && <BottomNav />}
