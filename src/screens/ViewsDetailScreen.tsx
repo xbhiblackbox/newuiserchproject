@@ -381,14 +381,12 @@ const ViewsDetailScreen = () => {
         <div className="py-4">
           <div className="px-4 flex items-center gap-2 mb-3">
             <h3 className="text-[15px] font-bold text-foreground">Audience</h3>
-            <div className="w-[16px] h-[16px] rounded-full border-[1.5px] border-foreground/50 flex items-center justify-center">
-              <span className="text-[9px] font-semibold text-foreground/50 leading-none">i</span>
-            </div>
+            <Info size={16} strokeWidth={1.5} className="text-muted-foreground" />
           </div>
 
           <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 pb-3">
             {/* Towns/Cities */}
-            <div className="flex-shrink-0 w-[290px] bg-secondary/40 rounded-[16px] p-4">
+            <div className="flex-shrink-0 w-[260px] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top towns/cities</h4>
               <div className="space-y-4">
                 {data.cities.map((city, i) => (
@@ -416,7 +414,7 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Countries */}
-            <div className="flex-shrink-0 w-[290px] bg-secondary/40 rounded-[16px] p-4">
+            <div className="flex-shrink-0 w-[260px] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top countries</h4>
               <div className="space-y-4">
                 {data.countries.map((country, i) => (
@@ -444,7 +442,7 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Age Ranges */}
-            <div className="flex-shrink-0 w-[290px] bg-secondary/40 rounded-[16px] p-4">
+            <div className="flex-shrink-0 w-[260px] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top age ranges</h4>
               <div className="space-y-4">
                 {data.ageRanges.map((range, i) => (
@@ -472,7 +470,7 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Gender */}
-            <div className="flex-shrink-0 w-[290px] bg-secondary/40 rounded-[16px] p-4">
+            <div className="flex-shrink-0 w-[260px] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Gender</h4>
               <div className="space-y-4">
                 {data.gender.map((g, i) => (
