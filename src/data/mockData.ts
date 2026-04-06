@@ -498,9 +498,17 @@ export const mockAccounts: Record<string, MockAccount> = {
 
 // Persistence: load saved profile overrides from localStorage
 const PROFILE_STORAGE_KEY = "ig_profile_overrides";
-
+const PROFILE_VERSION_KEY = "ig_profile_version";
+const CURRENT_PROFILE_VERSION = "v3"; // bump this to force reset defaults
 const loadProfileOverrides = () => {
   try {
+    // If version changed, clear old overrides so new defaults apply
+    const savedVersion = localStorage.getItem(PROFILE_VERSION_KEY);
+    if (savedVersion !== CURRENT_PROFILE_VERSION) {
+      localStorage.removeItem(PROFILE_STORAGE_KEY);
+      localStorage.setItem(PROFILE_VERSION_KEY, CURRENT_PROFILE_VERSION);
+      return;
+    }
     const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
     if (saved) {
       const overrides = JSON.parse(saved);
