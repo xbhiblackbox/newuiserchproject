@@ -309,8 +309,9 @@ const InteractionsDetailScreen = () => {
                   <div className="absolute top-1 right-1 flex items-center gap-0.5 bg-black/20 rounded-full p-0.5">
                     <Film size={9} className="text-white" />
                   </div>
-                  <div className="absolute bottom-1 left-1 bg-black/60 rounded px-1.5 py-0.5">
-                    <span className="text-white text-[10px] font-bold">{reel.count}</span>
+                  <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 flex items-center gap-1">
+                    <Film size={10} fill="white" stroke="none" />
+                    <span className="text-white text-[11px] font-bold">{reel.count}</span>
                   </div>
                   {isEditing && (
                     <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1">
