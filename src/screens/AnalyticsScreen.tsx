@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { ArrowLeft, ChevronRight, Settings, Check, History, GraduationCap, Lightbulb, Share2, TrendingUp, Presentation, Sparkles, Contact2, Gift, MessageSquareReply, ArrowUpRight } from "lucide-react";
+import { ArrowLeft, ChevronRight, Check, History, GraduationCap, Lightbulb, Share2, TrendingUp, Presentation, Sparkles, Contact2, Gift, MessageSquareReply, ArrowUpRight, Link2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -58,26 +58,31 @@ const AnalyticsScreen = () => {
   ];
 
   const toolItems = [
-    { label: "Monthly recap", icon: <History size={24} strokeWidth={1.5} />, badge: "New", subtitle: "See what you made happen last month." },
-    { label: "Best practices", icon: <GraduationCap size={24} strokeWidth={1.5} /> },
-    { label: "Inspiration", icon: <Lightbulb size={24} strokeWidth={1.5} /> },
-    { label: "Branded content", icon: <Contact2 size={24} strokeWidth={1.5} /> },
-    { label: "Partnership ads", icon: <Share2 size={24} strokeWidth={1.5} /> },
-    { label: "Ad tools", icon: <TrendingUp size={24} strokeWidth={1.5} /> },
-    { label: "Trial reels", icon: <Presentation size={24} strokeWidth={1.5} />, badge: "New" },
-    { label: "Gifts", icon: <Gift size={24} strokeWidth={1.5} /> },
-    { label: "Saved replies", icon: <MessageSquareReply size={24} strokeWidth={1.5} />, subtitle: "Save replies to common questions" },
+    { label: "Monthly recap", icon: <History size={26} strokeWidth={1.5} />, badge: "New", subtitle: "See what you made happen last month." },
+    { label: "Best practices", icon: <GraduationCap size={26} strokeWidth={1.5} /> },
+    { label: "Inspiration", icon: <Lightbulb size={26} strokeWidth={1.5} /> },
+    { label: "Branded content", icon: <Contact2 size={26} strokeWidth={1.5} /> },
+    { label: "Partnership ads", icon: <Share2 size={26} strokeWidth={1.5} /> },
+    { label: "Ad tools", icon: <TrendingUp size={26} strokeWidth={1.5} /> },
+    { label: "Trial reels", icon: <Presentation size={26} strokeWidth={1.5} />, badge: "New" },
+    { label: "Gifts", icon: <Gift size={26} strokeWidth={1.5} /> },
+    { label: "Saved replies", icon: <MessageSquareReply size={26} strokeWidth={1.5} />, subtitle: "Save replies to common questions" },
+  ];
+
+  const tipItems = [
+    { label: "Trending audio", icon: <TrendingUp size={26} strokeWidth={1.5} /> },
+    { label: "Other helpful resources", icon: <Link2 size={26} strokeWidth={1.5} /> },
   ];
 
   return (
     <div className="pb-24 min-h-screen bg-background select-none overflow-x-hidden relative text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 bg-background">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-40 flex items-center justify-between px-4 h-[48px] bg-background">
+        <div className="flex items-center gap-4">
           <button onClick={() => navigate('/profile')} className="text-foreground">
-            <ArrowLeft size={24} strokeWidth={1.8} />
+            <ArrowLeft size={24} strokeWidth={2} />
           </button>
-          <h1 className="text-[16px] font-semibold tracking-tight">Professional dashboard</h1>
+          <h1 className="text-[17px] font-bold">Professional dashboard</h1>
         </div>
         <div className="flex items-center gap-3">
           {isEditing && (
@@ -85,7 +90,11 @@ const AnalyticsScreen = () => {
               <Check size={18} strokeWidth={3} />
             </button>
           )}
-          <Settings size={24} strokeWidth={1.5} className="text-foreground" />
+          <div className="w-[26px] h-[26px] flex items-center justify-center">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </div>
         </div>
       </header>
 
@@ -97,70 +106,70 @@ const AnalyticsScreen = () => {
         onMouseLeave={endPress}
       >
         {/* Insights Section */}
-        <div className="px-4 pt-4 pb-2">
-          <div className="flex justify-between items-center mb-4">
+        <div className="px-4 pt-5 pb-3">
+          <div className="flex justify-between items-center mb-2">
             <h2 className="text-[15px] font-bold text-foreground">Insights</h2>
             {isEditing ? (
               <input 
-                className="text-[13px] text-muted-foreground font-normal bg-secondary rounded px-2 py-0.5 outline-none text-right w-28" 
+                className="text-[13px] text-muted-foreground bg-secondary rounded px-2 py-0.5 outline-none text-right w-28" 
                 value={data.dateRangeLabel} 
                 onChange={e => updateField('dateRangeLabel', e.target.value)} 
               />
             ) : (
-              <span className="text-[13px] text-muted-foreground font-normal">{data.dateRangeLabel}</span>
+              <span className="text-[13px] text-muted-foreground">{data.dateRangeLabel}</span>
             )}
           </div>
           
+          {/* Thin line under insights header */}
+          <div className="h-px bg-border/60 mb-1" />
+          
           <div>
             {insightRows.map((row, i) => (
-              <div key={row.field}>
-                <div 
-                  onClick={() => !isEditing && row.route && navigate(row.route)} 
-                  className="flex justify-between items-center py-3.5 cursor-pointer"
-                >
-                  <span className="text-[14px] font-normal text-foreground">{row.label}</span>
-                  <div className="flex items-center gap-1.5">
-                    {row.hasArrow && !isEditing && (
-                      <ArrowUpRight size={16} strokeWidth={2.5} className="text-green-500" />
-                    )}
-                    {isEditing ? (
-                      <input 
-                        className="bg-secondary rounded px-2 py-0.5 w-20 text-right font-semibold text-[14px] outline-none text-foreground" 
-                        value={row.value} 
-                        onChange={e => updateField(row.field, e.target.value)} 
-                      />
-                    ) : (
-                      <span className="text-[14px] font-semibold text-foreground">{row.value}</span>
-                    )}
-                    <ChevronRight size={16} className="text-muted-foreground" strokeWidth={2} />
-                  </div>
+              <div 
+                key={row.field}
+                onClick={() => !isEditing && row.route && navigate(row.route)} 
+                className="flex justify-between items-center h-[44px] cursor-pointer"
+              >
+                <span className="text-[14px] text-foreground">{row.label}</span>
+                <div className="flex items-center gap-1">
+                  {row.hasArrow && !isEditing && (
+                    <ArrowUpRight size={15} strokeWidth={2.5} className="text-green-500" />
+                  )}
+                  {isEditing ? (
+                    <input 
+                      className="bg-secondary rounded px-2 py-0.5 w-20 text-right font-semibold text-[14px] outline-none text-foreground" 
+                      value={row.value} 
+                      onChange={e => updateField(row.field, e.target.value)} 
+                    />
+                  ) : (
+                    <span className="text-[14px] font-semibold text-foreground">{row.value}</span>
+                  )}
+                  <ChevronRight size={15} className="text-muted-foreground/60" strokeWidth={2} />
                 </div>
-                {i < insightRows.length - 1 && (
-                  <div className="h-px bg-border/50" />
-                )}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="h-[6px] bg-secondary/40" />
+        {/* Thick separator */}
+        <div className="h-[6px] bg-secondary/50" />
 
         {/* Your tools Section */}
-        <div className="px-4 py-4">
-          <div className="flex justify-between items-center mb-4">
+        <div className="px-4 pt-4 pb-2">
+          <div className="flex justify-between items-center mb-2">
             <h2 className="text-[15px] font-bold text-foreground">Your tools</h2>
             <button className="text-[14px] text-[#0095f6] font-semibold">See all</button>
           </div>
 
           <div>
             {toolItems.map((tool, i) => (
-              <div key={i} className="flex items-center gap-3.5 py-3">
-                <div className="text-foreground/80 w-7 flex items-center justify-center">
+              <div key={i} className="flex items-center gap-4 h-[52px]">
+                <div className="text-foreground/70 w-[28px] flex items-center justify-center shrink-0">
                   {tool.icon}
                 </div>
                 <div className="flex-1 flex items-center justify-between min-w-0">
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-[14px] font-normal text-foreground">{tool.label}</span>
+                    <span className="text-[14px] text-foreground">{tool.label}</span>
                     {tool.subtitle && (
                       <span className="text-[12px] text-muted-foreground leading-tight mt-0.5 truncate">
                         {tool.subtitle}
@@ -169,11 +178,11 @@ const AnalyticsScreen = () => {
                   </div>
                   <div className="flex items-center gap-2 ml-2 shrink-0">
                     {tool.badge && (
-                      <span className="bg-green-600 text-white text-[11px] font-bold px-2.5 py-0.5 rounded-full">
+                      <span className="bg-green-600 text-white text-[11px] font-bold px-2 py-[1px] rounded-full">
                         {tool.badge}
                       </span>
                     )}
-                    <ChevronRight size={16} className="text-muted-foreground" strokeWidth={2} />
+                    <ChevronRight size={15} className="text-muted-foreground/60" strokeWidth={2} />
                   </div>
                 </div>
               </div>
@@ -181,19 +190,24 @@ const AnalyticsScreen = () => {
           </div>
         </div>
 
-        <div className="h-[6px] bg-secondary/40" />
+        {/* Thick separator */}
+        <div className="h-[6px] bg-secondary/50" />
 
         {/* Tips and resources */}
-        <div className="px-4 py-4">
-          <h2 className="text-[15px] font-bold text-foreground mb-4">Tips and resources</h2>
-          <div className="flex items-center gap-3.5 py-3">
-            <div className="text-foreground/80 w-7 flex items-center justify-center">
-              <TrendingUp size={24} strokeWidth={1.5} />
-            </div>
-            <div className="flex-1 flex items-center justify-between">
-              <span className="text-[14px] font-normal text-foreground">Trending audio</span>
-              <ChevronRight size={16} className="text-muted-foreground" strokeWidth={2} />
-            </div>
+        <div className="px-4 pt-4 pb-6">
+          <h2 className="text-[15px] font-bold text-foreground mb-2">Tips and resources</h2>
+          <div>
+            {tipItems.map((tip, i) => (
+              <div key={i} className="flex items-center gap-4 h-[52px]">
+                <div className="text-foreground/70 w-[28px] flex items-center justify-center shrink-0">
+                  {tip.icon}
+                </div>
+                <div className="flex-1 flex items-center justify-between">
+                  <span className="text-[14px] text-foreground">{tip.label}</span>
+                  <ChevronRight size={15} className="text-muted-foreground/60" strokeWidth={2} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

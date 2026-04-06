@@ -103,21 +103,21 @@ const FollowersDetailScreen = () => {
   return (
     <div className="pb-24 min-h-screen bg-background select-none overflow-x-hidden relative text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 bg-background border-b border-transparent">
-        <div className="flex items-center gap-6">
+      <header className="sticky top-0 z-40 flex items-center justify-between px-4 h-[48px] bg-background">
+        <div className="flex items-center gap-4">
           <button onClick={() => navigate('/analytics')} className="text-foreground">
-            <ArrowLeft size={30} strokeWidth={2} />
+            <ArrowLeft size={24} strokeWidth={2} />
           </button>
-          <h1 className="text-[20px] font-bold">Followers</h1>
+          <h1 className="text-[17px] font-bold">Followers</h1>
         </div>
         <div className="flex items-center gap-3">
           {isEditing && (
             <button onClick={saveChanges} className="bg-[#0095f6] text-white p-1.5 rounded-full shadow-lg">
-              <Check size={20} strokeWidth={3} />
+              <Check size={18} strokeWidth={3} />
             </button>
           )}
-          <div className="border-[2px] border-foreground rounded-full w-7 h-7 flex items-center justify-center">
-            <span className="text-[15px] font-bold">i</span>
+          <div className="w-[24px] h-[24px] rounded-full border-[2px] border-foreground flex items-center justify-center">
+            <span className="text-[13px] font-bold leading-none">i</span>
           </div>
         </div>
       </header>
@@ -128,19 +128,18 @@ const FollowersDetailScreen = () => {
         onMouseDown={startPress}
         onMouseUp={endPress}
         onMouseLeave={endPress}
-        className="pt-2"
       >
         {/* Date Selector Row */}
-        <div className="flex items-center justify-between px-4 py-2 mt-2">
-          <button className="flex items-center gap-1 bg-secondary/50 rounded-[10px] px-3 py-1.5 text-[14px] font-bold text-foreground">
-            Last 30 days <ChevronDown size={18} strokeWidth={2.5} />
+        <div className="flex items-center justify-between px-4 py-3">
+          <button className="flex items-center gap-1 border border-border rounded-lg px-3 py-1.5 text-[13px] font-semibold text-foreground">
+            Last 30 days <ChevronDown size={16} strokeWidth={2} />
           </button>
-          <div className="text-[14px] font-bold text-foreground flex items-center gap-1">
+          <div className="text-[13px] font-semibold text-foreground flex items-center gap-1">
              {isEditing ? (
                 <>
-                  <input className="w-12 bg-secondary/50 rounded text-center outline-none" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
+                  <input className="w-12 bg-secondary rounded text-center outline-none text-foreground" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
                   <span>-</span>
-                  <input className="w-12 bg-secondary/50 rounded text-center outline-none" value={data.endDate} onChange={e => updateField('endDate', e.target.value)} />
+                  <input className="w-12 bg-secondary rounded text-center outline-none text-foreground" value={data.endDate} onChange={e => updateField('endDate', e.target.value)} />
                 </>
              ) : (
                 <span>{data.startDate} - {data.endDate}</span>
@@ -148,16 +147,16 @@ const FollowersDetailScreen = () => {
           </div>
         </div>
 
-        <div className="h-[0.5px] bg-border mx-4 mt-2" />
+        <div className="h-px bg-border/60 mx-4" />
 
         {/* Hero Section */}
-        <div className="flex flex-col items-center py-10">
+        <div className="flex flex-col items-center py-8">
           {isEditing ? (
-             <input className="text-[36px] font-bold text-foreground bg-secondary/50 rounded px-2 outline-none w-56 text-center" value={data.totalFollowers} onChange={e => updateField('totalFollowers', e.target.value)} />
+             <input className="text-[32px] font-bold text-foreground bg-secondary rounded px-2 outline-none w-48 text-center" value={data.totalFollowers} onChange={e => updateField('totalFollowers', e.target.value)} />
           ) : (
-              <span className="text-[36px] font-bold text-foreground tracking-tighter">{data.totalFollowers}</span>
+              <span className="text-[32px] font-bold text-foreground tracking-tight">{data.totalFollowers}</span>
           )}
-          <span className="text-[16px] font-bold mt-0.5">Followers</span>
+           <span className="text-[14px] font-semibold mt-0.5 text-foreground">Followers</span>
           <div className="flex items-center gap-1 mt-1 text-[13px] text-muted-foreground font-bold">
              {isEditing ? (
                 <input className="w-16 bg-secondary/50 rounded text-center outline-none" value={data.growthChange} onChange={e => updateField('growthChange', e.target.value)} />
@@ -175,31 +174,31 @@ const FollowersDetailScreen = () => {
         <div className="h-[6px] bg-secondary/50 w-full" />
 
         {/* Growth Section */}
-        <div className="px-4 py-7">
-          <h3 className="text-[18px] font-bold mb-7 text-foreground">Growth</h3>
-          <div className="space-y-7">
-            <div className="flex justify-between items-center">
-               <span className="text-[15px] font-medium">Overall</span>
+        <div className="px-4 py-5">
+          <h3 className="text-[15px] font-bold mb-5 text-foreground">Growth</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center h-[36px]">
+               <span className="text-[14px] text-foreground">Overall</span>
                {isEditing ? (
-                  <input type="number" className="w-20 bg-secondary/50 rounded text-right font-bold outline-none" value={data.overall} onChange={e => updateField('overall', parseInt(e.target.value) || 0)} />
+                  <input type="number" className="w-20 bg-secondary rounded text-right font-semibold text-[14px] outline-none text-foreground" value={data.overall} onChange={e => updateField('overall', parseInt(e.target.value) || 0)} />
                ) : (
-                  <span className="text-[15px] font-bold">{data.overall}</span>
+                  <span className="text-[14px] font-semibold text-foreground">{data.overall}</span>
                )}
             </div>
-            <div className="flex justify-between items-center">
-               <span className="text-[15px] font-medium">Follows</span>
+            <div className="flex justify-between items-center h-[36px]">
+               <span className="text-[14px] text-foreground">Follows</span>
                {isEditing ? (
-                  <input type="number" className="w-20 bg-secondary/50 rounded text-right font-bold outline-none" value={data.follows} onChange={e => updateField('follows', parseInt(e.target.value) || 0)} />
+                  <input type="number" className="w-20 bg-secondary rounded text-right font-semibold text-[14px] outline-none text-foreground" value={data.follows} onChange={e => updateField('follows', parseInt(e.target.value) || 0)} />
                ) : (
-                  <span className="text-[15px] font-bold">{data.follows}</span>
+                  <span className="text-[14px] font-semibold text-foreground">{data.follows}</span>
                )}
             </div>
-            <div className="flex justify-between items-center">
-               <span className="text-[15px] font-medium">Unfollows</span>
+            <div className="flex justify-between items-center h-[36px]">
+               <span className="text-[14px] text-foreground">Unfollows</span>
                {isEditing ? (
-                  <input type="number" className="w-20 bg-secondary/50 rounded text-right font-bold outline-none" value={data.unfollows} onChange={e => updateField('unfollows', parseInt(e.target.value) || 0)} />
+                  <input type="number" className="w-20 bg-secondary rounded text-right font-semibold text-[14px] outline-none text-foreground" value={data.unfollows} onChange={e => updateField('unfollows', parseInt(e.target.value) || 0)} />
                ) : (
-                  <span className="text-[15px] font-bold">{data.unfollows}</span>
+                  <span className="text-[14px] font-semibold text-foreground">{data.unfollows}</span>
                )}
             </div>
           </div>
@@ -208,13 +207,13 @@ const FollowersDetailScreen = () => {
         <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Follower Details (Chart) */}
-        <div className="px-4 py-8">
-           <h3 className="text-[18px] font-bold mb-7 text-foreground">Follower details</h3>
-           <div className="flex gap-2 mb-10">
+        <div className="px-4 py-5">
+           <h3 className="text-[15px] font-bold mb-5 text-foreground">Follower details</h3>
+           <div className="flex gap-2 mb-8">
               {["Overall", "Follows", "Unfollows"].map(t => (
                 <button key={t} onClick={() => setDetailTab(t)}
-                  className={cn("px-5 py-2 rounded-full text-[14px] font-bold border transition-colors",
-                    detailTab === t ? "bg-white text-[#000000] border-transparent" : "bg-[#262626] text-white border-transparent"
+                  className={cn("px-3.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors",
+                    detailTab === t ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground border-border"
                   )}>
                   {t}
                 </button>
@@ -292,38 +291,37 @@ const FollowersDetailScreen = () => {
         <div className="h-[6px] bg-secondary/50 w-full" />
 
         {/* Top Locations Section */}
-        <div className="py-8">
-           <div className="px-4 flex gap-2 mb-8">
-               {["Top locations"].map(t => (
-                  <button key={t} className="px-5 py-2 rounded-full text-[14px] font-bold bg-white text-[#000000]">
-                    {t}
-                  </button>
-               ))}
+        <div className="py-5">
+           <div className="px-4 mb-4">
+              <button className="px-3.5 py-1.5 rounded-lg text-[13px] font-semibold bg-foreground text-background border border-foreground">
+                Top locations
+              </button>
            </div>
-           <div className="px-4 flex gap-2 mb-8">
+           <div className="px-4 flex gap-2 mb-5">
                 {["Towns/Cities", "Countries"].map(t => (
-                   <button key={t} className={cn("px-5 py-2 rounded-full text-[14px] font-bold border transition-colors", t === "Towns/Cities" ? "bg-white text-[#000000] border-transparent" : "bg-[#262626] text-white border-transparent")}>
+                   <button key={t} className={cn("px-3.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors", 
+                     t === "Towns/Cities" ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground border-border")}>
                      {t}
                    </button>
                 ))}
            </div>
            
-           <div className="px-4 space-y-7">
+           <div className="px-4 space-y-4">
               {data.cities.map((city, i) => (
                 <div key={i}>
-                   <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[14px] font-medium">{city.name}</span>
-                      <span className="text-[14px] font-bold">{city.pct}%</span>
+                   <div className="flex justify-between items-center mb-1">
+                      <span className="text-[13px] font-semibold text-foreground">{city.name}</span>
+                      <span className="text-[12px] font-semibold text-foreground">{city.pct}%</span>
                    </div>
-                   <div className="h-[10px] w-full bg-secondary/50 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${city.pct * 10}%` }} />
+                   <div className="h-[5px] w-full bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${Math.max(city.pct * 4, 3)}%` }} />
                    </div>
                    {isEditing && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                         <input className="bg-secondary/50 rounded px-2 text-[12px] py-1" value={city.name} onChange={e => {
+                      <div className="mt-1.5 grid grid-cols-2 gap-2">
+                         <input className="bg-secondary rounded px-1.5 py-0.5 text-[10px] outline-none text-foreground" value={city.name} onChange={e => {
                            const n = [...data.cities]; n[i].name = e.target.value; updateField('cities', n);
                          }} />
-                         <input className="bg-secondary/50 rounded px-2 text-[12px] py-1" type="number" value={city.pct} onChange={e => {
+                         <input className="bg-secondary rounded px-1.5 py-0.5 text-[10px] outline-none text-foreground" type="number" value={city.pct} onChange={e => {
                            const n = [...data.cities]; n[i].pct = parseFloat(e.target.value) || 0; updateField('cities', n);
                          }} />
                       </div>
@@ -336,35 +334,35 @@ const FollowersDetailScreen = () => {
         <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Age Range Section */}
-        <div className="px-4 py-8">
-           <h3 className="text-[18px] font-bold mb-7 text-foreground">Age range</h3>
-           <div className="flex gap-2 mb-9">
+        <div className="px-4 py-5">
+           <h3 className="text-[15px] font-bold mb-4 text-foreground">Age range</h3>
+           <div className="flex gap-2 mb-5">
               {["All", "Men", "Women"].map(t => (
                  <button key={t} onClick={() => setAgeTab(t)}
-                   className={cn("px-5 py-2 rounded-full text-[14px] font-bold border transition-colors",
-                     ageTab === t ? "bg-white text-[#000000] border-transparent" : "bg-[#262626] text-white border-transparent"
+                   className={cn("px-3.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors",
+                     ageTab === t ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground border-border"
                    )}>
                    {t}
                  </button>
               ))}
            </div>
 
-           <div className="space-y-8">
+           <div className="space-y-4">
               {data.ageRanges.map((age, i) => (
                 <div key={i}>
-                   <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[14px] font-medium">{age.range}</span>
-                      <span className="text-[14px] font-bold">{age.pct}%</span>
+                   <div className="flex justify-between items-center mb-1">
+                      <span className="text-[13px] font-semibold text-foreground">{age.range}</span>
+                      <span className="text-[12px] font-semibold text-foreground">{age.pct}%</span>
                    </div>
-                   <div className="h-[10px] w-full bg-secondary/50 rounded-full overflow-hidden">
+                   <div className="h-[5px] w-full bg-secondary rounded-full overflow-hidden">
                       <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${age.pct}%` }} />
                    </div>
                    {isEditing && (
-                      <div className="mt-2 grid grid-cols-2 gap-2">
-                         <input className="bg-secondary/50 rounded px-2 text-[12px] py-1" value={age.range} onChange={e => {
+                      <div className="mt-1.5 grid grid-cols-2 gap-2">
+                         <input className="bg-secondary rounded px-1.5 py-0.5 text-[10px] outline-none text-foreground" value={age.range} onChange={e => {
                            const n = [...data.ageRanges]; n[i].range = e.target.value; updateField('ageRanges', n);
                          }} />
-                         <input className="bg-secondary/50 rounded px-2 text-[12px] py-1" type="number" value={age.pct} onChange={e => {
+                         <input className="bg-secondary rounded px-1.5 py-0.5 text-[10px] outline-none text-foreground" type="number" value={age.pct} onChange={e => {
                            const n = [...data.ageRanges]; n[i].pct = parseFloat(e.target.value) || 0; updateField('ageRanges', n);
                          }} />
                       </div>
@@ -377,22 +375,22 @@ const FollowersDetailScreen = () => {
         <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Gender Breakdown */}
-        <div className="px-4 py-8">
-           <h3 className="text-[18px] font-bold mb-10 text-foreground">Gender</h3>
-           <div className="space-y-12">
+        <div className="px-4 py-5">
+           <h3 className="text-[15px] font-bold mb-5 text-foreground">Gender</h3>
+           <div className="space-y-4">
               {data.gender.map((g, i) => (
                 <div key={i}>
-                   <div className="flex justify-between items-center mb-3">
-                      <span className="text-[15px] font-medium">{g.name}</span>
+                   <div className="flex justify-between items-center mb-1">
+                      <span className="text-[13px] font-semibold text-foreground">{g.name}</span>
                       {isEditing ? (
-                         <input className="w-16 bg-secondary/50 rounded text-right text-[15px] font-bold outline-none" type="number" value={g.pct} onChange={e => {
+                         <input className="w-14 bg-secondary rounded text-right text-[12px] font-semibold outline-none text-foreground" type="number" value={g.pct} onChange={e => {
                            const n = [...data.gender]; n[i].pct = parseFloat(e.target.value) || 0; updateField('gender', n);
                          }} />
                       ) : (
-                         <span className="text-[15px] font-bold">{g.pct}%</span>
+                         <span className="text-[12px] font-semibold text-foreground">{g.pct}%</span>
                       )}
                    </div>
-                   <div className="h-3 w-full bg-secondary/50 rounded-full overflow-hidden">
+                   <div className="h-[5px] w-full bg-secondary rounded-full overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${g.pct}%`, backgroundColor: g.color }} />
                    </div>
                 </div>
@@ -403,27 +401,27 @@ const FollowersDetailScreen = () => {
         <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Most Active Times */}
-        <div className="px-4 py-8">
-           <h3 className="text-[18px] font-bold mb-7 text-foreground">Most active times</h3>
-           <div className="flex gap-2.5 mb-12">
+        <div className="px-4 py-5">
+           <h3 className="text-[15px] font-bold mb-5 text-foreground">Most active times</h3>
+           <div className="flex gap-2 mb-8">
               {data.activeDays.map(d => (
                 <button key={d} onClick={() => setActiveDayTab(d)}
-                  className={cn("w-10 h-10 rounded-full text-[13px] font-bold border flex items-center justify-center transition-colors",
-                    activeDayTab === d ? "bg-secondary/50 border-transparent text-foreground" : "bg-background border-border text-foreground"
+                  className={cn("w-9 h-9 rounded-full text-[12px] font-semibold border flex items-center justify-center transition-colors",
+                    activeDayTab === d ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground border-border"
                   )}>
                   {d}
                 </button>
               ))}
            </div>
 
-           <div className="flex items-end justify-between h-[160px] px-2 mb-10">
+           <div className="flex items-end justify-between h-[140px] px-1 mb-8">
               {data.activeTimes.map((t, i) => (
                  <div key={i} className="flex flex-col items-center flex-1 h-full justify-end group relative cursor-pointer">
-                    <div className="w-[85%] bg-[#D32FE0] rounded-[4px] relative" style={{ height: `${t.height}%` }}>
+                    <div className="w-[80%] bg-[#D32FE0] rounded-[3px] relative" style={{ height: `${t.height}%` }}>
                        {isEditing && (
                           <input 
                              type="number"
-                             className="absolute -top-10 left-1/2 -translate-x-1/2 w-10 bg-foreground text-background text-[10px] rounded px-1 text-center font-bold outline-none"
+                             className="absolute -top-8 left-1/2 -translate-x-1/2 w-8 bg-foreground text-background text-[9px] rounded px-0.5 text-center font-bold outline-none"
                              value={t.height}
                              onChange={e => {
                                 const n = [...data.activeTimes]; n[i].height = Math.min(100, Math.max(0, parseInt(e.target.value) || 0)); updateField('activeTimes', n);
@@ -431,7 +429,7 @@ const FollowersDetailScreen = () => {
                           />
                        )}
                     </div>
-                    <span className="text-[12px] text-muted-foreground font-bold mt-4">{t.time}</span>
+                    <span className="text-[10px] text-muted-foreground mt-3">{t.time}</span>
                  </div>
               ))}
            </div>
