@@ -100,25 +100,25 @@ const defaultInsights = (i: number): ReelInsights => ({
 // Generate 20 posts for just4abhii with unique thumbnails
 const just4abhiiThumbnails = [
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
   "/thumbnails/thumb-4.png",
   "/thumbnails/thumb-5.png",
   "/thumbnails/thumb-6.png",
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
   "/thumbnails/thumb-4.png",
   "/thumbnails/thumb-5.png",
   "/thumbnails/thumb-6.png",
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
   "/thumbnails/thumb-3.png",
   "/thumbnails/thumb-4.png",
   "/thumbnails/thumb-5.png",
   "/thumbnails/thumb-6.png",
   "/thumbnails/thumb-1.png",
-  "/thumbnails/thumb-2.png",
+  "/thumbnails/thumb-3.png",
+  "/thumbnails/thumb-4.png",
+  "/thumbnails/thumb-5.png",
+  "/thumbnails/thumb-6.png",
 ];
 
 const defaultCaptions = [
