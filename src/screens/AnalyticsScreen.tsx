@@ -70,8 +70,8 @@ const AnalyticsScreen = () => {
   ];
 
   const tipItems = [
-    { label: "Trending audio", icon: <TrendingUp size={26} strokeWidth={1.5} /> },
-    { label: "Other helpful resources", icon: <Link2 size={26} strokeWidth={1.5} /> },
+    { label: "Trending audio", icon: <TrendingUp size={24} strokeWidth={1.5} /> },
+    { label: "Other helpful resources", icon: <Link2 size={24} strokeWidth={1.5} /> },
   ];
 
   return (
