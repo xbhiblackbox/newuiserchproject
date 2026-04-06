@@ -162,7 +162,7 @@ const ViewsDetailScreen = () => {
               <input className="bg-transparent text-[13px] font-medium outline-none w-20 text-foreground" value={data.dateRange} onChange={e => updateField('dateRange', e.target.value)} />
             ) : data.dateRange} <ChevronDown size={14} strokeWidth={2} />
           </button>
-          <span className="text-[13px] text-foreground">
+          <span className="text-[13px] font-semibold text-foreground">
             {isEditing ? (
               <span className="flex items-center gap-1">
                 <input className="w-12 bg-secondary rounded text-center text-[13px] outline-none text-foreground" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
