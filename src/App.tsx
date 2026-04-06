@@ -29,7 +29,7 @@ const queryClient = new QueryClient();
 // Layout wrapper that conditionally shows BottomNav
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const hideBottomNav = location.pathname.startsWith("/reel-insights/");
+  const hideBottomNav = location.pathname.startsWith("/reel-insights/") || location.pathname.startsWith("/analytics");
   return (
     <div className="mx-auto max-w-lg min-h-screen bg-background">
       <AnalyticsTracker />
