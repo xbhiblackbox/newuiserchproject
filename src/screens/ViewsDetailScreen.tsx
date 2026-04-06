@@ -338,10 +338,10 @@ const ViewsDetailScreen = () => {
           
           <div className="flex gap-2.5 overflow-x-auto hide-scrollbar pb-2">
             {data.topContent.map((item, i) => (
-              <div key={i} className="flex-shrink-0 w-[85px]">
+              <div key={i} className="flex-shrink-0 w-[100px]">
                 <div 
                   onClick={() => isEditing && handleImageUpload(i)}
-                  className={cn("relative rounded-[6px] overflow-hidden aspect-[3/4]", isEditing && "cursor-pointer ring-2 ring-[#0095f6]")}
+                  className={cn("relative rounded-[12px] overflow-hidden aspect-[3/4]", isEditing && "cursor-pointer ring-2 ring-[#0095f6]")}
                 >
                   <img src={item.image} alt="" className="w-full h-full object-cover" />
                   <div className="absolute top-1 right-1 flex items-center gap-0.5 bg-black/20 rounded-full p-0.5">
