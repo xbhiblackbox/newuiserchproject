@@ -507,7 +507,6 @@ const ViewsDetailScreen = () => {
             <div className="flex items-center gap-2">
               <h3 className="text-[15px] font-bold text-foreground">Profile activity</h3>
               <Info size={16} strokeWidth={1.5} className="text-muted-foreground" />
-              </div>
             </div>
             <div className="text-right">
               {isEditing ? (
