@@ -94,6 +94,16 @@ const EditProfileModal = ({ isOpen, onClose, profile, storyNote: initialStoryNot
   if (!isOpen) return null;
 
   const parseNum = (v: string) => {
+    const trimmed = v.trim().toLowerCase();
+    // Handle K, M, B suffixes (e.g. "10K" = 10000, "1.5M" = 1500000)
+    const suffixMatch = trimmed.match(/^([0-9]*\.?[0-9]+)\s*(k|m|b)$/i);
+    if (suffixMatch) {
+      const num = parseFloat(suffixMatch[1]);
+      const suffix = suffixMatch[2].toLowerCase();
+      if (suffix === 'k') return Math.round(num * 1000);
+      if (suffix === 'm') return Math.round(num * 1000000);
+      if (suffix === 'b') return Math.round(num * 1000000000);
+    }
     const n = parseInt(v.replace(/[^0-9]/g, ''), 10);
     return isNaN(n) ? 0 : n;
   };
