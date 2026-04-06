@@ -226,15 +226,15 @@ const FollowersDetailScreen = () => {
               <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-[13px] text-gray-300 font-bold -translate-y-2">
                  {isEditing ? (
                     <>
-                       <input className="w-8 bg-secondary/50 rounded text-center outline-none text-white" value={data.chartAxis.max} onChange={e => updateField('chartAxis', {...data.chartAxis, max: e.target.value})} />
-                       <input className="w-8 bg-secondary/50 rounded text-center outline-none text-white" value={data.chartAxis.mid} onChange={e => updateField('chartAxis', {...data.chartAxis, mid: e.target.value})} />
-                       <input className="w-8 bg-secondary/50 rounded text-center outline-none text-white" value={data.chartAxis.min} onChange={e => updateField('chartAxis', {...data.chartAxis, min: e.target.value})} />
-                    </>
-                 ) : (
-                    <>
-                       <span className="text-white">{data.chartAxis.max}</span>
-                       <span className="text-white">{data.chartAxis.mid}</span>
-                       <span className="text-white">{data.chartAxis.min}</span>
+                       <input className="w-8 bg-secondary/50 rounded text-center outline-none text-foreground" value={data.chartAxis.max} onChange={e => updateField('chartAxis', {...data.chartAxis, max: e.target.value})} />
+                       <input className="w-8 bg-secondary/50 rounded text-center outline-none text-foreground" value={data.chartAxis.mid} onChange={e => updateField('chartAxis', {...data.chartAxis, mid: e.target.value})} />
+                       <input className="w-8 bg-secondary/50 rounded text-center outline-none text-foreground" value={data.chartAxis.min} onChange={e => updateField('chartAxis', {...data.chartAxis, min: e.target.value})} />
+                     </>
+                  ) : (
+                     <>
+                        <span className="text-foreground">{data.chartAxis.max}</span>
+                        <span className="text-foreground">{data.chartAxis.mid}</span>
+                        <span className="text-foreground">{data.chartAxis.min}</span>
                     </>
                  )}
               </div>
