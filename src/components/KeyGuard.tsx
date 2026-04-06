@@ -25,14 +25,16 @@ export default function KeyGuard({ children }: { children: React.ReactNode }) {
             // Use existing fingerprint from session if possible for stability
             const currentFingerprint = session.deviceFingerprint || getDeviceFingerprint();
 
-            const res = await fetch("/api/check-key-status", {
+            const res = await fetch(`${SUPABASE_URL}/functions/v1/check-key-status`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                },
                 body: JSON.stringify({
                     key: session.key,
                     deviceFingerprint: currentFingerprint
                 }),
-                // Add a timeout to prevent hanging on slow connections during recording
                 signal: AbortSignal.timeout(10000)
             });
 
