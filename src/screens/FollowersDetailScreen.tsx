@@ -290,11 +290,11 @@ const FollowersDetailScreen = () => {
               )}
             </div>
             <div className="absolute left-10 right-0 bottom-[-24px] flex justify-between text-[11px] text-muted-foreground">
-              {isEditing ? data.chartDates.map((d, i) => (
+              {isEditing ? (data.chartDates || ["8 Mar", "21 Mar", "4 Apr"]).map((d, i) => (
                 <input key={i} className="w-14 bg-secondary/50 rounded text-center text-[11px] outline-none text-muted-foreground" value={d} onChange={e => {
-                  const n = [...data.chartDates]; n[i] = e.target.value; updateField('chartDates', n);
+                  const n = [...(data.chartDates || ["8 Mar", "21 Mar", "4 Apr"])]; n[i] = e.target.value; updateField('chartDates', n);
                 }} />
-              )) : data.chartDates.map((d, i) => (
+              )) : (data.chartDates || ["8 Mar", "21 Mar", "4 Apr"]).map((d, i) => (
                 <span key={i}>{d}</span>
               ))}
             </div>
