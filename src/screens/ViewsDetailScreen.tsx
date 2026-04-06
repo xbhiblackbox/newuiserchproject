@@ -166,7 +166,7 @@ const ViewsDetailScreen = () => {
         onMouseLeave={endPress}
       >
         {/* Date row */}
-        <div className="flex items-center justify-between px-4 py-2.5">
+        <div className="sticky top-[44px] z-30 bg-background flex items-center justify-between px-4 py-2.5">
           <button className="flex items-center gap-1 border border-border rounded-full px-3 py-1 text-[13px] font-medium text-foreground">
             {isEditing ? (
               <input className="bg-transparent text-[13px] font-medium outline-none w-20 text-foreground" value={data.dateRange} onChange={e => updateField('dateRange', e.target.value)} />
