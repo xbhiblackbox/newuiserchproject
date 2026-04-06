@@ -386,7 +386,7 @@ const ViewsDetailScreen = () => {
 
           <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 pb-3">
             {/* Towns/Cities */}
-            <div className="flex-shrink-0 w-[85vw] bg-secondary/40 rounded-[14px] p-4">
+            <div className="flex-shrink-0 w-[72vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top towns/cities</h4>
               <div className="space-y-4">
                 {data.cities.map((city, i) => (
@@ -414,7 +414,7 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Countries */}
-            <div className="flex-shrink-0 w-[85vw] bg-secondary/40 rounded-[14px] p-4">
+            <div className="flex-shrink-0 w-[72vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top countries</h4>
               <div className="space-y-4">
                 {data.countries.map((country, i) => (
@@ -442,7 +442,7 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Age Ranges */}
-            <div className="flex-shrink-0 w-[85vw] bg-secondary/40 rounded-[14px] p-4">
+            <div className="flex-shrink-0 w-[72vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top age ranges</h4>
               <div className="space-y-4">
                 {data.ageRanges.map((range, i) => (
@@ -470,7 +470,7 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Gender */}
-            <div className="flex-shrink-0 w-[85vw] bg-secondary/40 rounded-[14px] p-4">
+            <div className="flex-shrink-0 w-[72vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Gender</h4>
               <div className="space-y-4">
                 {data.gender.map((g, i) => (
