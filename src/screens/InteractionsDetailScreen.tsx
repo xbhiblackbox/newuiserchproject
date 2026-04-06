@@ -179,7 +179,7 @@ const InteractionsDetailScreen = () => {
               <span className="text-[15px] font-medium">Followers</span>
             </div>
             {isEditing ? (
-               <input className="w-16 bg-gray-100 rounded text-right text-[15px] font-bold outline-none" value={data.followerPct} onChange={e => updateField('followerPct', parseFloat(e.target.value) || 0)} />
+               <input className="w-16 bg-secondary rounded text-right text-[15px] font-bold outline-none text-foreground" value={data.followerPct} onChange={e => updateField('followerPct', parseFloat(e.target.value) || 0)} />
             ) : (
                <span className="text-[15px] font-medium">{data.followerPct}%</span>
             )}
