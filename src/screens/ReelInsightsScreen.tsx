@@ -528,7 +528,7 @@ const ReelInsightsScreen = () => {
             <button onClick={() => navigate('/profile')} className="text-foreground">
               <ArrowLeft size={22} strokeWidth={1.8} />
             </button>
-            <h1 className="text-[17px] font-bold text-foreground">Reel insights</h1>
+            <h1 className="text-[17px] font-semibold text-foreground">Reel insights</h1>
           </div>
           <div className="w-[29px] h-[29px] shrink-0" />
         </header>
@@ -548,7 +548,7 @@ const ReelInsightsScreen = () => {
             <ArrowLeft size={22} strokeWidth={1.8} />
           </button>
           <h1 
-            className="text-[17px] font-bold text-foreground"
+            className="text-[17px] font-semibold text-foreground"
             onClick={() => { if (!isEditMode) { setIsEditMode(true); toast.info("Edit mode active"); } }}
           >
             Reel insights
