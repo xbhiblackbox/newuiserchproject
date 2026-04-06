@@ -651,7 +651,7 @@ const ReelInsightsScreen = () => {
           className="flex flex-col items-center gap-1.5 cursor-pointer"
           onClick={() => isEditMode && setEditModal({ label: "Likes", value: String(likes), onSave: setEditLikes })}
         >
-          <Heart size={24} className="text-foreground fill-foreground" />
+          <Heart size={20} className="text-foreground fill-foreground" />
           <span className="text-[13px] font-medium text-foreground">{fmtNum(likes)}</span>
         </div>
         {/* Comment — flipped */}
@@ -659,7 +659,7 @@ const ReelInsightsScreen = () => {
           className="flex flex-col items-center gap-1.5 cursor-pointer"
           onClick={() => isEditMode && setEditModal({ label: "Comments", value: String(comments), onSave: setEditComments })}
         >
-          <MessageCircle size={24} className="text-foreground fill-foreground -scale-x-100" />
+          <MessageCircle size={20} className="text-foreground fill-foreground -scale-x-100" />
           <span className="text-[13px] font-medium text-foreground">{fmtNum(comments)}</span>
         </div>
         {/* Send */}
@@ -667,7 +667,7 @@ const ReelInsightsScreen = () => {
           className="flex flex-col items-center gap-1.5 cursor-pointer"
           onClick={() => isEditMode && setEditModal({ label: "Shares", value: String(shares), onSave: setEditShares })}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" className="text-foreground">
+          <svg width="20" height="20" viewBox="0 0 24 24" className="text-foreground">
             <path d="M21.39 2.97c.46-.46.06-1.24-.56-1.06L2.42 6.86c-.56.16-.6.95-.06 1.18l6.93 2.97 6.18-4.47c.24-.18.5.1.3.32l-4.47 6.18 2.97 6.93c.22.54 1.02.5 1.18-.06l4.94-18.41c.04-.14.02-.28-.04-.4l.04-.13z" fill="currentColor" />
           </svg>
           <span className="text-[13px] font-medium text-foreground">{fmtNum(shares)}</span>
@@ -677,7 +677,7 @@ const ReelInsightsScreen = () => {
           className="flex flex-col items-center gap-1.5 cursor-pointer"
           onClick={() => isEditMode && setEditModal({ label: "Reposts", value: String(reposts), onSave: setEditReposts })}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground">
             <polyline points="17 1 21 5 17 9" />
             <path d="M3 12V9a4 4 0 0 1 4-4h14" />
             <polyline points="7 23 3 19 7 15" />
@@ -690,7 +690,7 @@ const ReelInsightsScreen = () => {
           className="flex flex-col items-center gap-1.5 cursor-pointer"
           onClick={() => isEditMode && setEditModal({ label: "Saves", value: String(saves), onSave: setEditSaves })}
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" className="text-foreground">
+          <svg width="20" height="20" viewBox="0 0 24 24" className="text-foreground">
             <path d="M4 2h16v20l-8-5.5L4 22V2z" fill="currentColor" />
           </svg>
           <span className="text-[13px] font-medium text-foreground">{fmtNum(saves)}</span>
