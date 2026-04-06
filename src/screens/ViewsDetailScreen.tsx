@@ -377,24 +377,24 @@ const ViewsDetailScreen = () => {
 
           <div className="flex gap-4 overflow-x-auto hide-scrollbar px-4 pb-4">
             {/* Towns/Cities */}
-            <div className="flex-shrink-0 w-[300px] bg-white dark:bg-[#0F0F0F] text-black dark:text-white rounded-[16px] border border-gray-100 dark:border-gray-800 p-3 shadow-sm transition-colors">
-                <h4 className="text-[17px] font-bold mb-6">Top towns/cities</h4>
-                <div className="space-y-6">
+            <div className="flex-shrink-0 w-[280px] bg-card rounded-[16px] border border-border p-4">
+                <h4 className="text-[16px] font-bold text-foreground mb-5">Top towns/cities</h4>
+                <div className="space-y-5">
                     {data.cities.map((city, i) => (
                         <div key={city.name}>
-                            <p className="text-[14px] font-medium mb-1.5">{city.name}</p>
-                            <div className="flex items-center gap-4">
-                                <div className="flex-1 h-3 bg-secondary/30 dark:bg-[#262629] rounded-full overflow-hidden">
-                                    <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${city.pct}%` }} />
+                            <p className="text-[14px] font-semibold text-foreground mb-1.5">{city.name}</p>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 h-[10px] bg-secondary rounded-full overflow-hidden">
+                                    <div className="h-full bg-[#D32FE0] rounded-full" style={{ width: `${Math.max(city.pct * 3, 4)}%` }} />
                                 </div>
-                                <span className="text-[13px] font-bold w-10 text-right">{city.pct}%</span>
+                                <span className="text-[13px] font-semibold text-foreground w-10 text-right">{city.pct}%</span>
                             </div>
                             {isEditing && (
                                 <div className="mt-2 grid grid-cols-2 gap-2">
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" value={city.name} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" value={city.name} onChange={e => {
                                         const n = [...data.cities]; n[i].name = e.target.value; updateField('cities', n);
                                     }} />
-                                    <input className="bg-gray-50 rounded px-2 py-1 text-[11px] font-bold outline-none" type="number" value={city.pct} onChange={e => {
+                                    <input className="bg-secondary rounded px-2 py-1 text-[11px] font-bold outline-none text-foreground" type="number" value={city.pct} onChange={e => {
                                         const n = [...data.cities]; n[i].pct = parseFloat(e.target.value) || 0; updateField('cities', n);
                                     }} />
                                 </div>
