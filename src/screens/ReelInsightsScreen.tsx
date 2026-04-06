@@ -554,21 +554,23 @@ const ReelInsightsScreen = () => {
             Reel insights
           </h1>
         </div>
-        {!isEditMode ? (
-          <button 
-            onClick={() => { setIsActionMenuOpen(true); }}
-            className="p-1 text-foreground active:opacity-60"
-          >
-            <MoreVertical size={21} />
-          </button>
-        ) : (
-          <button 
-            onClick={() => { setIsEditMode(false); saveToSupabase(); persistEdits(); toast.success("All changes saved"); }}
-            className="text-[14px] font-bold text-[hsl(var(--ig-blue))] p-1"
-          >
-            Done
-          </button>
-        )}
+        <div className="w-[29px] h-[29px] shrink-0 flex items-center justify-end">
+          {!isEditMode ? (
+            <button 
+              onClick={() => { setIsActionMenuOpen(true); }}
+              className="p-1 text-foreground active:opacity-60"
+            >
+              <MoreVertical size={21} />
+            </button>
+          ) : (
+            <button 
+              onClick={() => { setIsEditMode(false); saveToSupabase(); persistEdits(); toast.success("All changes saved"); }}
+              className="text-[14px] font-bold text-[hsl(var(--ig-blue))] leading-none"
+            >
+              Done
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Reel Preview */}
