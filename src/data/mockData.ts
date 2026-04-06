@@ -279,7 +279,7 @@ export const currentUser: UserProfile = {
   followers: 12530,
   following: 12,
   isVerified: true,
-  website: "Organicsmm.pro",
+  website: "Organicsmm.online",
 };
 
 export const userPostImages = [
