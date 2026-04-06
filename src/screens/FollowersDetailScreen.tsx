@@ -22,6 +22,7 @@ interface FollowersData {
   activeTimes: { time: string; height: number }[];
   chartData: number[];
   chartAxis: { max: string; mid: string; min: string };
+  chartDates: string[];
   topContent: { image: string; count: string; date: string }[];
 }
 
