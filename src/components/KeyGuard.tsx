@@ -1,84 +1,88 @@
-import { useEffect, useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
 import { getDeviceFingerprint, clearAuthSession, getAuthSession } from "@/lib/auth";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export default function KeyGuard({ children }: { children: React.ReactNode }) {
-    const navigate = useNavigate();
     const [isValidating, setIsValidating] = useState(true);
     const [isInitialCheck, setIsInitialCheck] = useState(true);
-    const [failCount, setFailCount] = useState(0);
-
-    const checkKey = useCallback(async () => {
-        const session = getAuthSession();
-        if (!session) {
-            clearAuthSession();
-            if (window.location.pathname !== "/") {
-                window.location.href = "/"; // Force full reload to show login screen
-            }
-            return;
-        }
-
-        try {
-            // Use existing fingerprint from session if possible for stability
-            const currentFingerprint = session.deviceFingerprint || getDeviceFingerprint();
-
-            const res = await fetch(`${SUPABASE_URL}/functions/v1/check-key-status`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-                },
-                body: JSON.stringify({
-                    key: session.key,
-                    deviceFingerprint: currentFingerprint
-                }),
-                signal: AbortSignal.timeout(10000)
-            });
-
-            const data = await res.json().catch(() => ({}));
-
-            if (!res.ok) {
-                // If it's a server error (500), don't logout easily.
-                // Log only for explicit rejections (401/403/404) or if the server says invalid.
-                if (res.status === 401 || res.status === 403 || res.status === 404 || data.valid === false) {
-                    console.log("[KeyGuard] Key invalid or revoked, incrementing fail count.");
-                    
-                    // Require 2 consecutive failures to avoid logout on temporary network/server glitches
-                    if (failCount >= 1) {
-                        clearAuthSession();
-                        window.location.href = "/";
-                        return;
-                    } else {
-                        setFailCount(prev => prev + 1);
-                    }
-                } else {
-                    console.log("[KeyGuard] Server error but not explicitly invalid. Staying logged in.");
-                    setFailCount(0);
-                }
-            } else {
-                setFailCount(0);
-            }
-        } catch (err) {
-            console.log("[KeyGuard] Network error during validation. Staying logged in.", err);
-        } finally {
-            if (isInitialCheck) setIsInitialCheck(false);
-            setIsValidating(false);
-        }
-    }, [failCount, isInitialCheck]);
+    const failCountRef = useRef(0);
 
     useEffect(() => {
+        let mounted = true;
+
+        const checkKey = async () => {
+            const session = getAuthSession();
+            if (!session) {
+                clearAuthSession();
+                if (window.location.pathname !== "/") {
+                    window.location.href = "/";
+                }
+                return;
+            }
+
+            try {
+                const currentFingerprint = session.deviceFingerprint || getDeviceFingerprint();
+
+                const res = await fetch(`${SUPABASE_URL}/functions/v1/check-key-status`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        key: session.key,
+                        deviceFingerprint: currentFingerprint
+                    }),
+                    signal: AbortSignal.timeout(15000)
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!mounted) return;
+
+                if (!res.ok) {
+                    // Only logout on explicit rejection (key revoked/expired/invalid)
+                    if (res.status === 401 || res.status === 403 || res.status === 404 || data.valid === false) {
+                        failCountRef.current += 1;
+                        console.log(`[KeyGuard] Key rejected (attempt ${failCountRef.current}/3)`);
+                        
+                        // Require 3 consecutive failures before logout
+                        if (failCountRef.current >= 3) {
+                            clearAuthSession();
+                            window.location.href = "/";
+                            return;
+                        }
+                    } else {
+                        // Server error — don't count as failure
+                        console.log("[KeyGuard] Server error, staying logged in.");
+                    }
+                } else {
+                    // Success — reset fail counter
+                    failCountRef.current = 0;
+                }
+            } catch (err) {
+                // Network error — never logout
+                console.log("[KeyGuard] Network error, staying logged in.", err);
+            } finally {
+                if (mounted) {
+                    setIsInitialCheck(false);
+                    setIsValidating(false);
+                }
+            }
+        };
+
         checkKey();
 
-        // Check key status every 60 seconds (increased from 30s)
-        const interval = setInterval(checkKey, 60000); 
+        // Check every 2 minutes instead of 60s to reduce unnecessary calls
+        const interval = setInterval(checkKey, 120000);
 
         return () => {
+            mounted = false;
             clearInterval(interval);
         };
-    }, [checkKey]);
+    }, []); // No dependencies — stable interval
 
     if (isValidating && isInitialCheck) {
         return (
