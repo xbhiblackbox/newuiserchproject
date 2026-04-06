@@ -207,9 +207,9 @@ const FollowersDetailScreen = () => {
         <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Follower Details (Chart) */}
-        <div className="px-4 py-8">
-           <h3 className="text-[18px] font-bold mb-7 text-foreground">Follower details</h3>
-           <div className="flex gap-2 mb-10">
+        <div className="px-4 py-5">
+           <h3 className="text-[15px] font-bold mb-5 text-foreground">Follower details</h3>
+           <div className="flex gap-2 mb-8">
               {["Overall", "Follows", "Unfollows"].map(t => (
                 <button key={t} onClick={() => setDetailTab(t)}
                   className={cn("px-5 py-2 rounded-full text-[14px] font-bold border transition-colors",
