@@ -212,8 +212,8 @@ const FollowersDetailScreen = () => {
            <div className="flex gap-2 mb-8">
               {["Overall", "Follows", "Unfollows"].map(t => (
                 <button key={t} onClick={() => setDetailTab(t)}
-                  className={cn("px-5 py-2 rounded-full text-[14px] font-bold border transition-colors",
-                    detailTab === t ? "bg-white text-[#000000] border-transparent" : "bg-[#262626] text-white border-transparent"
+                  className={cn("px-3.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors",
+                    detailTab === t ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground border-border"
                   )}>
                   {t}
                 </button>
