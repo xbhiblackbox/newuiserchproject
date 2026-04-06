@@ -375,22 +375,22 @@ const FollowersDetailScreen = () => {
         <div className="h-[0.5px] bg-border mx-4" />
 
         {/* Gender Breakdown */}
-        <div className="px-4 py-8">
-           <h3 className="text-[18px] font-bold mb-10 text-foreground">Gender</h3>
-           <div className="space-y-12">
+        <div className="px-4 py-5">
+           <h3 className="text-[15px] font-bold mb-5 text-foreground">Gender</h3>
+           <div className="space-y-4">
               {data.gender.map((g, i) => (
                 <div key={i}>
-                   <div className="flex justify-between items-center mb-3">
-                      <span className="text-[15px] font-medium">{g.name}</span>
+                   <div className="flex justify-between items-center mb-1">
+                      <span className="text-[13px] font-semibold text-foreground">{g.name}</span>
                       {isEditing ? (
-                         <input className="w-16 bg-secondary/50 rounded text-right text-[15px] font-bold outline-none" type="number" value={g.pct} onChange={e => {
+                         <input className="w-14 bg-secondary rounded text-right text-[12px] font-semibold outline-none text-foreground" type="number" value={g.pct} onChange={e => {
                            const n = [...data.gender]; n[i].pct = parseFloat(e.target.value) || 0; updateField('gender', n);
                          }} />
                       ) : (
-                         <span className="text-[15px] font-bold">{g.pct}%</span>
+                         <span className="text-[12px] font-semibold text-foreground">{g.pct}%</span>
                       )}
                    </div>
-                   <div className="h-3 w-full bg-secondary/50 rounded-full overflow-hidden">
+                   <div className="h-[5px] w-full bg-secondary rounded-full overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${g.pct}%`, backgroundColor: g.color }} />
                    </div>
                 </div>
