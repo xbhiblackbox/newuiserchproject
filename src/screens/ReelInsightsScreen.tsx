@@ -651,7 +651,7 @@ const ReelInsightsScreen = () => {
           className="flex flex-col items-center gap-1.5 cursor-pointer"
           onClick={() => isEditMode && setEditModal({ label: "Likes", value: String(likes), onSave: setEditLikes })}
         >
-          <Heart size={24} className="text-foreground fill-foreground" />
+          <Heart size={20} className="text-foreground fill-foreground" />
           <span className="text-[13px] font-medium text-foreground">{fmtNum(likes)}</span>
         </div>
         {/* Comment — flipped */}
