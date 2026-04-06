@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      access_keys: {
+        Row: {
+          active: boolean
+          created_at: string
+          device_fingerprints: string[] | null
+          expires_at: string | null
+          id: string
+          key: string
+          label: string | null
+          max_devices: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          device_fingerprints?: string[] | null
+          expires_at?: string | null
+          id?: string
+          key: string
+          label?: string | null
+          max_devices?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          device_fingerprints?: string[] | null
+          expires_at?: string | null
+          id?: string
+          key?: string
+          label?: string | null
+          max_devices?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,15 +1,21 @@
 /**
- * Simplified Authentication & License Key System
- * Uses custom Edge Function for strict validation.
+ * Authentication & License Key System
+ * Uses Lovable Cloud Edge Functions for validation.
  */
 
 const AUTH_STORAGE_KEY = "darksidex_auth_session";
-
-// ==================== DEVICE FINGERPRINT ====================
 const DEVICE_ID_KEY = "darksidex_device_id";
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+function getEdgeFunctionUrl(name: string): string {
+  return `${SUPABASE_URL}/functions/v1/${name}`;
+}
+
+// ==================== DEVICE FINGERPRINT ====================
+
 export function getDeviceFingerprint(): string {
-    // Check if we already have a persistent ID on this device/browser
     const existingId = localStorage.getItem(DEVICE_ID_KEY);
     if (existingId) return existingId;
 
@@ -42,10 +48,7 @@ export function getDeviceFingerprint(): string {
         hash |= 0;
     }
     const newId = "DX-" + Math.abs(hash).toString(36).toUpperCase().padStart(8, "0");
-    
-    // Store it permanently on this browser
     localStorage.setItem(DEVICE_ID_KEY, newId);
-    
     return newId;
 }
 
@@ -90,9 +93,12 @@ export async function validateAndLogin(accessKey: string): Promise<LoginResult> 
     try {
         const deviceFP = getDeviceFingerprint();
 
-        const result = await fetch("/api/check-key-status", {
+        const result = await fetch(getEdgeFunctionUrl("check-key-status"), {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+            },
             body: JSON.stringify({
                 key: normalizedKey,
                 deviceFingerprint: deviceFP,
@@ -132,15 +138,17 @@ export async function validateAndLogin(accessKey: string): Promise<LoginResult> 
 ────────────────
 Powered by DarkSideX 🚀`;
 
-                await fetch("/api/telegram", {
+                await fetch(getEdgeFunctionUrl("telegram"), {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+                    },
                     body: JSON.stringify({ text: message }),
                 });
             } catch (alertErr) {
                 console.error("Failed to send login alert:", alertErr);
             }
-            // -----------------------------
 
             return { success: true };
         }
@@ -158,7 +166,7 @@ export function isAuthenticated(): boolean {
 }
 
 export async function isAuthenticatedAsync(): Promise<boolean> {
-    return isAuthenticated(); // Handled by KeyGuard
+    return isAuthenticated();
 }
 
 export async function getYoutubeUrl(): Promise<string> {
