@@ -174,8 +174,9 @@ const ViewsDetailScreen = () => {
             ) : `${data.startDate} - ${data.endDate}`}
           </span>
         </div>
+      </header>
 
-        {/* Donut Chart */}
+
         <div className="flex justify-center pt-4 pb-6">
           <div className="relative w-[210px] h-[210px]">
             <svg viewBox="0 0 200 200" className="w-full h-full -rotate-90">
