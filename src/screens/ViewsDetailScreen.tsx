@@ -290,7 +290,7 @@ const ViewsDetailScreen = () => {
                     ) : `${type.total}%`}
                   </span>
                 </div>
-                <div className="h-[5px] w-full bg-secondary rounded-full flex overflow-hidden">
+                <div className="h-[8px] w-full bg-secondary rounded-full flex overflow-hidden">
                   <div className="bg-[#D946EF]" style={{ width: `${type.followerPct}%` }} />
                   <div className="bg-[#6C3AED]" style={{ width: `${type.nonFollowerPct}%` }} />
                 </div>
