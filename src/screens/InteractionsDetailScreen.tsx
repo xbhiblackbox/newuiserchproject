@@ -3,6 +3,7 @@ import { ArrowLeft, ChevronDown, Check, Film, Camera, Info } from "lucide-react"
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import reelsIcon from "@/assets/reels-icon.png";
 
 interface InteractionsData {
   interactions: number;
@@ -298,20 +299,19 @@ const InteractionsDetailScreen = () => {
           </div>
           <p className="text-[12px] text-muted-foreground mb-3">Based on likes</p>
 
-          <div className="flex gap-2.5 overflow-x-auto hide-scrollbar pb-2">
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
             {data.topReels.map((reel, i) => (
-              <div key={i} className="flex-shrink-0 w-[100px]">
+              <div key={i} className="flex-shrink-0" style={{ width: 'calc((100% - 24px) / 4)' }}>
                 <div 
                   onClick={() => isEditing && handleImageUpload(i)}
-                  className={cn("relative rounded-[12px] overflow-hidden aspect-[3/4]", isEditing && "cursor-pointer ring-2 ring-[#0095f6]")}
+                  className={cn("relative rounded-[10px] overflow-hidden aspect-[3/4.5]", isEditing && "cursor-pointer ring-2 ring-[#0095f6]")}
                 >
                   <img src={reel.image} alt="" className="w-full h-full object-cover" />
-                  <div className="absolute top-1 right-1 flex items-center gap-0.5 bg-black/20 rounded-full p-0.5">
-                    <Film size={9} className="text-white" />
+                  <div className="absolute top-1.5 right-1.5">
+                    <img src={reelsIcon} alt="" className="w-[14px] h-[14px] invert" />
                   </div>
-                  <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm rounded-full px-2 py-0.5 flex items-center gap-1">
-                    <Film size={10} fill="white" stroke="none" />
-                    <span className="text-white text-[11px] font-bold">{reel.count}</span>
+                  <div className="absolute bottom-2 left-0 right-0 flex justify-center">
+                    <span className="text-white text-[13px] font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{reel.count}</span>
                   </div>
                   {isEditing && (
                     <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1">
