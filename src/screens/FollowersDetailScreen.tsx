@@ -351,7 +351,7 @@ const FollowersDetailScreen = () => {
                 <p className="text-[13px] text-foreground mb-1.5">{item.name}</p>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max((item.pct / Math.max(...locationData.map(l => l.pct))) * 100, 3)}%` }} />
+                    <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${item.pct}%` }} />
                   </div>
                   <span className="text-[13px] text-foreground w-10 text-right">{item.pct}%</span>
                 </div>
@@ -396,7 +396,7 @@ const FollowersDetailScreen = () => {
                 <p className="text-[13px] text-foreground mb-1.5">{age.range}</p>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max((age.pct / Math.max(...data.ageRanges.map(a => a.pct))) * 100, 3)}%` }} />
+                    <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${age.pct}%` }} />
                   </div>
                   <span className="text-[13px] text-foreground w-10 text-right">{age.pct}%</span>
                 </div>
@@ -426,7 +426,7 @@ const FollowersDetailScreen = () => {
                 <p className="text-[13px] text-foreground mb-1.5">{g.name}</p>
                 <div className="flex items-center gap-3">
                   <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${Math.max((g.pct / Math.max(...data.gender.map(x => x.pct))) * 100, 3)}%`, backgroundColor: g.color }} />
+                    <div className="h-full rounded-full" style={{ width: `${g.pct}%`, backgroundColor: g.color }} />
                   </div>
                   <span className="text-[13px] text-foreground w-10 text-right">
                     {isEditing ? (
