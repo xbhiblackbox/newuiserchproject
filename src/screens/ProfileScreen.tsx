@@ -561,10 +561,7 @@ const ProfileScreen = () => {
   return (
     <div
       ref={scrollContainerRef}
-      className="pb-16 overflow-y-auto h-screen"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      className="pb-16 overflow-y-auto h-screen overscroll-none"
     >
       {/* Search Overlay */}
       <AnimatePresence>
