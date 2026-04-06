@@ -44,7 +44,7 @@ export interface UserProfile {
 }
 
 export const stories: Story[] = [
-  { id: "own", username: "Your story", avatar: "https://i.pravatar.cc/150?img=33", isOwn: true },
+  { id: "own", username: "Your story", avatar: "/profile-pic.png", isOwn: true },
   { id: "1", username: "jake.miller_", avatar: "https://i.pravatar.cc/150?img=1", hasStory: true },
   { id: "2", username: "emma.rose.x", avatar: "https://i.pravatar.cc/150?img=3", hasStory: true },
   { id: "3", username: "tyler_wilson", avatar: "https://i.pravatar.cc/150?img=5", hasStory: true },
@@ -273,7 +273,7 @@ export const exploreImages = [
 export const currentUser: UserProfile = {
   username: "Organicsmm.pro",
   fullName: "OrganicSMM",
-  avatar: "https://i.pravatar.cc/150?img=33",
+  avatar: "/profile-pic.png",
   bio: "THE ULTIMATE CREATOR TOOL 🛠✨\nCUSTOMIZE YOUR IG ANALYTICS 📊\nGLOBAL REACH SIMULATOR 🌍\n👇 CHANGE YOUR STATS TODAY",
   posts: 21,
   followers: 12530,
