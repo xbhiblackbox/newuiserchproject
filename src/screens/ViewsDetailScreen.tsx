@@ -153,9 +153,7 @@ const ViewsDetailScreen = () => {
                 <Check size={18} strokeWidth={3} />
               </button>
             )}
-            <div className="w-[22px] h-[22px] rounded-full border-[1.5px] border-foreground flex items-center justify-center">
-              <span className="text-[12px] font-semibold leading-none">i</span>
-            </div>
+            <Info size={22} strokeWidth={1.5} className="text-foreground" />
           </div>
         </div>
         <div className="flex items-center justify-between px-4 py-2.5">
@@ -164,7 +162,7 @@ const ViewsDetailScreen = () => {
               <input className="bg-transparent text-[13px] font-medium outline-none w-20 text-foreground" value={data.dateRange} onChange={e => updateField('dateRange', e.target.value)} />
             ) : data.dateRange} <ChevronDown size={14} strokeWidth={2} />
           </button>
-          <span className="text-[13px] text-foreground">
+          <span className="text-[13px] font-semibold text-foreground">
             {isEditing ? (
               <span className="flex items-center gap-1">
                 <input className="w-12 bg-secondary rounded text-center text-[13px] outline-none text-foreground" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
