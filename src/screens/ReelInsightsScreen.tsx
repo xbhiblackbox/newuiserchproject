@@ -677,7 +677,7 @@ const ReelInsightsScreen = () => {
           className="flex flex-col items-center gap-1.5 cursor-pointer"
           onClick={() => isEditMode && setEditModal({ label: "Reposts", value: String(reposts), onSave: setEditReposts })}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground">
             <polyline points="17 1 21 5 17 9" />
             <path d="M3 12V9a4 4 0 0 1 4-4h14" />
             <polyline points="7 23 3 19 7 15" />
