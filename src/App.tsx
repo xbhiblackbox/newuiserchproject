@@ -75,7 +75,7 @@ const App = () => {
                 ) : (
                   <>
                     {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
-                    {showSplash && <div className="fixed inset-0 z-[9998] bg-white" />}
+                    {showSplash && <div className="fixed inset-0 z-[9998] bg-black" />}
                     <AppLayout>
                       <KeyGuard>
                         <Routes>
