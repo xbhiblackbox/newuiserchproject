@@ -265,7 +265,7 @@ const FollowersDetailScreen = () => {
               <svg viewBox="0 0 540 150" className="w-full h-full overflow-visible">
                 <path 
                   d={`M0,${data.chartData[0]} ${data.chartData.slice(1).map((y, i) => `L${(i+1)*40},${y}`).join(' ')}`} 
-                  fill="none" fill="none" stroke="#D946EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeLinecap="round" strokeLinejoin="round" 
+                  fill="none" stroke="#D946EF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" 
                 />
               </svg>
 
