@@ -174,6 +174,7 @@ const ViewsDetailScreen = () => {
             ) : `${data.startDate} - ${data.endDate}`}
           </span>
         </div>
+        <div className="h-[0.5px] bg-border" />
       </header>
 
       <div
