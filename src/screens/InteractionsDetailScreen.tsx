@@ -140,7 +140,7 @@ const InteractionsDetailScreen = () => {
           </div>
         </div>
 
-        <div className="h-[0.5px] bg-gray-100 mx-4 mt-2" />
+        <div className="h-[0.5px] bg-border mx-4 mt-2" />
 
         {/* Donut Area */}
         <div className="flex justify-center py-12">
