@@ -174,31 +174,31 @@ const FollowersDetailScreen = () => {
         <div className="h-[6px] bg-secondary/50 w-full" />
 
         {/* Growth Section */}
-        <div className="px-4 py-7">
-          <h3 className="text-[18px] font-bold mb-7 text-foreground">Growth</h3>
-          <div className="space-y-7">
-            <div className="flex justify-between items-center">
-               <span className="text-[15px] font-medium">Overall</span>
+        <div className="px-4 py-5">
+          <h3 className="text-[15px] font-bold mb-5 text-foreground">Growth</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center h-[36px]">
+               <span className="text-[14px] text-foreground">Overall</span>
                {isEditing ? (
-                  <input type="number" className="w-20 bg-secondary/50 rounded text-right font-bold outline-none" value={data.overall} onChange={e => updateField('overall', parseInt(e.target.value) || 0)} />
+                  <input type="number" className="w-20 bg-secondary rounded text-right font-semibold text-[14px] outline-none text-foreground" value={data.overall} onChange={e => updateField('overall', parseInt(e.target.value) || 0)} />
                ) : (
-                  <span className="text-[15px] font-bold">{data.overall}</span>
+                  <span className="text-[14px] font-semibold text-foreground">{data.overall}</span>
                )}
             </div>
-            <div className="flex justify-between items-center">
-               <span className="text-[15px] font-medium">Follows</span>
+            <div className="flex justify-between items-center h-[36px]">
+               <span className="text-[14px] text-foreground">Follows</span>
                {isEditing ? (
-                  <input type="number" className="w-20 bg-secondary/50 rounded text-right font-bold outline-none" value={data.follows} onChange={e => updateField('follows', parseInt(e.target.value) || 0)} />
+                  <input type="number" className="w-20 bg-secondary rounded text-right font-semibold text-[14px] outline-none text-foreground" value={data.follows} onChange={e => updateField('follows', parseInt(e.target.value) || 0)} />
                ) : (
-                  <span className="text-[15px] font-bold">{data.follows}</span>
+                  <span className="text-[14px] font-semibold text-foreground">{data.follows}</span>
                )}
             </div>
-            <div className="flex justify-between items-center">
-               <span className="text-[15px] font-medium">Unfollows</span>
+            <div className="flex justify-between items-center h-[36px]">
+               <span className="text-[14px] text-foreground">Unfollows</span>
                {isEditing ? (
-                  <input type="number" className="w-20 bg-secondary/50 rounded text-right font-bold outline-none" value={data.unfollows} onChange={e => updateField('unfollows', parseInt(e.target.value) || 0)} />
+                  <input type="number" className="w-20 bg-secondary rounded text-right font-semibold text-[14px] outline-none text-foreground" value={data.unfollows} onChange={e => updateField('unfollows', parseInt(e.target.value) || 0)} />
                ) : (
-                  <span className="text-[15px] font-bold">{data.unfollows}</span>
+                  <span className="text-[14px] font-semibold text-foreground">{data.unfollows}</span>
                )}
             </div>
           </div>
