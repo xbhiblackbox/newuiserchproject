@@ -99,26 +99,26 @@ const defaultInsights = (i: number): ReelInsights => ({
 
 // Generate 20 posts for just4abhii with unique thumbnails
 const just4abhiiThumbnails = [
-  "https://cdn-cf-east.streamable.com/image/owo7oy.jpg",
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1463453091185-61582044d556?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1488161628813-04466f872be2?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1521119989659-a83eee488004?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&h=400&fit=crop",
+  "/thumbnails/thumb-1.png",
+  "/thumbnails/thumb-2.png",
+  "/thumbnails/thumb-3.png",
+  "/thumbnails/thumb-4.png",
+  "/thumbnails/thumb-5.png",
+  "/thumbnails/thumb-6.png",
+  "/thumbnails/thumb-1.png",
+  "/thumbnails/thumb-2.png",
+  "/thumbnails/thumb-3.png",
+  "/thumbnails/thumb-4.png",
+  "/thumbnails/thumb-5.png",
+  "/thumbnails/thumb-6.png",
+  "/thumbnails/thumb-1.png",
+  "/thumbnails/thumb-2.png",
+  "/thumbnails/thumb-3.png",
+  "/thumbnails/thumb-4.png",
+  "/thumbnails/thumb-5.png",
+  "/thumbnails/thumb-6.png",
+  "/thumbnails/thumb-1.png",
+  "/thumbnails/thumb-2.png",
 ];
 
 const defaultCaptions = [
@@ -151,7 +151,7 @@ export const defaultJust4abhiiReels: ExtendedPostItem[] = Array.from({ length: 2
 }));
 
 // localStorage key — bump version to force refresh with new video URLs
-const STORAGE_KEY = "just4abhii_reels_data_v3";
+const STORAGE_KEY = "just4abhii_reels_data_v4";
 
 export const loadReelsData = (): ExtendedPostItem[] => {
   try {
