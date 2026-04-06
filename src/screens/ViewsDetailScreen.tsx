@@ -388,7 +388,7 @@ const ViewsDetailScreen = () => {
             {/* Towns/Cities */}
             <div className="flex-shrink-0 w-[72vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top towns/cities</h4>
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {data.cities.map((city, i) => (
                   <div key={city.name}>
                     <p className="text-[13px] text-foreground mb-1.5">{city.name}</p>
@@ -416,7 +416,7 @@ const ViewsDetailScreen = () => {
             {/* Countries */}
             <div className="flex-shrink-0 w-[72vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top countries</h4>
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {data.countries.map((country, i) => (
                   <div key={country.name}>
                     <p className="text-[13px] text-foreground mb-1.5">{country.name}</p>
@@ -444,7 +444,7 @@ const ViewsDetailScreen = () => {
             {/* Age Ranges */}
             <div className="flex-shrink-0 w-[72vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top age ranges</h4>
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {data.ageRanges.map((range, i) => (
                   <div key={range.range}>
                     <p className="text-[13px] text-foreground mb-1.5">{range.range}</p>
@@ -472,7 +472,7 @@ const ViewsDetailScreen = () => {
             {/* Gender */}
             <div className="flex-shrink-0 w-[72vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Gender</h4>
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {data.gender.map((g, i) => (
                   <div key={g.name}>
                     <p className="text-[13px] text-foreground mb-1.5">{g.name}</p>
