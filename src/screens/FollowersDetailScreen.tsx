@@ -150,13 +150,13 @@ const FollowersDetailScreen = () => {
         <div className="h-px bg-border/60 mx-4" />
 
         {/* Hero Section */}
-        <div className="flex flex-col items-center py-10">
+        <div className="flex flex-col items-center py-8">
           {isEditing ? (
-             <input className="text-[36px] font-bold text-foreground bg-secondary/50 rounded px-2 outline-none w-56 text-center" value={data.totalFollowers} onChange={e => updateField('totalFollowers', e.target.value)} />
+             <input className="text-[32px] font-bold text-foreground bg-secondary rounded px-2 outline-none w-48 text-center" value={data.totalFollowers} onChange={e => updateField('totalFollowers', e.target.value)} />
           ) : (
-              <span className="text-[36px] font-bold text-foreground tracking-tighter">{data.totalFollowers}</span>
+              <span className="text-[32px] font-bold text-foreground tracking-tight">{data.totalFollowers}</span>
           )}
-          <span className="text-[16px] font-bold mt-0.5">Followers</span>
+           <span className="text-[14px] font-semibold mt-0.5 text-foreground">Followers</span>
           <div className="flex items-center gap-1 mt-1 text-[13px] text-muted-foreground font-bold">
              {isEditing ? (
                 <input className="w-16 bg-secondary/50 rounded text-center outline-none" value={data.growthChange} onChange={e => updateField('growthChange', e.target.value)} />
