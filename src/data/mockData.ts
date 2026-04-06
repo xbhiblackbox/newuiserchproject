@@ -273,7 +273,7 @@ export const exploreImages = [
 export const currentUser: UserProfile = {
   username: "Organicsmm.pro",
   fullName: "OrganicSMM",
-  avatar: "https://i.pravatar.cc/150?img=33",
+  avatar: "/profile-pic.png",
   bio: "THE ULTIMATE CREATOR TOOL 🛠✨\nCUSTOMIZE YOUR IG ANALYTICS 📊\nGLOBAL REACH SIMULATOR 🌍\n👇 CHANGE YOUR STATS TODAY",
   posts: 21,
   followers: 12530,
