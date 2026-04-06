@@ -217,7 +217,7 @@ const InteractionsDetailScreen = () => {
                       <span className="text-[15px] font-medium">{type.name}</span>
                       <div className="flex items-center gap-1">
                          {isEditing ? (
-                            <input className="w-12 bg-gray-100 rounded text-right text-[15px] font-bold outline-none" value={type.total} onChange={e => {
+                            <input className="w-12 bg-secondary rounded text-right text-[15px] font-bold outline-none text-foreground" value={type.total} onChange={e => {
                               const n = [...data.contentTypes]; n[i].total = parseFloat(e.target.value) || 0; updateField('contentTypes', n);
                             }} />
                          ) : (
