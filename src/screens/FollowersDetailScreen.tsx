@@ -291,17 +291,16 @@ const FollowersDetailScreen = () => {
         <div className="h-[6px] bg-secondary/50 w-full" />
 
         {/* Top Locations Section */}
-        <div className="py-8">
-           <div className="px-4 flex gap-2 mb-8">
-               {["Top locations"].map(t => (
-                  <button key={t} className="px-5 py-2 rounded-full text-[14px] font-bold bg-white text-[#000000]">
-                    {t}
-                  </button>
-               ))}
+        <div className="py-5">
+           <div className="px-4 mb-4">
+              <button className="px-3.5 py-1.5 rounded-lg text-[13px] font-semibold bg-foreground text-background border border-foreground">
+                Top locations
+              </button>
            </div>
-           <div className="px-4 flex gap-2 mb-8">
+           <div className="px-4 flex gap-2 mb-5">
                 {["Towns/Cities", "Countries"].map(t => (
-                   <button key={t} className={cn("px-5 py-2 rounded-full text-[14px] font-bold border transition-colors", t === "Towns/Cities" ? "bg-white text-[#000000] border-transparent" : "bg-[#262626] text-white border-transparent")}>
+                   <button key={t} className={cn("px-3.5 py-1.5 rounded-lg text-[13px] font-semibold border transition-colors", 
+                     t === "Towns/Cities" ? "bg-foreground text-background border-foreground" : "bg-transparent text-foreground border-border")}>
                      {t}
                    </button>
                 ))}
