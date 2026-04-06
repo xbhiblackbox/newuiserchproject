@@ -7,32 +7,24 @@ import BottomNav from "@/components/BottomNav";
 import AnalyticsTracker from "@/components/AnalyticsTracker";
 import SplashScreen from "@/components/SplashScreen";
 import LoginScreen from "@/screens/LoginScreen";
-import { useState, useCallback, useEffect, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { isAuthenticated } from "@/lib/auth";
 import KeyGuard from "@/components/KeyGuard";
 import HomeScreen from "@/screens/HomeScreen";
+import SearchScreen from "@/screens/SearchScreen";
+import MessagesScreen from "@/screens/MessagesScreen";
+import ReelsScreen from "@/screens/ReelsScreen";
+import ProfileScreen from "@/screens/ProfileScreen";
+import AnalyticsScreen from "@/screens/AnalyticsScreen";
+import ReelInsightsScreen from "@/screens/ReelInsightsScreen";
+import ReelDetailScreen from "@/screens/ReelDetailScreen";
+import ViewsDetailScreen from "@/screens/ViewsDetailScreen";
+import InteractionsDetailScreen from "@/screens/InteractionsDetailScreen";
+import FollowersDetailScreen from "@/screens/FollowersDetailScreen";
+import CreatorSettingsScreen from "@/screens/CreatorSettingsScreen";
 import NotFound from "./pages/NotFound";
 
-// Lazy load heavy screens
-const SearchScreen = lazy(() => import("@/screens/SearchScreen"));
-const MessagesScreen = lazy(() => import("@/screens/MessagesScreen"));
-const ReelsScreen = lazy(() => import("@/screens/ReelsScreen"));
-const ProfileScreen = lazy(() => import("@/screens/ProfileScreen"));
-const AnalyticsScreen = lazy(() => import("@/screens/AnalyticsScreen"));
-const ReelInsightsScreen = lazy(() => import("@/screens/ReelInsightsScreen"));
-const ReelDetailScreen = lazy(() => import("@/screens/ReelDetailScreen"));
-const ViewsDetailScreen = lazy(() => import("@/screens/ViewsDetailScreen"));
-const InteractionsDetailScreen = lazy(() => import("@/screens/InteractionsDetailScreen"));
-const FollowersDetailScreen = lazy(() => import("@/screens/FollowersDetailScreen"));
-const CreatorSettingsScreen = lazy(() => import("@/screens/CreatorSettingsScreen"));
-
 const queryClient = new QueryClient();
-
-const LazyFallback = () => (
-  <div className="flex items-center justify-center min-h-[60vh]">
-    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-  </div>
-);
 
 // Layout wrapper that conditionally shows BottomNav
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
@@ -85,23 +77,21 @@ const App = () => {
                     {showSplash && <div className="fixed inset-0 z-[9998] bg-black" />}
                     <AppLayout>
                       <KeyGuard>
-                        <Suspense fallback={<LazyFallback />}>
-                          <Routes>
-                            <Route path="/" element={<HomeScreen />} />
-                            <Route path="/search" element={<SearchScreen />} />
-                            <Route path="/create" element={<MessagesScreen />} />
-                            <Route path="/reels" element={<ReelsScreen />} />
-                            <Route path="/profile" element={<ProfileScreen />} />
-                            <Route path="/analytics" element={<AnalyticsScreen />} />
-                            <Route path="/analytics/views" element={<ViewsDetailScreen />} />
-                            <Route path="/analytics/interactions" element={<InteractionsDetailScreen />} />
-                            <Route path="/analytics/followers" element={<FollowersDetailScreen />} />
-                            <Route path="/analytics/settings" element={<CreatorSettingsScreen />} />
-                            <Route path="/reel-insights/:id" element={<ReelInsightsScreen />} />
-                            <Route path="/reel/:id" element={<ReelDetailScreen />} />
-                            <Route path="*" element={<NotFound />} />
-                          </Routes>
-                        </Suspense>
+                        <Routes>
+                          <Route path="/" element={<HomeScreen />} />
+                          <Route path="/search" element={<SearchScreen />} />
+                          <Route path="/create" element={<MessagesScreen />} />
+                          <Route path="/reels" element={<ReelsScreen />} />
+                          <Route path="/profile" element={<ProfileScreen />} />
+                          <Route path="/analytics" element={<AnalyticsScreen />} />
+                          <Route path="/analytics/views" element={<ViewsDetailScreen />} />
+                          <Route path="/analytics/interactions" element={<InteractionsDetailScreen />} />
+                          <Route path="/analytics/followers" element={<FollowersDetailScreen />} />
+                          <Route path="/analytics/settings" element={<CreatorSettingsScreen />} />
+                          <Route path="/reel-insights/:id" element={<ReelInsightsScreen />} />
+                          <Route path="/reel/:id" element={<ReelDetailScreen />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
                       </KeyGuard>
                     </AppLayout>
                   </>
