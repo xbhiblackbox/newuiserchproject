@@ -250,14 +250,14 @@ const InteractionsDetailScreen = () => {
            </div>
 
            <div className="flex justify-center gap-10 mt-10">
-              <div className="flex items-center gap-2">
-                 <div className="h-2 w-2 rounded-full bg-[#B025C3]" />
-                 <span className="text-[13px] text-white font-bold">Followers</span>
-              </div>
-              <div className="flex items-center gap-2">
-                 <div className="h-2 w-2 rounded-full bg-[#4B12C2]" />
-                 <span className="text-[13px] text-white font-bold">Non-followers</span>
-              </div>
+               <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-[#B025C3]" />
+                  <span className="text-[13px] text-foreground font-bold">Followers</span>
+               </div>
+               <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-[#4B12C2]" />
+                  <span className="text-[13px] text-foreground font-bold">Non-followers</span>
+               </div>
            </div>
         </div>
 

@@ -283,7 +283,7 @@ const FollowersDetailScreen = () => {
                     <span className="text-[16px] font-extrabold">!</span>
                  </div>
               </div>
-              <p className="text-[14px] text-white font-medium leading-[1.4]">
+              <p className="text-[14px] text-foreground font-medium leading-[1.4]">
                  There was an error while loading your insights. Try again later.
               </p>
            </div>
