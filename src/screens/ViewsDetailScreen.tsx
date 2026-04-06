@@ -139,34 +139,26 @@ const ViewsDetailScreen = () => {
   return (
     <div className="pb-24 min-h-screen bg-background select-none overflow-x-hidden relative text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-40 flex items-center justify-between px-4 h-[44px] bg-background">
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/analytics')} className="text-foreground">
-            <ArrowLeft size={24} strokeWidth={2} />
-          </button>
-          <h1 className="text-[16px] font-bold text-foreground">Views</h1>
-        </div>
-        <div className="flex items-center gap-3">
-          {isEditing && (
-            <button onClick={saveChanges} className="bg-[#0095f6] text-white p-1.5 rounded-full shadow-lg">
-              <Check size={18} strokeWidth={3} />
+      <header className="sticky top-0 z-40 bg-background">
+        <div className="flex items-center justify-between px-4 h-[44px]">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate('/analytics')} className="text-foreground">
+              <ArrowLeft size={24} strokeWidth={2} />
             </button>
-          )}
-          <div className="w-[22px] h-[22px] rounded-full border-[1.5px] border-foreground flex items-center justify-center">
-            <span className="text-[12px] font-semibold leading-none">i</span>
+            <h1 className="text-[16px] font-bold text-foreground">Views</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            {isEditing && (
+              <button onClick={saveChanges} className="bg-[#0095f6] text-white p-1.5 rounded-full shadow-lg">
+                <Check size={18} strokeWidth={3} />
+              </button>
+            )}
+            <div className="w-[22px] h-[22px] rounded-full border-[1.5px] border-foreground flex items-center justify-center">
+              <span className="text-[12px] font-semibold leading-none">i</span>
+            </div>
           </div>
         </div>
-      </header>
-
-      <div
-        onTouchStart={startPress}
-        onTouchEnd={endPress}
-        onMouseDown={startPress}
-        onMouseUp={endPress}
-        onMouseLeave={endPress}
-      >
-        {/* Date row */}
-        <div className="sticky top-[44px] z-30 bg-background flex items-center justify-between px-4 py-2.5">
+        <div className="flex items-center justify-between px-4 py-2.5">
           <button className="flex items-center gap-1 border border-border rounded-full px-3 py-1 text-[13px] font-medium text-foreground">
             {isEditing ? (
               <input className="bg-transparent text-[13px] font-medium outline-none w-20 text-foreground" value={data.dateRange} onChange={e => updateField('dateRange', e.target.value)} />
@@ -182,7 +174,15 @@ const ViewsDetailScreen = () => {
             ) : `${data.startDate} - ${data.endDate}`}
           </span>
         </div>
+      </header>
 
+      <div
+        onTouchStart={startPress}
+        onTouchEnd={endPress}
+        onMouseDown={startPress}
+        onMouseUp={endPress}
+        onMouseLeave={endPress}
+      >
         {/* Donut Chart */}
         <div className="flex justify-center pt-4 pb-6">
           <div className="relative w-[210px] h-[210px]">
