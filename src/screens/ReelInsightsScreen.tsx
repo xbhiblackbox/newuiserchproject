@@ -528,7 +528,7 @@ const ReelInsightsScreen = () => {
             <button onClick={() => navigate('/profile')} className="text-foreground">
               <ArrowLeft size={22} strokeWidth={1.8} />
             </button>
-            <h1 className="text-[17px] font-semibold text-foreground">Reel insights</h1>
+            <h1 className="text-[17px] font-bold text-foreground">Reel insights</h1>
           </div>
         </header>
         <div className="flex-1 flex items-center justify-center">
