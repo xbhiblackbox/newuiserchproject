@@ -82,7 +82,7 @@ const AnalyticsScreen = () => {
           <button onClick={() => navigate('/profile')} className="text-foreground">
             <ArrowLeft size={24} strokeWidth={2} />
           </button>
-          <h1 className="text-[17px] font-bold">Professional dashboard</h1>
+          <h1 className="text-[17px] font-bold cursor-pointer" onClick={() => { setIsEditing(e => !e); if (window.navigator.vibrate) window.navigator.vibrate(50); }}>Professional dashboard</h1>
         </div>
         <div className="flex items-center gap-3">
           {isEditing && (
