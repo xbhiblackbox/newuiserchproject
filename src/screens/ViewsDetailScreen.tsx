@@ -153,9 +153,7 @@ const ViewsDetailScreen = () => {
                 <Check size={18} strokeWidth={3} />
               </button>
             )}
-            <div className="w-[22px] h-[22px] rounded-full border-[1.5px] border-foreground flex items-center justify-center">
-              <span className="text-[12px] font-semibold leading-none">i</span>
-            </div>
+            <Info size={22} strokeWidth={1.5} className="text-foreground" />
           </div>
         </div>
         <div className="flex items-center justify-between px-4 py-2.5">
