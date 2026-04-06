@@ -239,7 +239,7 @@ const InteractionsDetailScreen = () => {
                         </div>
                         <div className="flex items-center gap-2">
                            <div className="h-2 w-2 rounded-full bg-[#4B12C2]" />
-                           <input className="w-12 bg-gray-100 rounded text-[11px] font-bold outline-none" value={type.nonFollowerPct} onChange={e => {
+                           <input className="w-12 bg-secondary rounded text-[11px] font-bold outline-none text-foreground" value={type.nonFollowerPct} onChange={e => {
                              const n = [...data.contentTypes]; n[i].nonFollowerPct = parseFloat(e.target.value) || 0; updateField('contentTypes', n);
                            }} />
                         </div>
