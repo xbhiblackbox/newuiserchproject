@@ -187,13 +187,13 @@ const ViewsDetailScreen = () => {
         <div className="flex justify-center pt-4 pb-6">
           <div className="relative w-[210px] h-[210px]">
             <svg viewBox="0 0 200 200" className="w-full h-full -rotate-90">
-              <circle cx="100" cy="100" r={R} fill="none" stroke="hsl(var(--secondary))" strokeWidth="7" />
+              <circle cx="100" cy="100" r={R} fill="none" stroke="hsl(var(--secondary))" strokeWidth="9" />
               {/* Non-followers (purple, major arc) */}
-              <circle cx="100" cy="100" r={R} fill="none" stroke="#6C3AED" strokeWidth="7"
+              <circle cx="100" cy="100" r={R} fill="none" stroke="#6C3AED" strokeWidth="9"
                 strokeDasharray={`${nonFollowerArc} ${C}`}
                 strokeLinecap="round" />
               {/* Followers (pink/magenta, minor arc) */}
-              <circle cx="100" cy="100" r={R} fill="none" stroke="#D946EF" strokeWidth="7"
+              <circle cx="100" cy="100" r={R} fill="none" stroke="#D946EF" strokeWidth="9"
                 strokeDasharray={`${followerArc} ${C}`}
                 strokeDashoffset={`${-nonFollowerArc - gap}`}
                 strokeLinecap="round" />
