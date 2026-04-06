@@ -197,7 +197,7 @@ const ViewsDetailScreen = () => {
                 strokeLinecap="round" />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[14px] text-white font-medium mb-1">Views</span>
+              <span className="text-[14px] text-foreground font-medium mb-1">Views</span>
               {isEditing ? (
                 <input 
                   type="number"
