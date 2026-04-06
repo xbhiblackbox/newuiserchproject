@@ -388,17 +388,17 @@ const ViewsDetailScreen = () => {
 
           <div className="flex gap-3 overflow-x-auto hide-scrollbar px-4 pb-3">
             {/* Towns/Cities */}
-            <div className="flex-shrink-0 w-[260px] bg-card rounded-[12px] border border-border p-4">
+            <div className="flex-shrink-0 w-[290px] bg-secondary/40 rounded-[16px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top towns/cities</h4>
-              <div className="space-y-3.5">
+              <div className="space-y-4">
                 {data.cities.map((city, i) => (
                   <div key={city.name}>
-                    <p className="text-[13px] text-foreground mb-1">{city.name}</p>
+                    <p className="text-[13px] text-foreground mb-1.5">{city.name}</p>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[4px] bg-secondary rounded-full overflow-hidden">
+                      <div className="flex-1 h-[6px] bg-secondary rounded-full overflow-hidden">
                         <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max(city.pct * 5, 3)}%` }} />
                       </div>
-                      <span className="text-[12px] text-foreground w-10 text-right">{city.pct}%</span>
+                      <span className="text-[13px] text-foreground w-10 text-right">{city.pct}%</span>
                     </div>
                     {isEditing && (
                       <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -416,17 +416,17 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Countries */}
-            <div className="flex-shrink-0 w-[260px] bg-card rounded-[12px] border border-border p-4">
+            <div className="flex-shrink-0 w-[290px] bg-secondary/40 rounded-[16px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top countries</h4>
-              <div className="space-y-3.5">
+              <div className="space-y-4">
                 {data.countries.map((country, i) => (
                   <div key={country.name}>
-                    <p className="text-[13px] text-foreground mb-1">{country.name}</p>
+                    <p className="text-[13px] text-foreground mb-1.5">{country.name}</p>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[4px] bg-secondary rounded-full overflow-hidden">
+                      <div className="flex-1 h-[6px] bg-secondary rounded-full overflow-hidden">
                         <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${Math.max(country.pct, 3)}%` }} />
                       </div>
-                      <span className="text-[12px] text-foreground w-10 text-right">{country.pct}%</span>
+                      <span className="text-[13px] text-foreground w-10 text-right">{country.pct}%</span>
                     </div>
                     {isEditing && (
                       <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -444,17 +444,17 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Age Ranges */}
-            <div className="flex-shrink-0 w-[260px] bg-card rounded-[12px] border border-border p-4">
+            <div className="flex-shrink-0 w-[290px] bg-secondary/40 rounded-[16px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top age ranges</h4>
-              <div className="space-y-3.5">
+              <div className="space-y-4">
                 {data.ageRanges.map((range, i) => (
                   <div key={range.range}>
-                    <p className="text-[13px] text-foreground mb-1">{range.range}</p>
+                    <p className="text-[13px] text-foreground mb-1.5">{range.range}</p>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[4px] bg-secondary rounded-full overflow-hidden">
+                      <div className="flex-1 h-[6px] bg-secondary rounded-full overflow-hidden">
                         <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${range.pct}%` }} />
                       </div>
-                      <span className="text-[12px] text-foreground w-10 text-right">{range.pct}%</span>
+                      <span className="text-[13px] text-foreground w-10 text-right">{range.pct}%</span>
                     </div>
                     {isEditing && (
                       <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -472,17 +472,17 @@ const ViewsDetailScreen = () => {
             </div>
 
             {/* Gender */}
-            <div className="flex-shrink-0 w-[260px] bg-card rounded-[12px] border border-border p-4">
+            <div className="flex-shrink-0 w-[290px] bg-secondary/40 rounded-[16px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Gender</h4>
-              <div className="space-y-3.5 mt-4">
+              <div className="space-y-4">
                 {data.gender.map((g, i) => (
                   <div key={g.name}>
-                    <p className="text-[13px] text-foreground mb-1">{g.name}</p>
+                    <p className="text-[13px] text-foreground mb-1.5">{g.name}</p>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[4px] bg-secondary rounded-full overflow-hidden">
+                      <div className="flex-1 h-[6px] bg-secondary rounded-full overflow-hidden">
                         <div className="h-full rounded-full" style={{ width: `${g.pct}%`, backgroundColor: g.color }} />
                       </div>
-                      <span className="text-[12px] text-foreground w-10 text-right">{g.pct}%</span>
+                      <span className="text-[13px] text-foreground w-10 text-right">{g.pct}%</span>
                     </div>
                     {isEditing && (
                       <div className="mt-1.5 grid grid-cols-2 gap-2">
