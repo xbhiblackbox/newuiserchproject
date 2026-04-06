@@ -657,28 +657,6 @@ const ProfileScreen = () => {
       {/* Spacer for fixed header */}
       <div className="h-[48px]" />
 
-      {/* Pull-to-refresh spinner */}
-      <div
-        className="flex justify-center overflow-hidden transition-all duration-200 bg-secondary"
-        style={{ height: pullDistance > 0 || isRefreshing ? `${Math.max(pullDistance, isRefreshing ? PULL_THRESHOLD : 0)}px` : '0px' }}
-      >
-        <div className="flex items-center justify-center py-2">
-          <svg
-            className={isRefreshing ? "animate-spin" : ""}
-            style={{
-              transform: !isRefreshing ? `rotate(${pullDistance * 4}deg)` : undefined,
-              opacity: Math.min(pullDistance / PULL_THRESHOLD, 1),
-            }}
-            width="22"
-            height="22"
-            viewBox="0 0 40 40"
-            fill="none"
-          >
-            <circle cx="20" cy="20" r="17" stroke="hsl(var(--muted-foreground) / 0.15)" strokeWidth="2" />
-            <path d="M20 3a17 17 0 0 1 17 17" stroke="hsl(var(--muted-foreground) / 0.35)" strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        </div>
-      </div>
 
       {/* Profile Info */}
       <div className="px-4 pt-0 overflow-visible">
