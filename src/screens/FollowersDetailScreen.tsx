@@ -103,21 +103,21 @@ const FollowersDetailScreen = () => {
   return (
     <div className="pb-24 min-h-screen bg-background select-none overflow-x-hidden relative text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 bg-background border-b border-transparent">
-        <div className="flex items-center gap-6">
+      <header className="sticky top-0 z-40 flex items-center justify-between px-4 h-[48px] bg-background">
+        <div className="flex items-center gap-4">
           <button onClick={() => navigate('/analytics')} className="text-foreground">
-            <ArrowLeft size={30} strokeWidth={2} />
+            <ArrowLeft size={24} strokeWidth={2} />
           </button>
-          <h1 className="text-[20px] font-bold">Followers</h1>
+          <h1 className="text-[17px] font-bold">Followers</h1>
         </div>
         <div className="flex items-center gap-3">
           {isEditing && (
             <button onClick={saveChanges} className="bg-[#0095f6] text-white p-1.5 rounded-full shadow-lg">
-              <Check size={20} strokeWidth={3} />
+              <Check size={18} strokeWidth={3} />
             </button>
           )}
-          <div className="border-[2px] border-foreground rounded-full w-7 h-7 flex items-center justify-center">
-            <span className="text-[15px] font-bold">i</span>
+          <div className="w-[24px] h-[24px] rounded-full border-[2px] border-foreground flex items-center justify-center">
+            <span className="text-[13px] font-bold leading-none">i</span>
           </div>
         </div>
       </header>
@@ -128,19 +128,18 @@ const FollowersDetailScreen = () => {
         onMouseDown={startPress}
         onMouseUp={endPress}
         onMouseLeave={endPress}
-        className="pt-2"
       >
         {/* Date Selector Row */}
-        <div className="flex items-center justify-between px-4 py-2 mt-2">
-          <button className="flex items-center gap-1 bg-secondary/50 rounded-[10px] px-3 py-1.5 text-[14px] font-bold text-foreground">
-            Last 30 days <ChevronDown size={18} strokeWidth={2.5} />
+        <div className="flex items-center justify-between px-4 py-3">
+          <button className="flex items-center gap-1 border border-border rounded-lg px-3 py-1.5 text-[13px] font-semibold text-foreground">
+            Last 30 days <ChevronDown size={16} strokeWidth={2} />
           </button>
-          <div className="text-[14px] font-bold text-foreground flex items-center gap-1">
+          <div className="text-[13px] font-semibold text-foreground flex items-center gap-1">
              {isEditing ? (
                 <>
-                  <input className="w-12 bg-secondary/50 rounded text-center outline-none" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
+                  <input className="w-12 bg-secondary rounded text-center outline-none text-foreground" value={data.startDate} onChange={e => updateField('startDate', e.target.value)} />
                   <span>-</span>
-                  <input className="w-12 bg-secondary/50 rounded text-center outline-none" value={data.endDate} onChange={e => updateField('endDate', e.target.value)} />
+                  <input className="w-12 bg-secondary rounded text-center outline-none text-foreground" value={data.endDate} onChange={e => updateField('endDate', e.target.value)} />
                 </>
              ) : (
                 <span>{data.startDate} - {data.endDate}</span>
@@ -148,7 +147,7 @@ const FollowersDetailScreen = () => {
           </div>
         </div>
 
-        <div className="h-[0.5px] bg-border mx-4 mt-2" />
+        <div className="h-px bg-border/60 mx-4" />
 
         {/* Hero Section */}
         <div className="flex flex-col items-center py-10">
