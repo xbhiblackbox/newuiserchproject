@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { ArrowLeft, ChevronRight, Check, History, GraduationCap, Lightbulb, Share2, TrendingUp, Presentation, Sparkles, Contact2, Gift, MessageSquareReply, ArrowUpRight, Link2 } from "lucide-react";
+import { ArrowLeft, ChevronRight, Check, History, GraduationCap, Lightbulb, TrendingUp, Gift, ArrowUpRight, Link2, Tv, Send } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -58,20 +58,20 @@ const AnalyticsScreen = () => {
   ];
 
   const toolItems = [
-    { label: "Monthly recap", icon: <History size={26} strokeWidth={1.5} />, badge: "New", subtitle: "See what you made happen last month." },
-    { label: "Best practices", icon: <GraduationCap size={26} strokeWidth={1.5} /> },
-    { label: "Inspiration", icon: <Lightbulb size={26} strokeWidth={1.5} /> },
-    { label: "Branded content", icon: <Contact2 size={26} strokeWidth={1.5} /> },
-    { label: "Partnership ads", icon: <Share2 size={26} strokeWidth={1.5} /> },
-    { label: "Ad tools", icon: <TrendingUp size={26} strokeWidth={1.5} /> },
-    { label: "Trial reels", icon: <Presentation size={26} strokeWidth={1.5} />, badge: "New" },
-    { label: "Gifts", icon: <Gift size={26} strokeWidth={1.5} /> },
-    { label: "Saved replies", icon: <MessageSquareReply size={26} strokeWidth={1.5} />, subtitle: "Save replies to common questions" },
+    { label: "Monthly recap", icon: <History size={24} strokeWidth={1.5} />, badge: "New", subtitle: "See what you made happen last month." },
+    { label: "Best practices", icon: <GraduationCap size={24} strokeWidth={1.5} /> },
+    { label: "Inspiration", icon: <Lightbulb size={24} strokeWidth={1.5} /> },
+    { label: "Branded content", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M7 21v-1a5 5 0 0 1 10 0v1"/></svg> },
+    { label: "Partnership ads", icon: <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><line x1="7.5" y1="7.5" x2="10.5" y2="16.5"/><line x1="16.5" y1="7.5" x2="13.5" y2="16.5"/></svg> },
+    { label: "Ad tools", icon: <TrendingUp size={24} strokeWidth={1.5} /> },
+    { label: "Trial reels", icon: <Tv size={24} strokeWidth={1.5} />, badge: "New" },
+    { label: "Gifts", icon: <Gift size={24} strokeWidth={1.5} /> },
+    { label: "Saved replies", icon: <Send size={24} strokeWidth={1.5} />, subtitle: "Save replies to common questions" },
   ];
 
   const tipItems = [
-    { label: "Trending audio", icon: <TrendingUp size={26} strokeWidth={1.5} /> },
-    { label: "Other helpful resources", icon: <Link2 size={26} strokeWidth={1.5} /> },
+    { label: "Trending audio", icon: <TrendingUp size={24} strokeWidth={1.5} /> },
+    { label: "Other helpful resources", icon: <Link2 size={24} strokeWidth={1.5} /> },
   ];
 
   return (
