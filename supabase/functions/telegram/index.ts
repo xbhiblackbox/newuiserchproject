@@ -39,8 +39,9 @@ Deno.serve(async (req) => {
     );
 
     const result = await telegramRes.json();
+    console.log("Telegram API response:", JSON.stringify(result));
 
-    return new Response(JSON.stringify({ ok: result.ok }), {
+    return new Response(JSON.stringify({ ok: result.ok, detail: result.description }), {
       status: telegramRes.ok ? 200 : 502,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
