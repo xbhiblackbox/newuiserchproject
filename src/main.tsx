@@ -5,10 +5,13 @@ import "./index.css";
 
 // Anti-inspect protection disabled for Lovable preview compatibility
 
-// Restore saved theme
+// Restore saved theme — default to dark
 const savedTheme = localStorage.getItem("theme");
-if (savedTheme === "dark") {
+if (savedTheme === "light") {
+  document.documentElement.classList.remove("dark");
+} else {
   document.documentElement.classList.add("dark");
+  if (!savedTheme) localStorage.setItem("theme", "dark");
 }
 
 const shouldRegisterServiceWorker = import.meta.env.PROD;
