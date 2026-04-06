@@ -146,7 +146,7 @@ const InteractionsDetailScreen = () => {
         <div className="flex justify-center py-12">
           <div className="relative w-[230px] h-[230px]">
             <svg viewBox="0 0 200 200" className="w-full h-full -rotate-90">
-              <circle cx="100" cy="100" r="85" fill="none" stroke="#F2F2F2" strokeWidth="8" />
+              <circle cx="100" cy="100" r="85" fill="none" stroke="hsl(var(--secondary))" strokeWidth="8" />
               <circle cx="100" cy="100" r="85" fill="none" stroke="#B025C3" strokeWidth="10"
                 strokeDasharray={`${(data.followerPct / 100) * 2 * Math.PI * 85} ${2 * Math.PI * 85}`}
                 strokeLinecap="round" />
