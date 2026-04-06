@@ -184,30 +184,30 @@ const ViewsDetailScreen = () => {
         </div>
 
         {/* Donut Chart */}
-        <div className="flex justify-center pt-4 pb-6">
-          <div className="relative w-[190px] h-[190px]">
+        <div className="flex justify-center pt-6 pb-8">
+          <div className="relative w-[230px] h-[230px]">
             <svg viewBox="0 0 200 200" className="w-full h-full -rotate-90">
-              <circle cx="100" cy="100" r={R} fill="none" stroke="hsl(var(--secondary))" strokeWidth="16" />
+              <circle cx="100" cy="100" r={R} fill="none" stroke="hsl(var(--secondary))" strokeWidth="14" />
               {/* Non-followers (purple, major arc) */}
-              <circle cx="100" cy="100" r={R} fill="none" stroke="#6C3AED" strokeWidth="16"
+              <circle cx="100" cy="100" r={R} fill="none" stroke="#6C3AED" strokeWidth="14"
                 strokeDasharray={`${nonFollowerArc} ${C}`}
                 strokeLinecap="round" />
               {/* Followers (pink/magenta, minor arc) */}
-              <circle cx="100" cy="100" r={R} fill="none" stroke="#D946EF" strokeWidth="16"
+              <circle cx="100" cy="100" r={R} fill="none" stroke="#D946EF" strokeWidth="14"
                 strokeDasharray={`${followerArc} ${C}`}
                 strokeDashoffset={`${-nonFollowerArc - gap}`}
                 strokeLinecap="round" />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-[11px] text-muted-foreground mb-0.5">Views</span>
+              <span className="text-[12px] text-muted-foreground mb-1">Views</span>
               {isEditing ? (
                 <input 
                   type="number" value={data.views} 
                   onChange={e => updateField('views', parseInt(e.target.value) || 0)}
-                  className="text-[32px] font-bold text-foreground bg-secondary rounded px-1 outline-none w-32 text-center"
+                  className="text-[36px] font-bold text-foreground bg-secondary rounded px-1 outline-none w-36 text-center"
                 />
               ) : (
-                <span className="text-[32px] font-bold text-foreground tracking-tight">{formatCount(data.views)}</span>
+                <span className="text-[36px] font-bold text-foreground tracking-tight">{formatCount(data.views)}</span>
               )}
             </div>
           </div>
