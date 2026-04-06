@@ -283,15 +283,27 @@ export const currentUser: UserProfile = {
 };
 
 export const userPostImages = [
-  "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1433086966358-54859d0ed716?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=300&h=300&fit=crop",
-  "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300&h=300&fit=crop",
+  "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1488161628813-04466f0cc7d4?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1504257432389-52343af06ae3?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1463453091185-61582044d556?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1548142813-c348350df52b?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=300&h=400&fit=crop",
+  "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=300&h=400&fit=crop",
 ];
 
 // Post item with thumbnail + optional video URL
