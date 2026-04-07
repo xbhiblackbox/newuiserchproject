@@ -68,7 +68,7 @@ export default function KeyGuard({ children }: { children: React.ReactNode }) {
         checkKey();
 
         // Check every 2 minutes instead of 60s to reduce unnecessary calls
-        const interval = setInterval(checkKey, 120000);
+        const interval = setInterval(checkKey, 30000);
 
         return () => {
             mounted = false;
