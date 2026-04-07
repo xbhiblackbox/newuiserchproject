@@ -96,7 +96,7 @@ Deno.serve(async (req) => {
 
       const duration = parseDuration(durationInput);
       if (!duration) {
-        await sendToAllAdmins(botToken, [String(chatId)],
+        await sendToAllAdmins(botToken, adminChatIds,
           `❌ Invalid: <code>${durationInput}</code>\n\nSirf number daalo (1, 2, 7, 30...) ya "lifetime"`
         );
         return new Response("ok", { status: 200 });
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
       });
 
       if (error) {
-        await sendToAllAdmins(botToken, [String(chatId)], `❌ DB Error: ${error.message}`);
+        await sendToAllAdmins(botToken, adminChatIds, `❌ DB Error: ${error.message}`);
         return new Response("ok", { status: 200 });
       }
 
@@ -155,12 +155,12 @@ Deno.serve(async (req) => {
         .limit(20);
 
       if (error) {
-        await sendToAllAdmins(botToken, [String(chatId)], `❌ Error: ${error.message}`);
+        await sendToAllAdmins(botToken, adminChatIds, `❌ Error: ${error.message}`);
         return new Response("ok", { status: 200 });
       }
 
       if (!keys || keys.length === 0) {
-        await sendToAllAdmins(botToken, [String(chatId)], "📭 No active keys found.");
+        await sendToAllAdmins(botToken, adminChatIds, "📭 No active keys found.");
         return new Response("ok", { status: 200 });
       }
 
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
     if (text.startsWith("/revoke")) {
       const parts = text.split(/\s+/);
       if (parts.length < 2) {
-        await sendToAllAdmins(botToken, [String(chatId)], "❌ Usage: <code>/revoke KEY-CODE</code>");
+        await sendToAllAdmins(botToken, adminChatIds, "❌ Usage: <code>/revoke KEY-CODE</code>");
         return new Response("ok", { status: 200 });
       }
 
@@ -201,12 +201,12 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!existing) {
-        await sendToAllAdmins(botToken, [String(chatId)], `❌ Key <code>${targetKey}</code> not found.`);
+        await sendToAllAdmins(botToken, adminChatIds, `❌ Key <code>${targetKey}</code> not found.`);
         return new Response("ok", { status: 200 });
       }
 
       if (!existing.active) {
-        await sendToAllAdmins(botToken, [String(chatId)], `⚠️ Key <code>${targetKey}</code> (${existing.label}) is already revoked.`);
+        await sendToAllAdmins(botToken, adminChatIds, `⚠️ Key <code>${targetKey}</code> (${existing.label}) is already revoked.`);
         return new Response("ok", { status: 200 });
       }
 
@@ -216,7 +216,7 @@ Deno.serve(async (req) => {
         .eq("key", targetKey);
 
       if (error) {
-        await sendToAllAdmins(botToken, [String(chatId)], `❌ Error: ${error.message}`);
+        await sendToAllAdmins(botToken, adminChatIds, `❌ Error: ${error.message}`);
       } else {
         const expLine = existing.expires_at 
           ? `📅 Expiry: ${new Date(existing.expires_at).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}`
@@ -233,7 +233,7 @@ Deno.serve(async (req) => {
 
     // /help or /start
     if (text.startsWith("/start") || text.startsWith("/help")) {
-      await sendToAllAdmins(botToken, [String(chatId)],
+      await sendToAllAdmins(botToken, adminChatIds,
         `🤖 <b>DarkSideX Key Manager</b>\n\n` +
         `<b>Commands:</b>\n` +
         `📌 <code>/gen name days [devices]</code>\n   Generate a new key\n\n` +
@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
     }
 
     // Unknown command
-    await sendToAllAdmins(botToken, [String(chatId)], "🤔 Unknown command. Send /help for usage.");
+    await sendToAllAdmins(botToken, adminChatIds, "🤔 Unknown command. Send /help for usage.");
     return new Response("ok", { status: 200 });
 
   } catch (err) {
