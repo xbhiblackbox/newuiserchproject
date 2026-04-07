@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
       return new Response("ok", { status: 200 });
     }
 
-    // /list — show active keys
+    // /list — show ALL keys (active + revoked)
     if (text.startsWith("/list")) {
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,
@@ -150,9 +150,8 @@ Deno.serve(async (req) => {
       const { data: keys, error } = await supabase
         .from("access_keys")
         .select("key, label, active, expires_at, device_fingerprints")
-        .eq("active", true)
         .order("created_at", { ascending: false })
-        .limit(20);
+        .limit(30);
 
       if (error) {
         await sendToAllAdmins(botToken, adminChatIds, `❌ Error: ${error.message}`);
@@ -160,21 +159,34 @@ Deno.serve(async (req) => {
       }
 
       if (!keys || keys.length === 0) {
-        await sendToAllAdmins(botToken, adminChatIds, "📭 No active keys found.");
+        await sendToAllAdmins(botToken, adminChatIds, "📭 No keys found.");
         return new Response("ok", { status: 200 });
       }
 
-      const lines = keys.map((k, i) => {
+      const activeKeys = keys.filter(k => k.active);
+      const revokedKeys = keys.filter(k => !k.active);
+
+      const formatKey = (k: any, i: number) => {
         const devices = k.device_fingerprints?.length || 0;
         const exp = k.expires_at ? new Date(k.expires_at).toLocaleDateString() : "Lifetime";
-        return `${i + 1}. <b>${k.label}</b>\n   <code>${k.key}</code>\n   📅 ${exp} | 📱 ${devices} device(s)`;
-      });
+        const status = k.active ? "✅" : "🚫";
+        return `${i + 1}. ${status} <b>${k.label}</b>\n   <code>${k.key}</code>\n   📅 ${exp} | 📱 ${devices} device(s)`;
+      };
 
-      // Send list to ALL admins
+      let msg = `📋 <b>All Keys (${keys.length})</b>\n\n`;
+      
+      if (activeKeys.length > 0) {
+        msg += `<b>✅ Active (${activeKeys.length})</b>\n\n${activeKeys.map(formatKey).join("\n\n")}\n\n`;
+      }
+      
+      if (revokedKeys.length > 0) {
+        msg += `<b>🚫 Revoked (${revokedKeys.length})</b>\n\n${revokedKeys.map(formatKey).join("\n\n")}`;
+      }
+
       await sendToAllAdmins(
         botToken,
         adminChatIds,
-        `📋 <b>Active Keys (${keys.length})</b>\n\n${lines.join("\n\n")}`
+        msg.trim()
       );
 
       return new Response("ok", { status: 200 });
