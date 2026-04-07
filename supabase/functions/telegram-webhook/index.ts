@@ -63,8 +63,11 @@ Deno.serve(async (req) => {
     const chatId = message.chat.id;
     const text = message.text.trim();
 
+    console.log("Chat ID:", chatId, "Admin IDs:", adminChatIds, "Text:", text);
+
     // Only allow commands from admins (supports multiple comma-separated IDs)
     if (!adminChatIds.includes(String(chatId))) {
+      console.log("Unauthorized - chatId not in adminChatIds");
       await sendTelegramMessage(botToken, chatId, "⛔ Unauthorized.");
       return new Response("ok", { status: 200 });
     }
@@ -180,21 +183,47 @@ Deno.serve(async (req) => {
         return new Response("ok", { status: 200 });
       }
 
-      const targetKey = parts[1];
+      const targetKey = parts[1].toUpperCase();
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
+
+      // First check if key exists
+      const { data: existing } = await supabase
+        .from("access_keys")
+        .select("key, label, active, expires_at")
+        .eq("key", targetKey)
+        .maybeSingle();
+
+      if (!existing) {
+        await sendTelegramMessage(botToken, chatId, `❌ Key <code>${targetKey}</code> not found.`);
+        return new Response("ok", { status: 200 });
+      }
+
+      if (!existing.active) {
+        await sendTelegramMessage(botToken, chatId, `⚠️ Key <code>${targetKey}</code> (${existing.label}) is already revoked.`);
+        return new Response("ok", { status: 200 });
+      }
 
       const { error } = await supabase
         .from("access_keys")
         .update({ active: false, updated_at: new Date().toISOString() })
         .eq("key", targetKey);
 
+      console.log("Revoke result:", error ? error.message : "success", "key:", targetKey);
+
       if (error) {
         await sendTelegramMessage(botToken, chatId, `❌ Error: ${error.message}`);
       } else {
-        await sendTelegramMessage(botToken, chatId, `🚫 Key <code>${targetKey}</code> has been revoked.`);
+        const expLine = existing.expires_at 
+          ? `📅 Expiry: ${new Date(existing.expires_at).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}`
+          : `📅 Expiry: Lifetime`;
+        await sendTelegramMessage(
+          botToken,
+          chatId,
+          `🚫 <b>Key Revoked!</b>\n\n🔑 <code>${targetKey}</code>\n👤 ${existing.label}\n${expLine}\n\n<i>This key is now deactivated.</i>`
+        );
       }
       return new Response("ok", { status: 200 });
     }
