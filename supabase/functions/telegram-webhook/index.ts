@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
         await sendTelegramMessage(
           botToken,
           chatId,
-          `❌ Invalid duration: <code>${durationInput}</code>\n\nValid: 1d, 2d, 3d, 7d, 14d, 30d, 90d, 365d, lifetime`
+          `❌ Invalid: <code>${durationInput}</code>\n\nSirf number daalo (1, 2, 7, 30...) ya "lifetime"`
         );
         return new Response("ok", { status: 200 });
       }
