@@ -1,5 +1,18 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2/cors";
 
+async function sendToAllAdmins(botToken: string, chatIds: string[], text: string) {
+  const results = await Promise.allSettled(
+    chatIds.map(id =>
+      fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: id.trim(), text, parse_mode: "HTML" }),
+      })
+    )
+  );
+  return results;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -16,33 +29,22 @@ Deno.serve(async (req) => {
     }
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
+    const chatIdRaw = Deno.env.get("TELEGRAM_CHAT_ID");
 
-    if (!botToken || !chatId) {
+    if (!botToken || !chatIdRaw) {
       return new Response(JSON.stringify({ error: "Telegram not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const telegramRes = await fetch(
-      `https://api.telegram.org/bot${botToken}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text,
-          parse_mode: "HTML",
-        }),
-      }
-    );
+    const chatIds = chatIdRaw.split(",").map(id => id.trim()).filter(Boolean);
+    
+    const results = await sendToAllAdmins(botToken, chatIds, text);
+    console.log("Telegram send results:", results.length, "admins");
 
-    const result = await telegramRes.json();
-    console.log("Telegram API response:", JSON.stringify(result));
-
-    return new Response(JSON.stringify({ ok: result.ok, detail: result.description }), {
-      status: telegramRes.ok ? 200 : 502,
+    return new Response(JSON.stringify({ ok: true, sent_to: chatIds.length }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
