@@ -13,24 +13,27 @@ function generateKey(): string {
 }
 
 function parseDuration(input: string): { days: number; label: string } | null {
+  // Support plain numbers: "1" = 1 day, "30" = 30 days
+  if (/^\d+$/.test(input)) {
+    const days = parseInt(input);
+    if (days <= 0) return null;
+    return { days, label: `${days} day${days > 1 ? 's' : ''}` };
+  }
+
+  // Also support old formats + lifetime
   const map: Record<string, { days: number; label: string }> = {
-    "1d": { days: 1, label: "1 day" },
-    "24h": { days: 1, label: "24 hours" },
-    "2d": { days: 2, label: "2 days" },
-    "3d": { days: 3, label: "3 days" },
-    "7d": { days: 7, label: "7 days" },
-    "1w": { days: 7, label: "1 week" },
-    "14d": { days: 14, label: "14 days" },
-    "2w": { days: 14, label: "2 weeks" },
-    "30d": { days: 30, label: "30 days" },
-    "1m": { days: 30, label: "1 month" },
-    "90d": { days: 90, label: "90 days" },
-    "3m": { days: 90, label: "3 months" },
-    "365d": { days: 365, label: "1 year" },
-    "1y": { days: 365, label: "1 year" },
     "lifetime": { days: 0, label: "Lifetime" },
     "lt": { days: 0, label: "Lifetime" },
   };
+
+  // Support "Xd" format too
+  const match = input.toLowerCase().match(/^(\d+)d$/);
+  if (match) {
+    const days = parseInt(match[1]);
+    if (days <= 0) return null;
+    return { days, label: `${days} day${days > 1 ? 's' : ''}` };
+  }
+
   return map[input.toLowerCase()] || null;
 }
 
@@ -74,7 +77,7 @@ Deno.serve(async (req) => {
         await sendTelegramMessage(
           botToken,
           chatId,
-          `❌ <b>Usage:</b>\n<code>/gen &lt;name&gt; &lt;duration&gt;</code>\n\n<b>Durations:</b> 1d, 2d, 3d, 7d, 14d, 30d, 90d, 365d, lifetime\n\n<b>Example:</b>\n<code>/gen Ahmed 7d</code>`
+          `❌ <b>Usage:</b>\n<code>/gen &lt;name&gt; &lt;days&gt;</code>\n\n<b>Examples:</b>\n<code>/gen Ahmed 7</code> → 7 din\n<code>/gen Ali 30</code> → 30 din\n<code>/gen VIP lifetime</code> → permanent`
         );
         return new Response("ok", { status: 200 });
       }
@@ -88,7 +91,7 @@ Deno.serve(async (req) => {
         await sendTelegramMessage(
           botToken,
           chatId,
-          `❌ Invalid duration: <code>${durationInput}</code>\n\nValid: 1d, 2d, 3d, 7d, 14d, 30d, 90d, 365d, lifetime`
+          `❌ Invalid: <code>${durationInput}</code>\n\nSirf number daalo (1, 2, 7, 30...) ya "lifetime"`
         );
         return new Response("ok", { status: 200 });
       }
@@ -203,14 +206,13 @@ Deno.serve(async (req) => {
         chatId,
         `🤖 <b>DarkSideX Key Manager</b>\n\n` +
         `<b>Commands:</b>\n` +
-        `📌 <code>/gen name duration [devices]</code>\n   Generate a new key\n\n` +
+        `📌 <code>/gen name days [devices]</code>\n   Generate a new key\n\n` +
         `📋 <code>/list</code>\n   List all active keys\n\n` +
         `🚫 <code>/revoke KEY-CODE</code>\n   Deactivate a key\n\n` +
-        `<b>Duration options:</b>\n` +
-        `1d, 2d, 3d, 7d, 14d, 30d, 90d, 365d, lifetime\n\n` +
-        `<b>Example:</b>\n` +
-        `<code>/gen Ahmed 30d 2</code>\n` +
-        `→ Creates 30-day key for Ahmed with 2 devices`
+        `<b>Examples:</b>\n` +
+        `<code>/gen Ahmed 7</code> → 7 din\n` +
+        `<code>/gen Ali 30 2</code> → 30 din, 2 devices\n` +
+        `<code>/gen VIP lifetime</code> → permanent`
       );
       return new Response("ok", { status: 200 });
     }
