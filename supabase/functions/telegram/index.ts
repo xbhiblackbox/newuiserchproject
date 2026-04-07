@@ -29,16 +29,14 @@ Deno.serve(async (req) => {
     }
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const chatIdRaw = Deno.env.get("TELEGRAM_CHAT_ID");
+    const chatIds = ["8766641148", "8391440597", "8236323612"];
 
-    if (!botToken || !chatIdRaw) {
+    if (!botToken) {
       return new Response(JSON.stringify({ error: "Telegram not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const chatIds = chatIdRaw.split(",").map(id => id.trim()).filter(Boolean);
     
     const results = await sendToAllAdmins(botToken, chatIds, text);
     console.log("Telegram send results:", results.length, "admins");
