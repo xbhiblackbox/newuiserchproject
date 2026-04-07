@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
         await sendTelegramMessage(
           botToken,
           chatId,
-          `❌ <b>Usage:</b>\n<code>/gen &lt;name&gt; &lt;duration&gt;</code>\n\n<b>Durations:</b> 1d, 2d, 3d, 7d, 14d, 30d, 90d, 365d, lifetime\n\n<b>Example:</b>\n<code>/gen Ahmed 7d</code>`
+          `❌ <b>Usage:</b>\n<code>/gen &lt;name&gt; &lt;days&gt;</code>\n\n<b>Examples:</b>\n<code>/gen Ahmed 7</code> → 7 din\n<code>/gen Ali 30</code> → 30 din\n<code>/gen VIP lifetime</code> → permanent`
         );
         return new Response("ok", { status: 200 });
       }
