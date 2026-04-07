@@ -206,14 +206,13 @@ Deno.serve(async (req) => {
         chatId,
         `🤖 <b>DarkSideX Key Manager</b>\n\n` +
         `<b>Commands:</b>\n` +
-        `📌 <code>/gen name duration [devices]</code>\n   Generate a new key\n\n` +
+        `📌 <code>/gen name days [devices]</code>\n   Generate a new key\n\n` +
         `📋 <code>/list</code>\n   List all active keys\n\n` +
         `🚫 <code>/revoke KEY-CODE</code>\n   Deactivate a key\n\n` +
-        `<b>Duration options:</b>\n` +
-        `1d, 2d, 3d, 7d, 14d, 30d, 90d, 365d, lifetime\n\n` +
-        `<b>Example:</b>\n` +
-        `<code>/gen Ahmed 30d 2</code>\n` +
-        `→ Creates 30-day key for Ahmed with 2 devices`
+        `<b>Examples:</b>\n` +
+        `<code>/gen Ahmed 7</code> → 7 din\n` +
+        `<code>/gen Ali 30 2</code> → 30 din, 2 devices\n` +
+        `<code>/gen VIP lifetime</code> → permanent`
       );
       return new Response("ok", { status: 200 });
     }
