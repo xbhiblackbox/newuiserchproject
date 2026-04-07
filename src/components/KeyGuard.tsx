@@ -43,24 +43,16 @@ export default function KeyGuard({ children }: { children: React.ReactNode }) {
                 if (!mounted) return;
 
                 if (!res.ok) {
-                    // Only logout on explicit rejection (key revoked/expired/invalid)
+                    // Key revoked/expired/invalid — logout immediately
                     if (res.status === 401 || res.status === 403 || res.status === 404 || data.valid === false) {
-                        failCountRef.current += 1;
-                        console.log(`[KeyGuard] Key rejected (attempt ${failCountRef.current}/3)`);
-                        
-                        // Require 3 consecutive failures before logout
-                        if (failCountRef.current >= 3) {
-                            clearAuthSession();
-                            window.location.href = "/";
-                            return;
-                        }
+                        console.log("[KeyGuard] Key rejected — logging out immediately");
+                        clearAuthSession();
+                        window.location.href = "/";
+                        return;
                     } else {
-                        // Server error — don't count as failure
+                        // Server error — don't logout
                         console.log("[KeyGuard] Server error, staying logged in.");
                     }
-                } else {
-                    // Success — reset fail counter
-                    failCountRef.current = 0;
                 }
             } catch (err) {
                 // Network error — never logout
@@ -76,7 +68,7 @@ export default function KeyGuard({ children }: { children: React.ReactNode }) {
         checkKey();
 
         // Check every 2 minutes instead of 60s to reduce unnecessary calls
-        const interval = setInterval(checkKey, 120000);
+        const interval = setInterval(checkKey, 30000);
 
         return () => {
             mounted = false;
