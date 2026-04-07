@@ -13,24 +13,27 @@ function generateKey(): string {
 }
 
 function parseDuration(input: string): { days: number; label: string } | null {
+  // Support plain numbers: "1" = 1 day, "30" = 30 days
+  if (/^\d+$/.test(input)) {
+    const days = parseInt(input);
+    if (days <= 0) return null;
+    return { days, label: `${days} day${days > 1 ? 's' : ''}` };
+  }
+
+  // Also support old formats + lifetime
   const map: Record<string, { days: number; label: string }> = {
-    "1d": { days: 1, label: "1 day" },
-    "24h": { days: 1, label: "24 hours" },
-    "2d": { days: 2, label: "2 days" },
-    "3d": { days: 3, label: "3 days" },
-    "7d": { days: 7, label: "7 days" },
-    "1w": { days: 7, label: "1 week" },
-    "14d": { days: 14, label: "14 days" },
-    "2w": { days: 14, label: "2 weeks" },
-    "30d": { days: 30, label: "30 days" },
-    "1m": { days: 30, label: "1 month" },
-    "90d": { days: 90, label: "90 days" },
-    "3m": { days: 90, label: "3 months" },
-    "365d": { days: 365, label: "1 year" },
-    "1y": { days: 365, label: "1 year" },
     "lifetime": { days: 0, label: "Lifetime" },
     "lt": { days: 0, label: "Lifetime" },
   };
+
+  // Support "Xd" format too
+  const match = input.toLowerCase().match(/^(\d+)d$/);
+  if (match) {
+    const days = parseInt(match[1]);
+    if (days <= 0) return null;
+    return { days, label: `${days} day${days > 1 ? 's' : ''}` };
+  }
+
   return map[input.toLowerCase()] || null;
 }
 
