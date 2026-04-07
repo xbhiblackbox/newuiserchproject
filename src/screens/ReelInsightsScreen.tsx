@@ -1361,30 +1361,6 @@ const ReelInsightsScreen = () => {
 
       <div className="h-[6px] bg-secondary" />
 
-      {/* Monetisation */}
-      <div className="px-4 py-5">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-[18px] font-bold text-foreground">Monetisation</h3>
-          <Info size={16} className="text-muted-foreground" />
-        </div>
-        <h4 className="text-[15px] font-bold text-foreground mb-2">Gifts</h4>
-        <div 
-          className={cn("flex items-center justify-between", isEditMode && "cursor-pointer active:opacity-60")}
-          onClick={() => isEditMode && setEditModal({
-            label: "Monetisation Status",
-            value: monetisationStatus,
-            isText: true,
-            onSave: ((v: string) => { setMonetisationStatus(v); persistEdits(); }) as any
-          })}
-        >
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-[#E040FB]" />
-            <span className="text-[14px] text-foreground">{monetisationStatus}</span>
-          </div>
-          <button className="text-[14px] text-[#0095f6] font-medium" onClick={(e) => { e.stopPropagation(); toast.success("Feature coming soon!"); }}>{monetisationStatus.includes("Not") ? "Add payment details" : "View settings"}</button>
-        </div>
-      </div>
-
       {/* Edit Modal / Form */}
       {
         (editModal || graphEditorOpen || retentionEditorOpen) && (
