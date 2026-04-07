@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
   }
 
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-  const adminChatIds = (Deno.env.get("TELEGRAM_CHAT_ID") || "").split(",").map(id => id.trim()).filter(Boolean);
+  const adminChatIds = ["8766641148", "8391440597", "8236323612"];
 
   try {
     const update = await req.json();
