@@ -13,20 +13,17 @@ function generateKey(): string {
 }
 
 function parseDuration(input: string): { days: number; label: string } | null {
-  // Support plain numbers: "1" = 1 day, "30" = 30 days
   if (/^\d+$/.test(input)) {
     const days = parseInt(input);
     if (days <= 0) return null;
     return { days, label: `${days} day${days > 1 ? 's' : ''}` };
   }
 
-  // Also support old formats + lifetime
   const map: Record<string, { days: number; label: string }> = {
     "lifetime": { days: 0, label: "Lifetime" },
     "lt": { days: 0, label: "Lifetime" },
   };
 
-  // Support "Xd" format too
   const match = input.toLowerCase().match(/^(\d+)d$/);
   if (match) {
     const days = parseInt(match[1]);
@@ -37,12 +34,17 @@ function parseDuration(input: string): { days: number; label: string } | null {
   return map[input.toLowerCase()] || null;
 }
 
-async function sendTelegramMessage(botToken: string, chatId: number, text: string) {
-  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
-  });
+// Send message to ALL admins
+async function sendToAllAdmins(botToken: string, adminChatIds: string[], text: string) {
+  await Promise.allSettled(
+    adminChatIds.map(id =>
+      fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: id.trim(), text, parse_mode: "HTML" }),
+      })
+    )
+  );
 }
 
 Deno.serve(async (req) => {
@@ -65,21 +67,24 @@ Deno.serve(async (req) => {
 
     console.log("Chat ID:", chatId, "Admin IDs:", adminChatIds, "Text:", text);
 
-    // Only allow commands from admins (supports multiple comma-separated IDs)
+    // Only allow commands from admins
     if (!adminChatIds.includes(String(chatId))) {
       console.log("Unauthorized - chatId not in adminChatIds");
-      await sendTelegramMessage(botToken, chatId, "⛔ Unauthorized.");
+      await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: chatId, text: "⛔ Unauthorized.", parse_mode: "HTML" }),
+      });
       return new Response("ok", { status: 200 });
     }
 
     // /gen <name> <duration>
-    // Example: /gen JohnDoe 7d
     if (text.startsWith("/gen") || text.startsWith("/generate")) {
       const parts = text.split(/\s+/);
       if (parts.length < 3) {
-        await sendTelegramMessage(
+        await sendToAllAdmins(
           botToken,
-          chatId,
+          [String(chatId)], // only reply to sender for usage help
           `❌ <b>Usage:</b>\n<code>/gen &lt;name&gt; &lt;days&gt;</code>\n\n<b>Examples:</b>\n<code>/gen Ahmed 7</code> → 7 din\n<code>/gen Ali 30</code> → 30 din\n<code>/gen VIP lifetime</code> → permanent`
         );
         return new Response("ok", { status: 200 });
@@ -91,9 +96,7 @@ Deno.serve(async (req) => {
 
       const duration = parseDuration(durationInput);
       if (!duration) {
-        await sendTelegramMessage(
-          botToken,
-          chatId,
+        await sendToAllAdmins(botToken, [String(chatId)],
           `❌ Invalid: <code>${durationInput}</code>\n\nSirf number daalo (1, 2, 7, 30...) ya "lifetime"`
         );
         return new Response("ok", { status: 200 });
@@ -119,7 +122,7 @@ Deno.serve(async (req) => {
       });
 
       if (error) {
-        await sendTelegramMessage(botToken, chatId, `❌ DB Error: ${error.message}`);
+        await sendToAllAdmins(botToken, [String(chatId)], `❌ DB Error: ${error.message}`);
         return new Response("ok", { status: 200 });
       }
 
@@ -127,9 +130,10 @@ Deno.serve(async (req) => {
         ? `📅 <b>Exp:</b> ${new Date(expiresAt).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}`
         : `📅 <b>Exp:</b> Never (Lifetime)`;
 
-      await sendTelegramMessage(
+      // Send key info to ALL admins
+      await sendToAllAdmins(
         botToken,
-        chatId,
+        adminChatIds,
         `✅ <b>Key Generated for [${userName}]</b>\n\n🔑 <code>${key}</code>\n⏳ <b>Duration:</b> ${duration.label}\n${expLine}\n📱 <b>Max Devices:</b> ${maxDevices}\n\n<i>Key is ready to use!</i>`
       );
 
@@ -151,12 +155,12 @@ Deno.serve(async (req) => {
         .limit(20);
 
       if (error) {
-        await sendTelegramMessage(botToken, chatId, `❌ Error: ${error.message}`);
+        await sendToAllAdmins(botToken, [String(chatId)], `❌ Error: ${error.message}`);
         return new Response("ok", { status: 200 });
       }
 
       if (!keys || keys.length === 0) {
-        await sendTelegramMessage(botToken, chatId, "📭 No active keys found.");
+        await sendToAllAdmins(botToken, [String(chatId)], "📭 No active keys found.");
         return new Response("ok", { status: 200 });
       }
 
@@ -166,9 +170,10 @@ Deno.serve(async (req) => {
         return `${i + 1}. <b>${k.label}</b>\n   <code>${k.key}</code>\n   📅 ${exp} | 📱 ${devices} device(s)`;
       });
 
-      await sendTelegramMessage(
+      // Send list to ALL admins
+      await sendToAllAdmins(
         botToken,
-        chatId,
+        adminChatIds,
         `📋 <b>Active Keys (${keys.length})</b>\n\n${lines.join("\n\n")}`
       );
 
@@ -179,7 +184,7 @@ Deno.serve(async (req) => {
     if (text.startsWith("/revoke")) {
       const parts = text.split(/\s+/);
       if (parts.length < 2) {
-        await sendTelegramMessage(botToken, chatId, "❌ Usage: <code>/revoke KEY-CODE</code>");
+        await sendToAllAdmins(botToken, [String(chatId)], "❌ Usage: <code>/revoke KEY-CODE</code>");
         return new Response("ok", { status: 200 });
       }
 
@@ -189,7 +194,6 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      // First check if key exists
       const { data: existing } = await supabase
         .from("access_keys")
         .select("key, label, active, expires_at")
@@ -197,12 +201,12 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (!existing) {
-        await sendTelegramMessage(botToken, chatId, `❌ Key <code>${targetKey}</code> not found.`);
+        await sendToAllAdmins(botToken, [String(chatId)], `❌ Key <code>${targetKey}</code> not found.`);
         return new Response("ok", { status: 200 });
       }
 
       if (!existing.active) {
-        await sendTelegramMessage(botToken, chatId, `⚠️ Key <code>${targetKey}</code> (${existing.label}) is already revoked.`);
+        await sendToAllAdmins(botToken, [String(chatId)], `⚠️ Key <code>${targetKey}</code> (${existing.label}) is already revoked.`);
         return new Response("ok", { status: 200 });
       }
 
@@ -211,17 +215,16 @@ Deno.serve(async (req) => {
         .update({ active: false, updated_at: new Date().toISOString() })
         .eq("key", targetKey);
 
-      console.log("Revoke result:", error ? error.message : "success", "key:", targetKey);
-
       if (error) {
-        await sendTelegramMessage(botToken, chatId, `❌ Error: ${error.message}`);
+        await sendToAllAdmins(botToken, [String(chatId)], `❌ Error: ${error.message}`);
       } else {
         const expLine = existing.expires_at 
           ? `📅 Expiry: ${new Date(existing.expires_at).toLocaleDateString("en-US", { weekday: "short", year: "numeric", month: "short", day: "numeric" })}`
           : `📅 Expiry: Lifetime`;
-        await sendTelegramMessage(
+        // Send revoke notification to ALL admins
+        await sendToAllAdmins(
           botToken,
-          chatId,
+          adminChatIds,
           `🚫 <b>Key Revoked!</b>\n\n🔑 <code>${targetKey}</code>\n👤 ${existing.label}\n${expLine}\n\n<i>This key is now deactivated.</i>`
         );
       }
@@ -230,9 +233,7 @@ Deno.serve(async (req) => {
 
     // /help or /start
     if (text.startsWith("/start") || text.startsWith("/help")) {
-      await sendTelegramMessage(
-        botToken,
-        chatId,
+      await sendToAllAdmins(botToken, [String(chatId)],
         `🤖 <b>DarkSideX Key Manager</b>\n\n` +
         `<b>Commands:</b>\n` +
         `📌 <code>/gen name days [devices]</code>\n   Generate a new key\n\n` +
@@ -247,7 +248,7 @@ Deno.serve(async (req) => {
     }
 
     // Unknown command
-    await sendTelegramMessage(botToken, chatId, "🤔 Unknown command. Send /help for usage.");
+    await sendToAllAdmins(botToken, [String(chatId)], "🤔 Unknown command. Send /help for usage.");
     return new Response("ok", { status: 200 });
 
   } catch (err) {
