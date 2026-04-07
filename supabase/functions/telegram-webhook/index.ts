@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   }
 
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-  const adminChatId = Deno.env.get("TELEGRAM_CHAT_ID")!;
+  const adminChatIds = (Deno.env.get("TELEGRAM_CHAT_ID") || "").split(",").map(id => id.trim()).filter(Boolean);
 
   try {
     const update = await req.json();
@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
     const chatId = message.chat.id;
     const text = message.text.trim();
 
-    // Only allow commands from admin
-    if (String(chatId) !== String(adminChatId)) {
+    // Only allow commands from admins (supports multiple comma-separated IDs)
+    if (!adminChatIds.includes(String(chatId))) {
       await sendTelegramMessage(botToken, chatId, "⛔ Unauthorized.");
       return new Response("ok", { status: 200 });
     }
