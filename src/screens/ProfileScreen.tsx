@@ -902,15 +902,6 @@ const ProfileScreen = () => {
       {activeTab === "reels" && (
         <div className="grid grid-cols-3 gap-[1.5px] dark:gap-[3px]">
           {userPosts.filter(p => p.isReel).map((post, i) => renderGridItem(post, i, "aspect-[2/3]", true))}
-          {isJust4abhii && (
-            <button
-              onClick={handleAddReel}
-              className="relative aspect-[2/3] overflow-hidden bg-secondary flex flex-col items-center justify-center gap-2"
-            >
-              <Plus size={32} className="text-muted-foreground" />
-              <span className="text-[11px] text-muted-foreground font-medium">Add Reel</span>
-            </button>
-          )}
         </div>
       )}
 
