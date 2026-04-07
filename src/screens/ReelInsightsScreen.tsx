@@ -1359,7 +1359,6 @@ const ReelInsightsScreen = () => {
         )}
       </div>
 
-      <div className="h-[6px] bg-secondary" />
 
       {/* Edit Modal / Form */}
       {
