@@ -63,8 +63,11 @@ Deno.serve(async (req) => {
     const chatId = message.chat.id;
     const text = message.text.trim();
 
+    console.log("Chat ID:", chatId, "Admin IDs:", adminChatIds, "Text:", text);
+
     // Only allow commands from admins (supports multiple comma-separated IDs)
     if (!adminChatIds.includes(String(chatId))) {
+      console.log("Unauthorized - chatId not in adminChatIds");
       await sendTelegramMessage(botToken, chatId, "⛔ Unauthorized.");
       return new Response("ok", { status: 200 });
     }
