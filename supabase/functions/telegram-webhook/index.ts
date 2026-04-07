@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
       if (parts.length < 3) {
         await sendToAllAdmins(
           botToken,
-          [String(chatId)], // only reply to sender for usage help
+          adminChatIds,
           `❌ <b>Usage:</b>\n<code>/gen &lt;name&gt; &lt;days&gt;</code>\n\n<b>Examples:</b>\n<code>/gen Ahmed 7</code> → 7 din\n<code>/gen Ali 30</code> → 30 din\n<code>/gen VIP lifetime</code> → permanent`
         );
         return new Response("ok", { status: 200 });
