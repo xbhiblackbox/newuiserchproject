@@ -1,0 +1,1 @@
+UPDATE access_keys SET expires_at = NOW() + INTERVAL '30 days' WHERE key = 'L7G4-QFNU-ZPRG';
