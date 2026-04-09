@@ -1259,7 +1259,24 @@ const ReelInsightsScreen = () => {
                   <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
                     <div className={`h-full ${g.color}`} style={{ width: `${g.pct}%` }} />
                   </div>
-                  <span className="text-[14px] text-foreground w-[48px] text-right">{g.pct}%</span>
+                  <span
+                    className={cn("text-[14px] text-foreground w-[48px] text-right select-none", isEditMode && "cursor-pointer bg-secondary/30 rounded px-1 transition-colors")}
+                    onClick={() => {
+                      if (!isEditMode) return;
+                      setEditModal({
+                        label: `${g.label} %`,
+                        value: String(g.pct),
+                        onSave: (v: number) => {
+                          const clamped = Math.max(0, Math.min(100, v));
+                          if (g.label === "Men") {
+                            setEditGenderMale(clamped);
+                          } else {
+                            setEditGenderMale(100 - clamped);
+                          }
+                        },
+                      });
+                    }}
+                  >{g.pct}%</span>
                 </div>
               </div>
             ))}
