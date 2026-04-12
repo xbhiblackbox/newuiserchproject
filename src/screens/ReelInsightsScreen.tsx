@@ -866,16 +866,20 @@ const ReelInsightsScreen = () => {
                             <CartesianGrid horizontal={false} vertical={false} />
                             <XAxis dataKey="day" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
                             <YAxis 
-                              fontSize={11} 
+                              fontSize={10} 
                               tickLine={false} 
                               axisLine={false} 
-                              width={40} 
+                              width={45} 
                               tick={{ fill: 'hsl(var(--muted-foreground))' }} 
                               domain={yDomain} 
                               ticks={yTicks} 
                               tickCount={3} 
                               tickFormatter={(v: number) => { 
                                 if (v === 0) return '0'; 
+                                if (v >= 1000000) { 
+                                  const m = v / 1000000; 
+                                  return m % 1 === 0 ? `${m}M` : `${m.toFixed(1)}M`; 
+                                } 
                                 if (v >= 1000) { 
                                   const k = v / 1000; 
                                   return k % 1 === 0 ? `${k}K` : `${k.toFixed(1)}K`; 
