@@ -808,10 +808,35 @@ const ReelInsightsScreen = () => {
           <div className={cn("h-44 overflow-hidden relative", isEditMode && "cursor-pointer active:opacity-80 rounded-lg transition-opacity")}>
             {/* Overlay to capture clicks in edit mode (Recharts swallows pointer events) */}
             {isEditMode && (
-              <div
-                className="absolute inset-0 z-10 rounded-lg border-2 border-dashed border-muted-foreground/30"
-                onClick={() => setGraphEditorOpen(true)}
-              />
+              <>
+                {/* Left Y-axis clickable area */}
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-[45px] z-20 cursor-pointer flex items-center justify-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Get current top value for pre-fill
+                    const allData = viewsOverTimeAll;
+                    const overallMax = Math.max(...allData.map(d => d.thisReel), ...allData.map(d => d.typical), 100);
+                    const currentTop = editGraphYMax !== null ? editGraphYMax : getNiceTopValue(overallMax);
+                    setEditModal({
+                      label: "Y-Axis Max Value",
+                      value: String(currentTop),
+                      onSave: (v: number) => {
+                        const clamped = Math.max(100, v);
+                        setEditGraphYMax(clamped);
+                        saveToSupabase({ graphYMax: clamped });
+                      },
+                    });
+                  }}
+                >
+                  <div className="w-full h-full rounded-l-lg border-2 border-dashed border-[#E040FB]/40 bg-[#E040FB]/5" />
+                </div>
+                {/* Rest of graph clickable area */}
+                <div
+                  className="absolute left-[45px] right-0 top-0 bottom-0 z-10 rounded-r-lg border-2 border-dashed border-muted-foreground/30"
+                  onClick={() => setGraphEditorOpen(true)}
+                />
+              </>
             )}
             <div
               className="flex transition-transform duration-300 ease-in-out h-full"
