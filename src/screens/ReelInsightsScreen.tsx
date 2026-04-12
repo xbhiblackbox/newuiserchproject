@@ -831,10 +831,9 @@ const ReelInsightsScreen = () => {
                         const ratios = [1, followerPct / 100, nonFollowerPct / 100];
                         const r = ratios[gi];
                         const overallMax = Math.max(Math.max(...data.map(d => d.thisReel)) * r, Math.max(...data.map(d => d.typical)) * r, 100);
-                        const topVal = getNiceTopValue(overallMax);
+                        const topVal = editGraphYMax !== null ? editGraphYMax : getNiceTopValue(overallMax);
                         const centerVal = topVal / 2;
                         const yTicks = [0, centerVal, topVal];
-                        // Domain max = topVal so reference lines space evenly: 0 (bottom), center (middle), top (top)
                         const yDomain: [number, number] = [0, topVal];
                         return (
                           <>
