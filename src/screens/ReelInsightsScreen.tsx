@@ -147,6 +147,7 @@ const ReelInsightsScreen = () => {
   const [graphEditorOpen, setGraphEditorOpen] = useState(false);
   const [customGraphData, setCustomGraphData] = useState<{ day: string; thisReel: number; typical: number }[] | null>(null);
   const [editTypicalTop, setEditTypicalTop] = useState(Math.round((ins?.views ?? 1000) * 0.55));
+  const [editGraphYMax, setEditGraphYMax] = useState<number | null>(null);
 
   // Watch time editable state
   const [editWatchTime, setEditWatchTime] = useState(ins?.watchTime || "1h 3m 53s");
