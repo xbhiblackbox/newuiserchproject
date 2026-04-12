@@ -147,6 +147,7 @@ const ReelInsightsScreen = () => {
   const [graphEditorOpen, setGraphEditorOpen] = useState(false);
   const [customGraphData, setCustomGraphData] = useState<{ day: string; thisReel: number; typical: number }[] | null>(null);
   const [editTypicalTop, setEditTypicalTop] = useState(Math.round((ins?.views ?? 1000) * 0.55));
+  const [editGraphYMax, setEditGraphYMax] = useState<number | null>(null);
 
   // Watch time editable state
   const [editWatchTime, setEditWatchTime] = useState(ins?.watchTime || "1h 3m 53s");
@@ -307,6 +308,7 @@ const ReelInsightsScreen = () => {
         if (d.xDate3) setEditXDate3(d.xDate3 as string);
         if (d.timeRangeMode) setTimeRangeMode(d.timeRangeMode as 'custom' | '12h' | '24h');
         if (d.showGraph != null) setShowGraph(d.showGraph as boolean);
+        if (d.graphYMax != null) setEditGraphYMax(d.graphYMax as number);
         if (d.sources) setEditSources((d.sources as { name: string; pct: number }[]).slice(0, 4));
         if (d.countries) setEditCountries(d.countries as { name: string; pct: number }[]);
         if (d.ageGroups) setEditAgeGroups(d.ageGroups as { range: string; pct: number }[]);
@@ -807,10 +809,35 @@ const ReelInsightsScreen = () => {
           <div className={cn("h-44 overflow-hidden relative", isEditMode && "cursor-pointer active:opacity-80 rounded-lg transition-opacity")}>
             {/* Overlay to capture clicks in edit mode (Recharts swallows pointer events) */}
             {isEditMode && (
-              <div
-                className="absolute inset-0 z-10 rounded-lg border-2 border-dashed border-muted-foreground/30"
-                onClick={() => setGraphEditorOpen(true)}
-              />
+              <>
+                {/* Left Y-axis clickable area */}
+                <div
+                  className="absolute left-0 top-0 bottom-0 w-[45px] z-20 cursor-pointer flex items-center justify-center"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Get current top value for pre-fill
+                    const allData = viewsOverTimeAll;
+                    const overallMax = Math.max(...allData.map(d => d.thisReel), ...allData.map(d => d.typical), 100);
+                    const currentTop = editGraphYMax !== null ? editGraphYMax : getNiceTopValue(overallMax);
+                    setEditModal({
+                      label: "Y-Axis Max Value",
+                      value: String(currentTop),
+                      onSave: (v: number) => {
+                        const clamped = Math.max(100, v);
+                        setEditGraphYMax(clamped);
+                        saveToSupabase({ graphYMax: clamped });
+                      },
+                    });
+                  }}
+                >
+                  <div className="w-full h-full rounded-l-lg border-2 border-dashed border-[#E040FB]/40 bg-[#E040FB]/5" />
+                </div>
+                {/* Rest of graph clickable area */}
+                <div
+                  className="absolute left-[45px] right-0 top-0 bottom-0 z-10 rounded-r-lg border-2 border-dashed border-muted-foreground/30"
+                  onClick={() => setGraphEditorOpen(true)}
+                />
+              </>
             )}
             <div
               className="flex transition-transform duration-300 ease-in-out h-full"
@@ -830,10 +857,9 @@ const ReelInsightsScreen = () => {
                         const ratios = [1, followerPct / 100, nonFollowerPct / 100];
                         const r = ratios[gi];
                         const overallMax = Math.max(Math.max(...data.map(d => d.thisReel)) * r, Math.max(...data.map(d => d.typical)) * r, 100);
-                        const topVal = getNiceTopValue(overallMax);
+                        const topVal = editGraphYMax !== null ? editGraphYMax : getNiceTopValue(overallMax);
                         const centerVal = topVal / 2;
                         const yTicks = [0, centerVal, topVal];
-                        // Domain max = topVal so reference lines space evenly: 0 (bottom), center (middle), top (top)
                         const yDomain: [number, number] = [0, topVal];
                         return (
                           <>
