@@ -308,6 +308,7 @@ const ReelInsightsScreen = () => {
         if (d.xDate3) setEditXDate3(d.xDate3 as string);
         if (d.timeRangeMode) setTimeRangeMode(d.timeRangeMode as 'custom' | '12h' | '24h');
         if (d.showGraph != null) setShowGraph(d.showGraph as boolean);
+        if (d.graphYMax != null) setEditGraphYMax(d.graphYMax as number);
         if (d.sources) setEditSources((d.sources as { name: string; pct: number }[]).slice(0, 4));
         if (d.countries) setEditCountries(d.countries as { name: string; pct: number }[]);
         if (d.ageGroups) setEditAgeGroups(d.ageGroups as { range: string; pct: number }[]);
