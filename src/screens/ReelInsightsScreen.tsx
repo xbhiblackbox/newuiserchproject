@@ -321,6 +321,8 @@ const ReelInsightsScreen = () => {
         if (d.videoUrl) setPostVideoUrl(d.videoUrl as string);
         if (d.caption) setPostCaption(d.caption as string);
         if (d.retentionImage) setRetentionImageUrl(d.retentionImage as string);
+        if (d.audienceText) setEditAudienceText(d.audienceText as string);
+        if (d.profileVisits != null) setEditProfileVisits(d.profileVisits as number);
       } catch (e) {
         console.warn('[Supabase] Load failed, using localStorage data:', e);
       }
