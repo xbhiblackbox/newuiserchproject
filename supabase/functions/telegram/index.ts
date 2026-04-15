@@ -13,6 +13,13 @@ async function sendToAllAdmins(botToken: string, chatIds: string[], text: string
   return results;
 }
 
+function getAdminChatIds() {
+  return (Deno.env.get("TELEGRAM_CHAT_ID") || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -29,9 +36,9 @@ Deno.serve(async (req) => {
     }
 
     const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
-    const chatIds = ["8766641148", "8391440597", "8236323612"];
+    const chatIds = getAdminChatIds();
 
-    if (!botToken) {
+    if (!botToken || chatIds.length === 0) {
       return new Response(JSON.stringify({ error: "Telegram not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

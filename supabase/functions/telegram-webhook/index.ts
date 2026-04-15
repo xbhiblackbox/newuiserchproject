@@ -47,15 +47,27 @@ async function sendToAllAdmins(botToken: string, adminChatIds: string[], text: s
   );
 }
 
+function getAdminChatIds() {
+  return (Deno.env.get("TELEGRAM_CHAT_ID") || "")
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-  const adminChatIds = ["8766641148", "8391440597", "8236323612"];
+  const adminChatIds = getAdminChatIds();
 
   try {
+    if (!botToken || adminChatIds.length === 0) {
+      console.error("Telegram bot is not configured with admin chat IDs");
+      return new Response("ok", { status: 200 });
+    }
+
     const update = await req.json();
     const message = update?.message;
     if (!message?.text) {
