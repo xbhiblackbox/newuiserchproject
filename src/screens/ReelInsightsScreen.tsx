@@ -861,7 +861,7 @@ const ReelInsightsScreen = () => {
                   <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
                     <div className="h-full ig-bar-gradient" style={{ width: `${followerPct}%` }} />
                   </div>
-                  <span className={cn("text-[14px] text-foreground w-[42px] text-right", isEditMode && "cursor-pointer active:opacity-60")}
+                  <span className={cn("text-[14px] text-foreground w-[42px] text-right", isEditMode && "cursor-pointer active:opacity-60 bg-secondary/30 rounded px-1")}
                     onClick={() => isEditMode && setEditModal({ label: "Followers %", value: String(followerPct), onSave: (v) => setEditFollowerPct(Math.min(100, v)) })}
                   >{followerPct}%</span>
                 </div>
@@ -872,7 +872,9 @@ const ReelInsightsScreen = () => {
                   <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
                     <div className="h-full bg-[#7C4DFF]" style={{ width: `${nonFollowerPct}%` }} />
                   </div>
-                  <span className="text-[14px] text-foreground w-[42px] text-right">{nonFollowerPct}%</span>
+                  <span className={cn("text-[14px] text-foreground w-[42px] text-right", isEditMode && "cursor-pointer active:opacity-60 bg-secondary/30 rounded px-1")}
+                    onClick={() => isEditMode && setEditModal({ label: "Non-followers % (auto = 100 - followers)", value: String(nonFollowerPct), onSave: (v) => setEditFollowerPct(100 - Math.min(100, v)) })}
+                  >{nonFollowerPct}%</span>
                 </div>
               </div>
             </div>
@@ -886,8 +888,16 @@ const ReelInsightsScreen = () => {
               <h3 className="text-[16px] font-bold text-foreground">Audience details</h3>
               <Info size={14} className="text-muted-foreground" />
             </div>
-            <p className="text-[14px] text-muted-foreground leading-relaxed">
-              Audience demographics, such as top locations, age ranges and gender, are not available because fewer than 100 accounts interacted with your content during the selected time period.
+            <p 
+              className={cn("text-[14px] text-muted-foreground leading-relaxed", isEditMode && "cursor-pointer active:bg-secondary/20 rounded p-2 -m-2 transition-colors")}
+              onClick={() => isEditMode && setEditModal({
+                label: "Audience details text",
+                value: editAudienceText,
+                isText: true,
+                onSave: ((v: any) => { setEditAudienceText(String(v)); saveToSupabase({ audienceText: String(v) }); }) as any
+              })}
+            >
+              {editAudienceText}
             </p>
           </div>
         </div>
