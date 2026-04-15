@@ -214,6 +214,7 @@ const ReelInsightsScreen = () => {
   const [monetisationStatus, setMonetisationStatus] = useState((post as any)?.monetisationStatus || "Not monetising");
   const [editTypicalViewRate, setEditTypicalViewRate] = useState((post as any)?.typicalViewRate ?? 41.1);
   const [editProfileVisits, setEditProfileVisits] = useState((post as any)?.profileVisits ?? 0);
+  const [editAudienceText, setEditAudienceText] = useState((post as any)?.audienceText ?? "Audience demographics, such as top locations, age ranges and gender, are not available because fewer than 100 accounts interacted with your content during the selected time period.");
   const [activeTab, setActiveTab] = useState<"Overview" | "Engagement" | "Audience">("Overview");
   const longPressTimerRef = useRef<any>(null);
 
