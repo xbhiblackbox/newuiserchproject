@@ -213,6 +213,8 @@ const ReelInsightsScreen = () => {
   const [editFollows, setEditFollows] = useState(ins?.follows ?? 0);
   const [monetisationStatus, setMonetisationStatus] = useState((post as any)?.monetisationStatus || "Not monetising");
   const [editTypicalViewRate, setEditTypicalViewRate] = useState((post as any)?.typicalViewRate ?? 41.1);
+  const [editProfileVisits, setEditProfileVisits] = useState((post as any)?.profileVisits ?? 0);
+  const [activeTab, setActiveTab] = useState<"Overview" | "Engagement" | "Audience">("Overview");
   const longPressTimerRef = useRef<any>(null);
 
   // ── Supabase: save all editable state ──────────────────────────────────────
