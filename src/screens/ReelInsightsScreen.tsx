@@ -558,12 +558,10 @@ const ReelInsightsScreen = () => {
             Reel insights
           </h1>
         </div>
-        <div className="w-[29px] h-[29px] shrink-0 flex items-center justify-end">
+        <div className="flex items-center gap-3">
+          <TrendingUp size={22} className="text-foreground" />
           {!isEditMode ? (
-            <button 
-              onClick={() => { setIsActionMenuOpen(true); }}
-              className="p-1 text-foreground active:opacity-60"
-            >
+            <button onClick={() => setIsActionMenuOpen(true)} className="p-1 text-foreground active:opacity-60">
               <MoreVertical size={21} />
             </button>
           ) : (
@@ -577,982 +575,437 @@ const ReelInsightsScreen = () => {
         </div>
       </header>
 
-      {/* Reel Preview */}
-      <div className="flex flex-col items-center py-4 px-4">
-        <label 
-          className={cn("w-[100px] rounded-lg overflow-hidden shadow-lg relative block", isEditMode && "cursor-pointer active:opacity-60")}
-        >
+      {/* Reel Preview - Large square thumbnail */}
+      <div className="flex flex-col items-center pt-2 pb-3 px-4">
+        <label className={cn("w-[220px] rounded-lg overflow-hidden shadow-lg relative block", isEditMode && "cursor-pointer active:opacity-60")}>
           {isEditMode && (
-            <input 
-              type="file" 
-              accept="image/*" 
-              className="hidden" 
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                const tid = toast.loading("Uploading thumbnail...");
-                try {
-                  const url = await uploadToCloudinary(file);
-                  setPostImage(url);
-                  saveToSupabase({ thumbnail: url });
-                  toast.success("Thumbnail updated!", { id: tid });
-                } catch (err) {
-                  toast.error("Upload failed", { id: tid });
-                }
-              }} 
-            />
+            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const tid = toast.loading("Uploading thumbnail...");
+              try {
+                const url = await uploadToCloudinary(file);
+                setPostImage(url);
+                saveToSupabase({ thumbnail: url });
+                toast.success("Thumbnail updated!", { id: tid });
+              } catch (err) { toast.error("Upload failed", { id: tid }); }
+            }} />
           )}
-          <img src={postImage} alt="Reel thumbnail" className="w-full aspect-[9/16] object-cover" />
+          <img src={postImage} alt="Reel thumbnail" className="w-full aspect-square object-cover" />
           {isEditMode && (
             <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
               <Plus size={24} className="text-white drop-shadow-lg" />
             </div>
           )}
         </label>
-        <p 
-          className={cn("mt-3 text-[13px] text-foreground text-center leading-[18px] whitespace-pre-wrap break-words w-full px-2", isEditMode && "cursor-pointer active:bg-secondary/40 rounded py-1")}
-          onClick={() => isEditMode && setEditModal({
-            label: "Caption",
-            value: postCaption,
-            isText: true,
-            onSave: ((v: string) => { setPostCaption(v); persistEdits(); }) as any
-          })}
-        >{postCaption}</p>
-        <p
-          className={cn("text-[12px] text-muted-foreground mt-2.5 cursor-pointer active:opacity-60", isEditMode && "bg-secondary/40 px-2 py-0.5 rounded")}
-          onClick={() => isEditMode && setEditModal({
-            label: "Date & Duration (e.g. 5 February · Duration 0:10)",
-            value: `${editDisplayDate} · Duration ${editDuration}`,
-            onSave: ((v: any) => {
-              const str = String(v).trim();
-              const match = str.match(/^(.+?)\s*[·.\-]\s*Duration\s+(.+)$/i)
-                || str.match(/^(.+?)\s+Duration\s+(.+)$/i);
-              const dateStr = match ? match[1].trim() : str;
-              setEditDisplayDate(dateStr);
-              if (match) {
-                setEditDuration(match[2].trim());
-              }
-              const monthMap: Record<string, string> = { January: "Jan", February: "Feb", March: "Mar", April: "Apr", May: "May", June: "Jun", July: "Jul", August: "Aug", September: "Sep", October: "Oct", November: "Nov", December: "Dec" };
-              const dm = dateStr.match(/^(\d{1,2})\s+(\w+)$/);
-              if (dm) {
-                const shortMonth = monthMap[dm[2]] || dm[2].slice(0, 3);
-                const newStart = `${dm[1]} ${shortMonth}`;
-                setEditStartDate(newStart);
-                const newDates = computeXDates(newStart);
-                setEditXDate1(newDates[0]);
-                setEditXDate2(newDates[1]);
-                setEditXDate3(newDates[2]);
-              }
-              persistEdits();
-            }) as any,
-          })}
-        >
-          {editDisplayDate} · Duration {editDuration}
-        </p>
       </div>
 
-      {/* Engagement Stats */}
-      <div className="flex justify-around px-4 py-4 border-b border-border">
-        {/* Heart */}
-        <div 
-          className="flex flex-col items-center gap-1.5 cursor-pointer"
-          onClick={() => isEditMode && setEditModal({ label: "Likes", value: String(likes), onSave: setEditLikes })}
-        >
-          <Heart size={20} className="text-foreground fill-foreground" />
-          <span className="text-[13px] font-medium text-foreground">{fmtNum(likes)}</span>
-        </div>
-        {/* Comment — flipped */}
-        <div 
-          className="flex flex-col items-center gap-1.5 cursor-pointer"
-          onClick={() => isEditMode && setEditModal({ label: "Comments", value: String(comments), onSave: setEditComments })}
-        >
-          <MessageCircle size={20} className="text-foreground fill-foreground -scale-x-100" />
-          <span className="text-[13px] font-medium text-foreground">{fmtNum(comments)}</span>
-        </div>
-        {/* Send */}
-        <div 
-          className="flex flex-col items-center gap-1.5 cursor-pointer"
-          onClick={() => isEditMode && setEditModal({ label: "Shares", value: String(shares), onSave: setEditShares })}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" className="text-foreground">
-            <path d="M21.39 2.97c.46-.46.06-1.24-.56-1.06L2.42 6.86c-.56.16-.6.95-.06 1.18l6.93 2.97 6.18-4.47c.24-.18.5.1.3.32l-4.47 6.18 2.97 6.93c.22.54 1.02.5 1.18-.06l4.94-18.41c.04-.14.02-.28-.04-.4l.04-.13z" fill="currentColor" />
-          </svg>
-          <span className="text-[13px] font-medium text-foreground">{fmtNum(shares)}</span>
-        </div>
-        {/* Repost — custom SVG matching Instagram */}
-        <div 
-          className="flex flex-col items-center gap-1.5 cursor-pointer"
-          onClick={() => isEditMode && setEditModal({ label: "Reposts", value: String(reposts), onSave: setEditReposts })}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground">
-            <polyline points="17 1 21 5 17 9" />
-            <path d="M3 12V9a4 4 0 0 1 4-4h14" />
-            <polyline points="7 23 3 19 7 15" />
-            <path d="M21 12v3a4 4 0 0 1-4 4H3" />
-          </svg>
-          <span className="text-[13px] font-medium text-foreground">{fmtNum(reposts)}</span>
-        </div>
-        {/* Bookmark */}
-        <div 
-          className="flex flex-col items-center gap-1.5 cursor-pointer"
-          onClick={() => isEditMode && setEditModal({ label: "Saves", value: String(saves), onSave: setEditSaves })}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" className="text-foreground">
-            <path d="M4 2h16v20l-8-5.5L4 22V2z" fill="currentColor" />
-          </svg>
-          <span className="text-[13px] font-medium text-foreground">{fmtNum(saves)}</span>
-        </div>
+      {/* Engagement Stats Row */}
+      <div className="flex justify-around px-4 py-3">
+        {[
+          { icon: <Heart size={22} className="text-foreground" />, val: likes, set: setEditLikes, label: "Likes" },
+          { icon: <MessageCircle size={22} className="text-foreground -scale-x-100" />, val: comments, set: setEditComments, label: "Comments" },
+          { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"><polyline points="17 1 21 5 17 9" /><path d="M3 12V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 12v3a4 4 0 0 1-4 4H3" /></svg>, val: reposts, set: setEditReposts, label: "Reposts" },
+          { icon: <Send size={22} className="text-foreground" />, val: shares, set: setEditShares, label: "Shares" },
+          { icon: <Bookmark size={22} className="text-foreground" />, val: saves, set: setEditSaves, label: "Saves" },
+        ].map((item) => (
+          <div key={item.label} className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => isEditMode && setEditModal({ label: item.label, value: String(item.val), onSave: item.set })}>
+            {item.icon}
+            <span className="text-[13px] font-medium text-foreground">{fmtNum(item.val)}</span>
+          </div>
+        ))}
       </div>
 
-      <div className="h-[6px] bg-secondary" />
-
-      {/* Overview */}
-      <div className="px-4 py-5">
-        <div className="flex items-center gap-2 mb-5">
-          <h2 className="text-[18px] font-bold text-foreground">Overview</h2>
-          <Info size={16} className="text-muted-foreground" />
-        </div>
-        <div className="space-y-4">
-          {[
-            { label: "Views", value: fmtNum(views), onEdit: () => setEditModal({ label: "Views", value: String(views), onSave: setEditViews }) },
-            { label: "Watch time", value: watchTime, onEdit: () => setEditModal({ label: "Watch time", value: String(watchTime), isText: true, onSave: (v) => setEditWatchTime(String(v)) }) },
-            { label: "Interactions", value: fmtNum(totalInteractions), onEdit: () => setEditModal({ label: "Likes (Part of Interactions)", value: String(likes), onSave: setEditLikes }) },
-            { label: "Profile activity", value: fmtNum(follows), onEdit: () => setEditModal({ label: "Follows", value: String(follows), onSave: setEditFollows }) },
-          ].map((item) => (
-            <div 
-              key={item.label} 
-              className={cn("flex items-center justify-between", isEditMode && "cursor-pointer active:opacity-60")}
-              onClick={() => isEditMode && item.onEdit()}
-            >
-              <span className="text-[15px] text-foreground">{item.label}</span>
-              <span className="text-[15px] text-foreground">{item.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="h-[6px] bg-secondary" />
-
-      {/* Views Donut */}
-      <div className="px-4 py-5">
-        <div className="flex items-center gap-2 mb-4">
-          <h2 className="text-[18px] font-bold text-foreground">Views</h2>
-          <Info size={16} className="text-muted-foreground" />
-        </div>
-        <div className="flex justify-center py-4">
-          <div className="relative w-[240px] h-[240px]">
-            <svg viewBox="0 0 240 240" className="w-full h-full -rotate-90">
-              <circle cx="120" cy="120" r="100" fill="none" stroke="hsl(var(--border))" strokeWidth="10" />
-              <circle cx="120" cy="120" r="100" fill="none" stroke="#E040FB" strokeWidth="10"
-                strokeDasharray={`${(followerPct / 100) * 2 * Math.PI * 100} ${2 * Math.PI * 100}`}
-                strokeLinecap="round" />
-              <circle cx="120" cy="120" r="100" fill="none" stroke="#7C4DFF" strokeWidth="10"
-                strokeDasharray={`${(nonFollowerPct / 100) * 2 * Math.PI * 100} ${2 * Math.PI * 100}`}
-                strokeDashoffset={`${-(followerPct / 100) * 2 * Math.PI * 100}`}
-                strokeLinecap="round" />
-            </svg>
-            <div
-              className={cn("absolute inset-0 flex flex-col items-center justify-center", isEditMode && "cursor-pointer active:bg-secondary/20 rounded-full transition-colors")}
-              onClick={() => isEditMode && setEditModal({ label: "Views", value: String(views), onSave: setEditViews })}
-            >
-              <span className="text-[13px] text-muted-foreground">Views</span>
-              <span className="text-[32px] font-bold text-foreground">{fmtNum(views)}</span>
-            </div>
-          </div>
-        </div>
-        <div className="space-y-2 mt-2">
-          <div
-            className={cn("flex items-center justify-between", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-2 relative -left-2 w-[calc(100%+16px)] py-1 transition-colors")}
-            onClick={() => isEditMode && setEditModal({ label: "Followers %", value: String(followerPct), onSave: (v) => setEditFollowerPct(Math.min(100, v)) })}
-          >
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full bg-[#E040FB]" />
-              <span className="text-[14px] text-foreground">Followers</span>
-            </div>
-            <span className="text-[14px] text-foreground">{followerPct.toFixed(1)}%</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full bg-[#7C4DFF]" />
-              <span className="text-[14px] text-foreground">Non-followers</span>
-            </div>
-            <span className="text-[14px] text-foreground">{nonFollowerPct.toFixed(1)}%</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-border mx-4" />
-
-      {/* Views over time — heading always visible, chart hidden if showGraph off */}
-      <div className="px-4 py-5">
-        <div className="flex items-center justify-between mb-3">
-          <h3
-            className="text-[16px] font-bold text-foreground cursor-pointer select-none"
-            onClick={() => isEditMode && setGraphEditorOpen(true)}
-          >Views over time</h3>
-        </div>
-        {showGraph && (<>
-          <div className="flex gap-2 mb-4">
-            {["All", "Followers", "Non-followers"].map((f) => (
-              <button
-                key={f}
-                onClick={() => setViewsFilter(f)}
-                className={cn(
-                  "rounded-full px-4 py-1.5 text-[13px] font-medium border transition-colors",
-                  viewsFilter === f
-                    ? "bg-muted text-foreground border-border"
-                    : "bg-background text-foreground border-border"
-                )}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
-          <div className={cn("h-44 overflow-hidden relative", isEditMode && "cursor-pointer active:opacity-80 rounded-lg transition-opacity")}>
-            {/* Overlay to capture clicks in edit mode (Recharts swallows pointer events) */}
-            {isEditMode && (
-              <>
-                {/* Left Y-axis clickable area */}
-                <div
-                  className="absolute left-0 top-0 bottom-0 w-[45px] z-20 cursor-pointer flex items-center justify-center"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Get current top value for pre-fill
-                    const allData = viewsOverTimeAll;
-                    const overallMax = Math.max(...allData.map(d => d.thisReel), ...allData.map(d => d.typical), 100);
-                    const currentTop = editGraphYMax !== null ? editGraphYMax : getNiceTopValue(overallMax);
-                    setEditModal({
-                      label: "Y-Axis Max Value",
-                      value: String(currentTop),
-                      onSave: (v: number) => {
-                        const clamped = Math.max(100, v);
-                        setEditGraphYMax(clamped);
-                        saveToSupabase({ graphYMax: clamped });
-                      },
-                    });
-                  }}
-                >
-                  <div className="w-full h-full rounded-l-lg border-2 border-dashed border-[#E040FB]/40 bg-[#E040FB]/5" />
-                </div>
-                {/* Rest of graph clickable area */}
-                <div
-                  className="absolute left-[45px] right-0 top-0 bottom-0 z-10 rounded-r-lg border-2 border-dashed border-muted-foreground/30"
-                  onClick={() => setGraphEditorOpen(true)}
-                />
-              </>
+      {/* Tabs */}
+      <div className="flex border-b border-border">
+        {(["Overview", "Engagement", "Audience"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "flex-1 py-3 text-[14px] font-medium text-center transition-colors relative",
+              activeTab === tab ? "text-foreground" : "text-muted-foreground"
             )}
-            <div
-              className="flex transition-transform duration-300 ease-in-out h-full"
-              style={{ width: '300%', transform: `translateX(-${filterOrder.indexOf(viewsFilter) * (100 / 3)}%)` }}
-            >
-              {[viewsOverTimeAll, viewsOverTimeFollowers, viewsOverTimeNonFollowers].map((data, gi) => (
-                <div key={gi} className="h-full" style={{ width: `${100 / 3}%` }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={data} margin={{ top: 20, right: 10, left: -5, bottom: 0 }}>
-                      <defs>
-                        <linearGradient id={`reelGrad${gi}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#E040FB" stopOpacity={0.1} />
-                          <stop offset="100%" stopColor="#E040FB" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      {(() => {
-                        const ratios = [1, followerPct / 100, nonFollowerPct / 100];
-                        const r = ratios[gi];
-                        const overallMax = Math.max(Math.max(...data.map(d => d.thisReel)) * r, Math.max(...data.map(d => d.typical)) * r, 100);
-                        const topVal = editGraphYMax !== null ? editGraphYMax : getNiceTopValue(overallMax);
-                        const centerVal = topVal / 2;
-                        const yTicks = [0, centerVal, topVal];
-                        const yDomain: [number, number] = [0, topVal];
-                        return (
-                          <>
-                            <CartesianGrid horizontal={false} vertical={false} />
-                            <XAxis dataKey="day" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                            <YAxis 
-                              fontSize={10} 
-                              tickLine={false} 
-                              axisLine={false} 
-                              width={45} 
-                              tick={{ fill: 'hsl(var(--muted-foreground))' }} 
-                              domain={yDomain} 
-                              ticks={yTicks} 
-                              tickCount={3} 
-                              tickFormatter={(v: number) => { 
-                                if (v === 0) return '0'; 
-                                if (v >= 1000000) { 
-                                  const m = v / 1000000; 
-                                  return m % 1 === 0 ? `${m}M` : `${m.toFixed(1)}M`; 
-                                } 
-                                if (v >= 1000) { 
-                                  const k = v / 1000; 
-                                  return k % 1 === 0 ? `${k}K` : `${k.toFixed(1)}K`; 
-                                } 
-                                return String(v); 
-                              }} 
-                            />
-                            <ReferenceLine y={0} stroke="hsl(var(--border))" strokeOpacity={0.4} />
-                            <ReferenceLine y={centerVal} stroke="hsl(var(--border))" strokeOpacity={0.4} />
-                            <ReferenceLine y={topVal} stroke="hsl(var(--border))" strokeOpacity={0.4} />
-                          </>
-                        );
-                      })()}
-                      <Area type="monotone" dataKey="thisReel" stroke="#E040FB" fill="none" strokeWidth={3} dot={false} />
-                      <Area type="monotone" dataKey="typical" stroke="#9CA3AF" fill="none" strokeWidth={2.5} strokeDasharray="8 6" dot={false} />
-                    </AreaChart>
-                  </ResponsiveContainer>
+          >
+            {tab}
+            {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />}
+          </button>
+        ))}
+      </div>
+
+      {/* ═══════════ OVERVIEW TAB ═══════════ */}
+      {activeTab === "Overview" && (
+        <div>
+          {/* Summary section */}
+          <div className="px-4 py-5">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-[16px] font-bold text-foreground">Summary</h2>
+              <Info size={14} className="text-muted-foreground" />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: "Views", value: fmtNum(views), onEdit: () => setEditModal({ label: "Views", value: String(views), onSave: setEditViews }) },
+                { label: "Accounts reached", value: fmtNum(accountsReached), onEdit: () => setEditModal({ label: "Accounts reached", value: String(accountsReached), onSave: setEditAccountsReached }) },
+                { label: "Average watch time", value: avgWatchTime, onEdit: () => setEditModal({ label: "Average watch time", value: editAvgWatchTime, isText: true, onSave: ((v: any) => setEditAvgWatchTime(String(v))) as any }) },
+                { label: "Follows", value: String(follows), onEdit: () => setEditModal({ label: "Follows", value: String(follows), onSave: setEditFollows }) },
+              ].map((item) => (
+                <div 
+                  key={item.label}
+                  className={cn("bg-secondary/40 rounded-xl p-4", isEditMode && "cursor-pointer active:opacity-60")}
+                  onClick={() => isEditMode && item.onEdit()}
+                >
+                  <span className="text-[12px] text-muted-foreground block mb-1">{item.label}</span>
+                  <span className="text-[20px] font-bold text-foreground">{item.value}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="flex items-center justify-center gap-6 mt-2">
-            <div 
-              className={cn("flex items-center gap-1.5", isEditMode && "cursor-pointer active:opacity-60")}
-              onClick={() => isEditMode && setEditModal({ label: "This Reel Views", value: String(editViews), onSave: setEditViews })}
-            >
-              <div className="h-2 w-2 rounded-full bg-[#E040FB]" />
-              <span className="text-[12px] text-muted-foreground">This reel</span>
-            </div>
-            <div 
-              className={cn("flex items-center gap-1.5", isEditMode && "cursor-pointer active:opacity-60")}
-              onClick={() => isEditMode && setEditModal({ 
-                label: "Typical Reel Views (Peak)", 
-                value: String(editTypicalTop), 
-                onSave: (v) => { setEditTypicalTop(v); saveToSupabase({ editTypicalTop: v }); setCustomGraphData(null); } 
-              })}
-            >
-              <div className="h-2 w-2 rounded-full bg-[#9CA3AF]" />
-              <span className="text-[12px] text-muted-foreground">Your typical reel views</span>
-            </div>
-          </div>
-        </>)}
-      </div>
 
-      <div className="h-[6px] bg-secondary" />
-
-      {/* Top sources */}
-      <div className="px-4 py-5">
-        <h3 className="text-[16px] font-bold text-foreground mb-4">Top sources of views</h3>
-        <div className="space-y-2">
-          {sources.map((item, idx) => (
-            <div key={idx}>
-              <span
-                className={cn("text-[11px] text-foreground block mb-1 select-none", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-1 -ml-1 transition-colors")}
-                onClick={() => {
-                  setEditModal({
-                    label: `Source name #${idx + 1}`,
-                    value: item.name,
-                    isText: true,
-                    onSave: ((v: any) => {
-                      const updated = [...editSources];
-                      updated[idx] = { ...updated[idx], name: String(v) };
-                      setEditSources(updated);
-                    }) as any,
-                  });
-                }}
-              >{item.name}</span>
+          {/* Views row */}
+          <div className="px-4 pb-2">
+            <div className={cn("flex items-center justify-between", isEditMode && "cursor-pointer active:opacity-60")} onClick={() => isEditMode && setEditModal({ label: "Views", value: String(views), onSave: setEditViews })}>
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
-                  <div className="h-full ig-bar-gradient" style={{ width: `${item.pct}%` }} />
+                <span className="text-[16px] font-bold text-foreground">Views</span>
+                <Info size={14} className="text-muted-foreground" />
+              </div>
+              <span className="text-[16px] font-bold text-foreground">{fmtNum(views)}</span>
+            </div>
+          </div>
+
+          {/* How long people watched your reel */}
+          <div className="px-4 py-4">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-[16px] font-bold text-foreground">How long people watched your reel</h3>
+              <Info size={14} className="text-muted-foreground" />
+            </div>
+
+            {/* Phone mockup with thumbnail */}
+            <div className="flex justify-center mb-4">
+              <div className="relative w-[100px] h-[178px] rounded-[18px] overflow-hidden bg-black shadow-lg">
+                <img src={postImage} alt="Reel thumbnail" className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinejoin="round">
+                    <polygon points="6,3 21,12 6,21" />
+                  </svg>
                 </div>
-                <span
-                  className={cn("text-[11px] text-foreground w-[36px] text-right select-none", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-1 -ml-1 transition-colors")}
-                  onClick={() => {
-                    if (!isEditMode) return;
-                    setEditModal({
-                      label: `${item.name} %`,
-                      value: String(item.pct),
-                      isText: false,
-                      onSave: ((v: any) => {
-                        const updated = [...editSources];
-                        updated[idx] = { ...updated[idx], pct: Math.min(100, Number(v)) };
-                        setEditSources(updated);
-                      }) as any,
-                    });
-                  }}
-                >{item.pct}%</span>
               </div>
             </div>
-          ))}
-        </div>
-        <div
-          className={cn("border-t border-border mt-5 pt-4 flex items-center justify-between", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-2 relative -left-2 w-[calc(100%+16px)] transition-colors")}
-          onClick={() => isEditMode && setEditModal({ label: "Accounts reached", value: String(accountsReached), onSave: setEditAccountsReached })}
-        >
-          <span className="text-[14px] text-foreground">Accounts reached</span>
-          <span className="text-[14px] text-foreground">{fmtNum(accountsReached)}</span>
-        </div>
-      </div>
 
-      <div className="h-[6px] bg-secondary" />
-
-      {/* Watch time */}
-      <div className="px-4 py-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h3 className="text-[16px] font-bold text-foreground">Watch time</h3>
-            <Info size={14} className="text-muted-foreground" />
-          </div>
-          <span className="text-[16px] font-bold text-foreground">{watchTime}</span>
-        </div>
-        <div className="flex items-center justify-between mt-3">
-          <span className="text-[14px] text-foreground">Average watch time</span>
-          <span className="text-[14px] text-foreground">{avgWatchTime}</span>
-        </div>
-      </div>
-
-      <div className="h-[6px] bg-secondary" />
-
-      {/* ── Retention ── */}
-      <div className="px-4 py-5">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-2">
-            <h3 className="text-[16px] font-bold text-foreground">Retention</h3>
-            <Info size={14} className="text-muted-foreground" />
-          </div>
-          {isEditMode && (
-             <div className="flex items-center gap-3">
-               {retentionImageUrl && (
-                 <button onClick={() => { setRetentionImageUrl(''); saveToSupabase({ retentionImage: '' }); }} className="text-[11px] font-bold text-red-500">Remove Image</button>
-               )}
-               <label className="text-[11px] text-[hsl(var(--ig-blue))] font-bold flex items-center gap-1 cursor-pointer active:opacity-60">
-                 <Plus size={12} /> Upload Image
-                 <input 
-                   type="file" 
-                   accept="image/*" 
-                   className="hidden" 
-                   onChange={async (e) => {
-                     const file = e.target.files?.[0];
-                     if (!file) return;
-                     const tid = toast.loading("Uploading graph...");
-                     try {
-                       const url = await uploadToCloudinary(file);
-                       setRetentionImageUrl(url);
-                       saveToSupabase({ retentionImage: url });
-                       toast.success("Graph updated!", { id: tid });
-                     } catch (err) {
-                       toast.error("Upload failed", { id: tid });
-                     }
-                   }} 
-                 />
-               </label>
-             </div>
-          )}
-        </div>
-
-        {/* Phone mockup with thumbnail */}
-        <div className="flex justify-center mb-4">
-          <div className="relative w-[100px] h-[178px] rounded-[18px] overflow-hidden bg-black shadow-lg">
-            <img
-              src={postImage}
-              alt="Reel thumbnail"
-              className="w-full h-full object-cover"
-            />
-            {/* overlay gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-            {/* centered play triangle - border only, no circle */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinejoin="round">
-                <polygon points="6,3 21,12 6,21" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        {/* Retention graph — long-press 2s to edit OR show uploaded image */}
-        <div className="relative select-none -mx-2">
-          {retentionImageUrl ? (
-            <img src={retentionImageUrl} alt="Retention graph" className="w-full h-auto object-contain rounded-lg shadow-sm" />
-          ) : (
-            <div className={cn("h-[150px]", isEditMode && "cursor-pointer active:opacity-80 transition-opacity")} onClick={() => isEditMode && setRetentionEditorOpen(true)}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={editRetentionCurve} margin={{ top: 5, right: 5, left: -5, bottom: 0 }}>
-                  <CartesianGrid horizontal={true} vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
-                  <XAxis dataKey="t" fontSize={10} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis fontSize={10} tickLine={false} axisLine={false} width={46} domain={[0, 100]} ticks={[0, 50, 100]} tickFormatter={(v: number) => v === 0 ? '0' : `${v}%`} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                  <Line type="linear" dataKey="pct" stroke="#E040FB" strokeWidth={3} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-border my-4" />
-
-        {/* Skip rate */}
-        <h4 className="text-[15px] font-bold text-foreground mb-3">Skip rate</h4>
-        <div
-          className={cn("flex items-center justify-between py-1", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-2 relative -left-2 w-[calc(100%+16px)] transition-colors")}
-          onClick={() => isEditMode && setEditModal({ label: "This reel's skip rate (%)", value: String(editSkipRate), onSave: (v) => setEditSkipRate(Math.min(100, v)) })}
-        >
-          <span className="text-[14px] text-foreground">This reel's skip rate</span>
-          <span className="text-[14px] text-foreground">{editSkipRate.toFixed(1)}%</span>
-        </div>
-        <div
-          className={cn("flex items-center justify-between py-1", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-2 relative -left-2 w-[calc(100%+16px)] transition-colors")}
-          onClick={() => isEditMode && setEditModal({ label: "Your typical skip rate (%)", value: String(editTypicalSkipRate), onSave: (v) => setEditTypicalSkipRate(Math.min(100, v)) })}
-        >
-          <span className="text-[14px] text-foreground">Your typical skip rate</span>
-          <span className="text-[14px] text-foreground">{editTypicalSkipRate.toFixed(1)}%</span>
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-border my-4" />
-
-        {/* Watch time rows */}
-        <div
-          className={cn("flex items-center justify-between py-1", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-2 relative -left-2 w-[calc(100%+16px)] transition-colors")}
-          onClick={() => isEditMode && setEditModal({ label: "Watch time (e.g. 4h 49m 17s)", value: editWatchTime, isText: true, onSave: ((v: any) => setEditWatchTime(String(v))) as any })}
-        >
-          <span className="text-[14px] text-foreground">Watch time</span>
-          <span className="text-[14px] text-foreground">{watchTime}</span>
-        </div>
-        <div
-          className={cn("flex items-center justify-between py-1", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-2 relative -left-2 w-[calc(100%+16px)] transition-colors")}
-          onClick={() => isEditMode && setEditModal({ label: "Average watch time (e.g. 10 sec)", value: editAvgWatchTime, isText: true, onSave: ((v: any) => setEditAvgWatchTime(String(v))) as any })}
-        >
-          <span className="text-[14px] text-foreground">Average watch time</span>
-          <span className="text-[14px] text-foreground">{avgWatchTime}</span>
-        </div>
-      </div>
-
-      <div className="h-[6px] bg-secondary" />
-
-      {/* View rate */}
-      <div className="px-4 py-5">
-        <h3 className="text-[16px] font-bold text-foreground mb-3">View rate past first 3 seconds</h3>
-        <div className="flex gap-2 mb-4">
-          {["All", "Followers", "Non-followers"].map((f) => (
-            <button
-              key={f}
-              className={cn(
-                "rounded-full px-4 py-1.5 text-[13px] font-medium border",
-                f === "All"
-                  ? "bg-muted text-foreground border-border"
-                  : "bg-background text-foreground border-border"
+            {/* Retention graph */}
+            <div className="relative select-none -mx-2">
+              {retentionImageUrl ? (
+                <img src={retentionImageUrl} alt="Retention graph" className="w-full h-auto object-contain rounded-lg shadow-sm" />
+              ) : (
+                <div className={cn("h-[150px]", isEditMode && "cursor-pointer active:opacity-80 transition-opacity")} onClick={() => isEditMode && setRetentionEditorOpen(true)}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={editRetentionCurve} margin={{ top: 5, right: 5, left: -5, bottom: 0 }}>
+                      <CartesianGrid horizontal={true} vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                      <XAxis dataKey="t" fontSize={10} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                      <YAxis fontSize={10} tickLine={false} axisLine={false} width={46} domain={[0, 100]} ticks={[0, 50, 100]} tickFormatter={(v: number) => v === 0 ? '0' : `${v}%`} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                      <Line type="linear" dataKey="pct" stroke="#E040FB" strokeWidth={3} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               )}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-        <div className="h-[8px] rounded-full bg-secondary/50 overflow-hidden flex">
-          <div className="h-full ig-bar-gradient" style={{ width: `${viewRate}%` }} />
-          <div className="h-full w-[2px] bg-muted-foreground" />
-        </div>
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-[#E040FB]" />
-            <span className="text-[13px] text-muted-foreground">This reel</span>
-          </div>
-          <span className="text-[13px] text-foreground">{viewRate.toFixed(1)}%</span>
-        </div>
-        <div 
-          className={cn("flex items-center justify-between mt-1", isEditMode && "cursor-pointer active:opacity-60")}
-          onClick={() => isEditMode && setEditModal({
-            label: "Typical View Rate (%)",
-            value: "41.1",
-            onSave: (v) => {
-              // Note: Normally this would be a local state, but since we're using static values for típical, 
-              // we just save the intent to edit what should be a constant.
-              // For robustness, we'll use a local state for Typical View Rate too.
-              setEditTypicalViewRate(v);
-              persistEdits();
-            }
-          })}
-        >
-          <div className="flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-[#9CA3AF]" />
-            <span className="text-[13px] text-muted-foreground">Your typical reel</span>
-          </div>
-          <span className="text-[13px] text-foreground">{editTypicalViewRate.toFixed(1)}%</span>
-        </div>
-      </div>
-
-      <div className="h-[6px] bg-secondary" />
-
-      {/* Interactions donut */}
-      <div className="px-4 py-5">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-[18px] font-bold text-foreground">Interactions</h3>
-          <Info size={16} className="text-muted-foreground" />
-        </div>
-        <div className="flex justify-center py-4">
-          <div className="relative w-[220px] h-[220px]">
-            <svg viewBox="0 0 220 220" className="w-full h-full -rotate-90">
-              <circle cx="110" cy="110" r="90" fill="none" stroke="hsl(var(--border))" strokeWidth="10" />
-              <circle cx="110" cy="110" r="90" fill="none" stroke="#E040FB" strokeWidth="10"
-                strokeDasharray={`${(followerPct / 100) * 2 * Math.PI * 90} ${2 * Math.PI * 90}`}
-                strokeLinecap="round" />
-              <circle cx="110" cy="110" r="90" fill="none" stroke="#7C4DFF" strokeWidth="10"
-                strokeDasharray={`${(nonFollowerPct / 100) * 2 * Math.PI * 90} ${2 * Math.PI * 90}`}
-                strokeDashoffset={`${-(followerPct / 100) * 2 * Math.PI * 90}`}
-                strokeLinecap="round" />
-            </svg>
-            <div
-              className={cn("absolute inset-0 flex flex-col items-center justify-center", isEditMode && "cursor-pointer active:bg-secondary/20 rounded-full transition-colors")}
-              onClick={() => isEditMode && setEditModal({ label: "Interactions", value: String(totalInteractions), onSave: setEditInteractions })}
-            >
-              <span className="text-[13px] text-muted-foreground">Interactions</span>
-              <span className="text-[32px] font-bold text-foreground">{fmtNum(totalInteractions)}</span>
             </div>
+            {isEditMode && (
+              <div className="flex items-center gap-3 mt-2 justify-end">
+                {retentionImageUrl && (
+                  <button onClick={() => { setRetentionImageUrl(''); saveToSupabase({ retentionImage: '' }); }} className="text-[11px] font-bold text-red-500">Remove Image</button>
+                )}
+                <label className="text-[11px] text-[hsl(var(--ig-blue))] font-bold flex items-center gap-1 cursor-pointer active:opacity-60">
+                  <Plus size={12} /> Upload Image
+                  <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const tid = toast.loading("Uploading graph...");
+                    try {
+                      const url = await uploadToCloudinary(file);
+                      setRetentionImageUrl(url);
+                      saveToSupabase({ retentionImage: url });
+                      toast.success("Graph updated!", { id: tid });
+                    } catch (err) { toast.error("Upload failed", { id: tid }); }
+                  }} />
+                </label>
+              </div>
+            )}
           </div>
-        </div>
-        <div className="space-y-2 mt-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full bg-[#E040FB]" />
-              <span className="text-[14px] text-foreground">Followers</span>
+
+          <div className="h-[1px] bg-border mx-4" />
+
+          {/* Top sources of views */}
+          <div className="px-4 py-5">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-[16px] font-bold text-foreground">Top sources of views</h3>
+              <Info size={14} className="text-muted-foreground" />
             </div>
-            <span className="text-[14px] text-foreground">{followerPct.toFixed(1)}%</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="h-2.5 w-2.5 rounded-full bg-[#7C4DFF]" />
-              <span className="text-[14px] text-foreground">Non-followers</span>
-            </div>
-            <span className="text-[14px] text-foreground">{nonFollowerPct.toFixed(1)}%</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-border mx-4" />
-
-      {/* Interactions breakdown */}
-      <div className="px-4 py-5">
-        <div className="space-y-3">
-          {[
-            { label: "Likes", value: likes, set: setEditLikes },
-            { label: "Shares", value: shares, set: setEditShares },
-            { label: "Saves", value: saves, set: setEditSaves },
-            { label: "Comments", value: comments, set: setEditComments },
-          ].map((item) => (
-            <div key={item.label} 
-              className={cn("flex items-center justify-between", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-2 relative -left-2 w-[calc(100%+16px)] py-1 transition-colors")}
-              onClick={() => isEditMode && setEditModal({ label: item.label, value: String(item.value), onSave: item.set })}
-            >
-              <span className="text-[15px] text-foreground">{item.label}</span>
-              <span className="text-[15px] text-foreground">{fmtNum(item.value)}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="h-[6px] bg-secondary" />
-
-      {/* Profile activity */}
-      <div className="px-4 py-5">
-        <div
-          className={cn("flex items-center justify-between mb-3", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-2 relative -left-2 w-[calc(100%+16px)] py-1 transition-colors")}
-          onClick={() => isEditMode && setEditModal({ label: "Follows", value: String(follows), onSave: setEditFollows })}
-        >
-          <div className="flex items-center gap-2">
-            <h3 className="text-[16px] font-bold text-foreground">Profile activity</h3>
-            <Info size={14} className="text-muted-foreground" />
-          </div>
-          <span className="text-[16px] font-bold text-foreground">{follows}</span>
-        </div>
-        <div 
-          className={cn("flex items-center justify-between", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-2 relative -left-2 w-[calc(100%+16px)] py-1 transition-colors")}
-          onClick={() => isEditMode && setEditModal({ label: "Follows", value: String(follows), onSave: setEditFollows })}
-        >
-          <span className="text-[14px] text-foreground">Follows</span>
-          <span className="text-[14px] text-foreground">{follows}</span>
-        </div>
-      </div>
-
-      <div className="h-[6px] bg-secondary" />
-
-      {/* Audience */}
-      <div className="px-4 py-5">
-        <div className="flex items-center gap-2 mb-4">
-          <h3 className="text-[18px] font-bold text-foreground">Audience</h3>
-          <Info size={16} className="text-muted-foreground" />
-        </div>
-        <div className="flex gap-2 mb-5">
-          {["Gender", "Country", "Age"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setAudienceTab(tab)}
-              className={cn(
-                "rounded-full px-4 py-1.5 text-[13px] font-medium border transition-colors",
-                audienceTab === tab
-                  ? "bg-muted text-foreground border-border"
-                  : "bg-background text-foreground border-border"
-              )}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {audienceTab === "Gender" && (
-          <div className="space-y-1">
-            {[
-              { label: "Men", pct: genderMale, color: "ig-bar-gradient" },
-              { label: "Women", pct: genderFemale, color: "ig-bar-gradient-blue" },
-            ].map((g) => (
-              <div key={g.label}>
-                <span className="text-[14px] text-foreground block mb-0.5">{g.label}</span>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
-                    <div className={`h-full ${g.color}`} style={{ width: `${g.pct}%` }} />
+            <div className="space-y-3">
+              {sources.map((item, idx) => (
+                <div key={idx}>
+                  <span className={cn("text-[13px] text-foreground block mb-1 select-none", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-1 -ml-1")}
+                    onClick={() => isEditMode && setEditModal({ label: `Source name #${idx + 1}`, value: item.name, isText: true, onSave: ((v: any) => { const updated = [...editSources]; updated[idx] = { ...updated[idx], name: String(v) }; setEditSources(updated); }) as any })}
+                  >{item.name}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
+                      <div className="h-full ig-bar-gradient" style={{ width: `${item.pct}%` }} />
+                    </div>
+                    <span className={cn("text-[13px] text-foreground w-[42px] text-right select-none", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-1")}
+                      onClick={() => isEditMode && setEditModal({ label: `${item.name} %`, value: String(item.pct), onSave: ((v: any) => { const updated = [...editSources]; updated[idx] = { ...updated[idx], pct: Math.min(100, Number(v)) }; setEditSources(updated); }) as any })}
+                    >{item.pct}%</span>
                   </div>
-                  <span
-                    className={cn("text-[14px] text-foreground w-[48px] text-right select-none", isEditMode && "cursor-pointer bg-secondary/30 rounded px-1 transition-colors")}
-                    onClick={() => {
-                      if (!isEditMode) return;
-                      setEditModal({
-                        label: `${g.label} %`,
-                        value: String(g.pct),
-                        onSave: (v: number) => {
-                          const clamped = Math.max(0, Math.min(100, v));
-                          if (g.label === "Men") {
-                            setEditGenderMale(clamped);
-                          } else {
-                            setEditGenderMale(100 - clamped);
-                          }
-                        },
-                      });
-                    }}
-                  >{g.pct}%</span>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        )}
 
-        {audienceTab === "Country" && (
-          <div className="space-y-2">
-            {countries.map((c, idx) => (
-              <div key={idx}>
-                <span
-                  className={cn("text-[11px] text-foreground block mb-1 select-none", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-1 -ml-1 transition-colors")}
-                  onClick={() => {
-                    if (!isEditMode) return;
-                    setEditModal({
-                      label: `Country name #${idx + 1}`,
-                      value: c.name,
-                      isText: true,
-                      onSave: ((v: any) => {
-                        const updated = [...editCountries];
-                        updated[idx] = { ...updated[idx], name: String(v) };
-                        setEditCountries(updated);
-                      }) as any,
-                    });
-                  }}
-                >{c.name}</span>
+          <div className="h-[1px] bg-border mx-4" />
+
+          {/* Ad section */}
+          <div className="px-4 py-5">
+            <h3 className="text-[16px] font-bold text-foreground mb-3">Ad</h3>
+            <button className="w-full flex items-center justify-between py-2" onClick={() => {}}>
+              <div className="flex items-center gap-3">
+                <TrendingUp size={22} className="text-foreground" />
+                <span className="text-[15px] text-foreground">Boost this Reel</span>
+              </div>
+              <ChevronRight size={20} className="text-muted-foreground" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════ ENGAGEMENT TAB ═══════════ */}
+      {activeTab === "Engagement" && (
+        <div>
+          {/* When people liked your reel */}
+          <div className="px-4 py-5">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-[16px] font-bold text-foreground">When people liked your reel</h3>
+              <Info size={14} className="text-muted-foreground" />
+            </div>
+            <div className="relative select-none">
+              <div className={cn("h-[180px]", isEditMode && "cursor-pointer active:opacity-80")} onClick={() => isEditMode && setRetentionEditorOpen(true)}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={editRetentionCurve} margin={{ top: 5, right: 5, left: -5, bottom: 0 }}>
+                    <CartesianGrid horizontal={true} vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                    <XAxis dataKey="t" fontSize={10} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <YAxis fontSize={10} tickLine={false} axisLine={false} width={46} domain={[0, 100]} ticks={[0, 25, 50]} tickFormatter={(v: number) => v === 0 ? '0' : `${v}%`} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <Line type="linear" dataKey="pct" stroke="#E040FB" strokeWidth={3} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-[1px] bg-border mx-4" />
+
+          {/* Actions after viewing */}
+          <div className="px-4 py-5">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-[16px] font-bold text-foreground">Actions after viewing</h3>
+              <Info size={14} className="text-muted-foreground" />
+            </div>
+            <div className="space-y-3">
+              <div className={cn("flex items-center justify-between", isEditMode && "cursor-pointer active:opacity-60")} onClick={() => isEditMode && setEditModal({ label: "Follows", value: String(follows), onSave: setEditFollows })}>
+                <span className="text-[15px] text-foreground">Follows</span>
+                <span className="text-[15px] font-bold text-foreground">{follows}</span>
+              </div>
+              <div className={cn("flex items-center justify-between", isEditMode && "cursor-pointer active:opacity-60")} onClick={() => isEditMode && setEditModal({ label: "Profile visits", value: String(editProfileVisits), onSave: setEditProfileVisits })}>
+                <span className="text-[15px] text-foreground">Profile visits</span>
+                <span className="text-[15px] font-bold text-foreground">{editProfileVisits}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-[1px] bg-border mx-4" />
+
+          {/* Interactions */}
+          <div className="px-4 py-5">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-[16px] font-bold text-foreground">Interactions</h3>
+              <Info size={14} className="text-muted-foreground" />
+            </div>
+            <div className="space-y-3">
+              {[
+                { label: "Likes", value: likes, set: setEditLikes },
+                { label: "Comments", value: comments, set: setEditComments },
+                { label: "Reposts", value: reposts, set: setEditReposts },
+                { label: "Shares", value: shares, set: setEditShares },
+                { label: "Saves", value: saves, set: setEditSaves },
+              ].map((item) => (
+                <div key={item.label} className={cn("flex items-center justify-between", isEditMode && "cursor-pointer active:opacity-60")} onClick={() => isEditMode && setEditModal({ label: item.label, value: String(item.value), onSave: item.set })}>
+                  <span className="text-[15px] text-foreground">{item.label}</span>
+                  <span className="text-[15px] font-bold text-foreground">{fmtNum(item.value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════ AUDIENCE TAB ═══════════ */}
+      {activeTab === "Audience" && (
+        <div>
+          {/* Who viewed your reel */}
+          <div className="px-4 py-5">
+            <div className="flex items-center gap-2 mb-5">
+              <h3 className="text-[16px] font-bold text-foreground">Who viewed your reel</h3>
+              <Info size={14} className="text-muted-foreground" />
+            </div>
+            <div className="space-y-3">
+              <div>
+                <span className="text-[14px] text-foreground block mb-1.5">Followers</span>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
-                    <div className="h-full ig-bar-gradient" style={{ width: `${c.pct}%` }} />
+                    <div className="h-full ig-bar-gradient" style={{ width: `${followerPct}%` }} />
                   </div>
-                  <span
-                    className={cn("text-[11px] text-foreground w-[36px] text-right select-none", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-1 -ml-1 transition-colors")}
-                    onClick={() => {
-                      if (!isEditMode) return;
-                      setEditModal({
-                        label: `${c.name} %`,
-                        value: String(c.pct),
-                        isText: false,
-                        onSave: ((v: any) => {
-                          const updated = [...editCountries];
-                          updated[idx] = { ...updated[idx], pct: Math.min(100, Number(v)) };
-                          setEditCountries(updated);
-                        }) as any,
-                      });
-                    }}
-                  >{c.pct}%</span>
+                  <span className={cn("text-[14px] text-foreground w-[42px] text-right", isEditMode && "cursor-pointer active:opacity-60")}
+                    onClick={() => isEditMode && setEditModal({ label: "Followers %", value: String(followerPct), onSave: (v) => setEditFollowerPct(Math.min(100, v)) })}
+                  >{followerPct}%</span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {audienceTab === "Age" && (
-          <div className="space-y-1">
-            {ageGroups.map((a, idx) => (
-              <div key={idx}>
-                <span
-                  className={cn("text-[14px] text-foreground block mb-0.5 select-none", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-1 -ml-1 transition-colors")}
-                  onClick={() => {
-                    if (!isEditMode) return;
-                    setEditModal({
-                      label: `Age range #${idx + 1}`,
-                      value: a.range,
-                      isText: true,
-                      onSave: ((v: any) => {
-                        const updated = [...editAgeGroups];
-                        updated[idx] = { ...updated[idx], range: String(v) };
-                        setEditAgeGroups(updated);
-                      }) as any,
-                    });
-                  }}
-                >{a.range}</span>
-                <div className="flex items-center gap-3">
+              <div>
+                <span className="text-[14px] text-foreground block mb-1.5">Non-followers</span>
+                <div className="flex items-center gap-2">
                   <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
-                    <div className="h-full ig-bar-gradient" style={{ width: `${a.pct}%` }} />
+                    <div className="h-full bg-[#7C4DFF]" style={{ width: `${nonFollowerPct}%` }} />
                   </div>
-                  <span
-                    className={cn("text-[14px] text-foreground w-[48px] text-right select-none", isEditMode && "cursor-pointer active:bg-secondary/20 rounded px-1 -ml-1 transition-colors")}
-                    onClick={() => {
-                      if (!isEditMode) return;
-                      setEditModal({
-                        label: `${a.range} %`,
-                        value: String(a.pct),
-                        isText: false,
-                        onSave: ((v: any) => {
-                          const updated = [...editAgeGroups];
-                          updated[idx] = { ...updated[idx], pct: Math.min(100, Number(v)) };
-                          setEditAgeGroups(updated);
-                        }) as any,
-                      });
-                    }}
-                  >{a.pct}%</span>
+                  <span className="text-[14px] text-foreground w-[42px] text-right">{nonFollowerPct}%</span>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-
-      {/* Edit Modal / Form */}
-      {
-        (editModal || graphEditorOpen || retentionEditorOpen) && (
-          <div className="fixed inset-0 z-[90] bg-black/50 flex items-end justify-center" onClick={() => { setEditModal(null); setGraphEditorOpen(false); setRetentionEditorOpen(false); }}>
-            <div className="w-full max-w-[420px] max-h-[85vh] overflow-y-auto rounded-t-2xl bg-background p-5 pb-8 animate-in slide-in-from-bottom" onClick={(e) => e.stopPropagation()}>
-              {editModal && !graphEditorOpen && (
-                <>
-                  <h3 className="text-base font-bold text-foreground text-center mb-4">{editModal.label}</h3>
-                  <input
-                    value={editModal.value}
-                    onChange={(e) => setEditModal({ ...editModal, value: e.target.value })}
-                    type={editModal.isText || editModal.label.includes("Date") || editModal.label.includes("time") ? "text" : "number"}
-                    min="0"
-                    className="w-full bg-secondary rounded-lg px-4 py-2.5 text-[16px] text-foreground text-center outline-none"
-                    autoFocus
-                  />
-                  <button
-                    onClick={() => {
-                      if (editModal.isText || editModal.label.includes("Date") || editModal.label.includes("time")) {
-                        (editModal.onSave as any)(editModal.value);
-                      } else {
-                        editModal.onSave(Math.max(0, parseFloat(editModal.value) || 0));
-                      }
-                      setEditModal(null);
-                      saveToSupabase();
-                    }}
-                    className="w-full mt-3 py-2.5 rounded-lg bg-[hsl(var(--ig-blue))] text-white text-[14px] font-semibold"
-                  >
-                    Done
-                  </button>
-                </>
-              )}
-              {graphEditorOpen && (
-                <>
-                  {/* Show Graph Toggle */}
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="text-[13px] text-foreground font-semibold">Show Graph</label>
-                    <button
-                      onClick={() => {
-                        const newVal = !showGraph;
-                        setShowGraph(newVal);
-                        saveToSupabase({ showGraph: newVal });
-                      }}
-                      className={`w-[44px] h-[24px] rounded-full transition-colors ${showGraph ? 'bg-[hsl(var(--ig-blue))]' : 'bg-muted'}`}
-                    >
-                      <div className={`w-[20px] h-[20px] rounded-full bg-white shadow transition-transform mx-[2px] ${showGraph ? 'translate-x-[20px]' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground -mt-3 mb-3">Toggle off to hide the Views over time graph</p>
-
-                  {/* Time Range Mode */}
-                  <div className="mb-3">
-                    <label className="text-[10px] text-muted-foreground mb-1 block">Time Range</label>
-                    <div className="flex gap-1.5">
-                      {(["custom", "12h", "24h"] as const).map((mode) => (
-                        <button
-                          key={mode}
-                          onClick={() => setTimeRangeMode(mode)}
-                          className={cn(
-                            "flex-1 py-1.5 rounded-lg text-[12px] font-semibold border transition-all",
-                            timeRangeMode === mode
-                              ? "border-foreground bg-foreground/10 text-foreground"
-                              : "border-border bg-secondary/50 text-muted-foreground"
-                          )}
-                        >
-                          {mode === "custom" ? "Custom" : mode}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  {/* Custom X-axis date editors */}
-                  {timeRangeMode === "custom" && (
-                    <div className="flex gap-1.5 mb-3">
-                      {[
-                        { val: editXDate1, set: setEditXDate1, label: "Start" },
-                        { val: editXDate2, set: setEditXDate2, label: "Mid" },
-                        { val: editXDate3, set: setEditXDate3, label: "End" },
-                      ].map(({ val, set, label }) => (
-                        <div key={label} className="flex-1">
-                          <label className="text-[10px] text-muted-foreground mb-0.5 block">{label}</label>
-                          <input
-                            value={val}
-                            onChange={(e) => { xDatesManuallyEdited.current = true; set(e.target.value); }}
-                            className="w-full bg-secondary rounded-lg px-2 py-1.5 text-[11px] text-foreground outline-none text-center"
-                            placeholder="23 Jan"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <GraphEditorModal
-                    open={graphEditorOpen}
-                    onClose={() => setGraphEditorOpen(false)}
-                    onSave={(data) => {
-                      setCustomGraphData(data);
-                      if (data.length >= 5) {
-                        xDatesManuallyEdited.current = true;
-                        if (data[0].day) { setEditXDate1(data[0].day); setEditStartDate(data[0].day); }
-                        if (data[2].day) setEditXDate2(data[2].day);
-                        if (data[4].day) setEditXDate3(data[4].day);
-                      }
-                      saveToSupabase({ customGraphData: data });
-                    }}
-                    onDatesChange={(nd) => {
-                      xDatesManuallyEdited.current = true;
-                      setEditXDate1(nd[0]);
-                      setEditXDate2(nd[1]);
-                      setEditXDate3(nd[2]);
-                    }}
-                    controlledDates={[editXDate1, editXDate2, editXDate3] as [string, string, string]}
-                    initialData={viewsOverTimeAll}
-                    maxViews={editViews}
-                    inline={true}
-                  />
-                </>
-              )}
-              {retentionEditorOpen && (
-                <RetentionEditorModal
-                  open={retentionEditorOpen}
-                  onClose={() => setRetentionEditorOpen(false)}
-                  initialData={editRetentionCurve}
-                  initialTypical={typicalRetentionCurve}
-                  onSave={(thisReel, typical) => {
-                    setEditRetentionCurve(thisReel);
-                    setTypicalRetentionCurve(typical);
-                    saveToSupabase({ retentionCurve: thisReel, typicalRetentionCurve: typical });
-                  }}
-                  inline={true}
-                />
-              )}
             </div>
           </div>
-        )
-      }
 
-      {/* 3 Dot Action Menu (Bottom Sheet) */}
+          <div className="h-[1px] bg-border mx-4" />
+
+          {/* Audience details */}
+          <div className="px-4 py-5">
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-[16px] font-bold text-foreground">Audience details</h3>
+              <Info size={14} className="text-muted-foreground" />
+            </div>
+            <p className="text-[14px] text-muted-foreground leading-relaxed">
+              Audience demographics, such as top locations, age ranges and gender, are not available because fewer than 100 accounts interacted with your content during the selected time period.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Modal / Form */}
+      {(editModal || graphEditorOpen || retentionEditorOpen) && (
+        <div className="fixed inset-0 z-[90] bg-black/50 flex items-end justify-center" onClick={() => { setEditModal(null); setGraphEditorOpen(false); setRetentionEditorOpen(false); }}>
+          <div className="w-full max-w-[420px] max-h-[85vh] overflow-y-auto rounded-t-2xl bg-background p-5 pb-8 animate-in slide-in-from-bottom" onClick={(e) => e.stopPropagation()}>
+            {editModal && !graphEditorOpen && (
+              <>
+                <h3 className="text-base font-bold text-foreground text-center mb-4">{editModal.label}</h3>
+                <input
+                  value={editModal.value}
+                  onChange={(e) => setEditModal({ ...editModal, value: e.target.value })}
+                  type={editModal.isText || editModal.label.includes("Date") || editModal.label.includes("time") ? "text" : "number"}
+                  min="0"
+                  className="w-full bg-secondary rounded-lg px-4 py-2.5 text-[16px] text-foreground text-center outline-none"
+                  autoFocus
+                />
+                <button
+                  onClick={() => {
+                    if (editModal.isText || editModal.label.includes("Date") || editModal.label.includes("time")) {
+                      (editModal.onSave as any)(editModal.value);
+                    } else {
+                      editModal.onSave(Math.max(0, parseFloat(editModal.value) || 0));
+                    }
+                    setEditModal(null);
+                    saveToSupabase();
+                  }}
+                  className="w-full mt-3 py-2.5 rounded-lg bg-[hsl(var(--ig-blue))] text-white text-[14px] font-semibold"
+                >
+                  Done
+                </button>
+              </>
+            )}
+            {graphEditorOpen && (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <label className="text-[13px] text-foreground font-semibold">Show Graph</label>
+                  <button
+                    onClick={() => { const newVal = !showGraph; setShowGraph(newVal); saveToSupabase({ showGraph: newVal }); }}
+                    className={`w-[44px] h-[24px] rounded-full transition-colors ${showGraph ? 'bg-[hsl(var(--ig-blue))]' : 'bg-muted'}`}
+                  >
+                    <div className={`w-[20px] h-[20px] rounded-full bg-white shadow transition-transform mx-[2px] ${showGraph ? 'translate-x-[20px]' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+                <p className="text-[10px] text-muted-foreground -mt-3 mb-3">Toggle off to hide the Views over time graph</p>
+                <div className="mb-3">
+                  <label className="text-[10px] text-muted-foreground mb-1 block">Time Range</label>
+                  <div className="flex gap-1.5">
+                    {(["custom", "12h", "24h"] as const).map((mode) => (
+                      <button key={mode} onClick={() => setTimeRangeMode(mode)}
+                        className={cn("flex-1 py-1.5 rounded-lg text-[12px] font-semibold border transition-all", timeRangeMode === mode ? "border-foreground bg-foreground/10 text-foreground" : "border-border bg-secondary/50 text-muted-foreground")}>
+                        {mode === "custom" ? "Custom" : mode}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {timeRangeMode === "custom" && (
+                  <div className="flex gap-1.5 mb-3">
+                    {[{ val: editXDate1, set: setEditXDate1, label: "Start" }, { val: editXDate2, set: setEditXDate2, label: "Mid" }, { val: editXDate3, set: setEditXDate3, label: "End" }].map(({ val, set, label }) => (
+                      <div key={label} className="flex-1">
+                        <label className="text-[10px] text-muted-foreground mb-0.5 block">{label}</label>
+                        <input value={val} onChange={(e) => { xDatesManuallyEdited.current = true; set(e.target.value); }} className="w-full bg-secondary rounded-lg px-2 py-1.5 text-[11px] text-foreground outline-none text-center" placeholder="23 Jan" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <GraphEditorModal
+                  open={graphEditorOpen} onClose={() => setGraphEditorOpen(false)}
+                  onSave={(data) => { setCustomGraphData(data); if (data.length >= 5) { xDatesManuallyEdited.current = true; if (data[0].day) { setEditXDate1(data[0].day); setEditStartDate(data[0].day); } if (data[2].day) setEditXDate2(data[2].day); if (data[4].day) setEditXDate3(data[4].day); } saveToSupabase({ customGraphData: data }); }}
+                  onDatesChange={(nd) => { xDatesManuallyEdited.current = true; setEditXDate1(nd[0]); setEditXDate2(nd[1]); setEditXDate3(nd[2]); }}
+                  controlledDates={[editXDate1, editXDate2, editXDate3] as [string, string, string]}
+                  initialData={viewsOverTimeAll} maxViews={editViews} inline={true}
+                />
+              </>
+            )}
+            {retentionEditorOpen && (
+              <RetentionEditorModal
+                open={retentionEditorOpen} onClose={() => setRetentionEditorOpen(false)}
+                initialData={editRetentionCurve} initialTypical={typicalRetentionCurve}
+                onSave={(thisReel, typical) => { setEditRetentionCurve(thisReel); setTypicalRetentionCurve(typical); saveToSupabase({ retentionCurve: thisReel, typicalRetentionCurve: typical }); }}
+                inline={true}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 3 Dot Action Menu */}
       {isActionMenuOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
+          <div className="absolute inset-0" onClick={() => setIsActionMenuOpen(false)} />
+          <div className="w-full bg-background rounded-t-3xl shadow-lg pb-10 mt-auto z-10 relative" style={{ animation: "slide-up 0.2s ease-out" }}>
+            <style>{`@keyframes slide-up { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-10 h-1 flex-shrink-0 rounded-full bg-border" />
+            </div>
+            <div className="px-3 flex flex-col gap-2 pt-2">
+              <button className="w-full flex items-center justify-between px-4 py-4 rounded-2xl bg-secondary/50 active:bg-secondary/70 transition-colors" onClick={() => setIsActionMenuOpen(false)}>
+                <div className="flex items-center gap-3">
+                  <TrendingUp size={22} className="text-foreground" />
+                  <span className="text-[15px] font-medium text-foreground">Boost this reel</span>
+                </div>
+                <ChevronRight size={20} className="text-muted-foreground" />
+              </button>
+              <button className="w-full flex items-center justify-between px-4 py-4 rounded-2xl bg-secondary/50 active:bg-secondary/70 transition-colors" onClick={() => setIsActionMenuOpen(false)}>
+                <div className="flex items-center gap-3">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><line x1="12" y1="3" x2="12" y2="21" /></svg>
+                  <span className="text-[15px] font-medium text-foreground">View on Edits</span>
+                </div>
+                <ChevronRight size={20} className="text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
           <div 
             className="absolute inset-0"
