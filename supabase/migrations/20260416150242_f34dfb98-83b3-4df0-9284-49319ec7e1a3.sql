@@ -1,0 +1,1 @@
+UPDATE access_keys SET expires_at = now() + interval '30 days', updated_at = now() WHERE key = 'TEST-CHECK-BOT';
