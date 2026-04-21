@@ -910,7 +910,7 @@ const ReelInsightsScreen = () => {
 
             {/* Age view */}
             {audienceTab === "Age" && (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {ageGroups.map((g, idx) => (
                   <div key={g.range}>
                     <div className="text-[13px] text-foreground mb-1">{g.range}</div>
@@ -943,7 +943,7 @@ const ReelInsightsScreen = () => {
 
             {/* Country view */}
             {audienceTab === "Country" && (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {editCountries.map((c, idx) => (
                   <div key={c.name}>
                     <div
@@ -990,7 +990,7 @@ const ReelInsightsScreen = () => {
 
             {/* Gender view */}
             {audienceTab === "Gender" && (
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {[
                   { label: "Men", pct: editGenderMale },
                   { label: "Women", pct: 100 - editGenderMale },
