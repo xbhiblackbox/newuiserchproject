@@ -684,14 +684,18 @@ const ReelInsightsScreen = () => {
             <p className="text-[12px] text-muted-foreground mb-3">Rates are listed in order of importance to reach.</p>
             <div className="space-y-1">
               {[
-                { icon: Clock, label: "Skip rate", pct: editSkipRate },
-                { icon: Send, label: "Share rate", pct: views > 0 ? (editShares / views) * 100 : 0 },
-                { icon: Heart, label: "Like rate", pct: views > 0 ? (editLikes / views) * 100 : 0 },
-                { icon: Bookmark, label: "Save rate", pct: views > 0 ? (editSaves / views) * 100 : 0 },
-                { icon: Repeat2, label: "Repost rate", pct: views > 0 ? (editReposts / views) * 100 : 0 },
-                { icon: MessageCircle, label: "Comment rate", pct: views > 0 ? (editComments / views) * 100 : 0 },
-              ].map(({ icon: Icon, label, pct }) => (
-                <div key={label} className="flex items-center justify-between py-2.5">
+                { icon: Clock, label: "Skip rate", pct: editSkipRate, onEdit: () => setEditModal({ label: "Skip rate %", value: String(editSkipRate), onSave: (v) => setEditSkipRate(Math.min(100, Math.max(0, v))) }) },
+                { icon: Send, label: "Share rate", pct: views > 0 ? (editShares / views) * 100 : 0, onEdit: () => setEditModal({ label: "Share rate %", value: String(views > 0 ? ((editShares / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditShares(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
+                { icon: Heart, label: "Like rate", pct: views > 0 ? (editLikes / views) * 100 : 0, onEdit: () => setEditModal({ label: "Like rate %", value: String(views > 0 ? ((editLikes / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditLikes(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
+                { icon: Bookmark, label: "Save rate", pct: views > 0 ? (editSaves / views) * 100 : 0, onEdit: () => setEditModal({ label: "Save rate %", value: String(views > 0 ? ((editSaves / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditSaves(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
+                { icon: Repeat2, label: "Repost rate", pct: views > 0 ? (editReposts / views) * 100 : 0, onEdit: () => setEditModal({ label: "Repost rate %", value: String(views > 0 ? ((editReposts / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditReposts(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
+                { icon: MessageCircle, label: "Comment rate", pct: views > 0 ? (editComments / views) * 100 : 0, onEdit: () => setEditModal({ label: "Comment rate %", value: String(views > 0 ? ((editComments / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditComments(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
+              ].map(({ icon: Icon, label, pct, onEdit }) => (
+                <div
+                  key={label}
+                  className={cn("flex items-center justify-between py-2.5", isEditMode && "cursor-pointer active:opacity-60")}
+                  onClick={() => isEditMode && onEdit()}
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
                       <Icon size={18} className="text-foreground" strokeWidth={1.8} />
