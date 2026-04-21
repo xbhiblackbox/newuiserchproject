@@ -915,10 +915,10 @@ const ReelInsightsScreen = () => {
                   <div key={g.range}>
                     <div className="text-[14px] text-foreground mb-1.5">{g.range}</div>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] rounded-full bg-secondary overflow-hidden">
+                      <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
                         <div
-                          className="h-full rounded-full"
-                          style={{ width: `${Math.min(100, g.pct)}%`, background: "linear-gradient(90deg, hsl(295 95% 55%), hsl(310 100% 55%))" }}
+                          className="h-full ig-bar-gradient"
+                          style={{ width: `${Math.min(100, g.pct)}%` }}
                         />
                       </div>
                       <span
@@ -962,10 +962,10 @@ const ReelInsightsScreen = () => {
                       {c.name}
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] rounded-full bg-secondary overflow-hidden">
+                      <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
                         <div
-                          className="h-full rounded-full"
-                          style={{ width: `${Math.min(100, c.pct)}%`, background: "linear-gradient(90deg, hsl(295 95% 55%), hsl(310 100% 55%))" }}
+                          className="h-full ig-bar-gradient"
+                          style={{ width: `${Math.min(100, c.pct)}%` }}
                         />
                       </div>
                       <span
@@ -998,10 +998,10 @@ const ReelInsightsScreen = () => {
                   <div key={label}>
                     <div className="text-[14px] text-foreground mb-1.5">{label}</div>
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] rounded-full bg-secondary overflow-hidden">
+                      <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
                         <div
-                          className="h-full rounded-full"
-                          style={{ width: `${Math.min(100, pct)}%`, background: "linear-gradient(90deg, hsl(295 95% 55%), hsl(310 100% 55%))" }}
+                          className="h-full ig-bar-gradient"
+                          style={{ width: `${Math.min(100, pct)}%` }}
                         />
                       </div>
                       <span
