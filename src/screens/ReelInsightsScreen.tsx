@@ -910,10 +910,10 @@ const ReelInsightsScreen = () => {
 
             {/* Age view */}
             {audienceTab === "Age" && (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {ageGroups.map((g, idx) => (
                   <div key={g.range}>
-                    <div className="text-[14px] text-foreground mb-1.5">{g.range}</div>
+                    <div className="text-[13px] text-foreground mb-1">{g.range}</div>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
                         <div
@@ -943,11 +943,11 @@ const ReelInsightsScreen = () => {
 
             {/* Country view */}
             {audienceTab === "Country" && (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {editCountries.map((c, idx) => (
                   <div key={c.name}>
                     <div
-                      className={cn("text-[14px] text-foreground mb-1.5", isEditMode && "cursor-pointer")}
+                      className={cn("text-[13px] text-foreground mb-1", isEditMode && "cursor-pointer")}
                       onClick={() => isEditMode && setEditModal({
                         label: "Country name",
                         value: c.name,
@@ -990,13 +990,13 @@ const ReelInsightsScreen = () => {
 
             {/* Gender view */}
             {audienceTab === "Gender" && (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {[
                   { label: "Men", pct: editGenderMale },
                   { label: "Women", pct: 100 - editGenderMale },
                 ].map(({ label, pct }) => (
                   <div key={label}>
-                    <div className="text-[14px] text-foreground mb-1.5">{label}</div>
+                    <div className="text-[13px] text-foreground mb-1">{label}</div>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 h-[8px] rounded-full bg-secondary/50 overflow-hidden">
                         <div
