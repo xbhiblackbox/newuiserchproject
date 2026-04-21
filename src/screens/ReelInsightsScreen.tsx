@@ -890,17 +890,135 @@ const ReelInsightsScreen = () => {
               <h3 className="text-[16px] font-bold text-foreground">Audience details</h3>
               <Info size={14} className="text-muted-foreground" />
             </div>
-            <p 
-              className={cn("text-[14px] text-muted-foreground leading-relaxed", isEditMode && "cursor-pointer active:bg-secondary/20 rounded p-2 -m-2 transition-colors")}
-              onClick={() => isEditMode && setEditModal({
-                label: "Audience details text",
-                value: editAudienceText,
-                isText: true,
-                onSave: ((v: any) => { setEditAudienceText(String(v)); saveToSupabase({ audienceText: String(v) }); }) as any
-              })}
-            >
-              {editAudienceText}
-            </p>
+            {/* Age / Country / Gender pill tabs */}
+            <div className="flex items-center gap-2 mb-5">
+              {(["Age", "Country", "Gender"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setAudienceTab(tab)}
+                  className={cn(
+                    "px-5 py-2 rounded-full text-[14px] font-medium border transition-colors",
+                    audienceTab === tab
+                      ? "bg-secondary text-foreground border-transparent"
+                      : "bg-transparent text-foreground border-border"
+                  )}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Age view */}
+            {audienceTab === "Age" && (
+              <div className="space-y-4">
+                {ageGroups.map((g, idx) => (
+                  <div key={g.range}>
+                    <div className="text-[14px] text-foreground mb-1.5">{g.range}</div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-[6px] rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${Math.min(100, g.pct)}%`, background: "hsl(320 90% 60%)" }}
+                        />
+                      </div>
+                      <span
+                        className={cn("text-[14px] text-foreground min-w-[48px] text-right", isEditMode && "cursor-pointer")}
+                        onClick={() => isEditMode && setEditModal({
+                          label: `${g.range} %`,
+                          value: String(g.pct),
+                          onSave: (v) => {
+                            const next = [...editAgeGroups];
+                            next[idx] = { ...next[idx], pct: Math.min(100, Math.max(0, v)) };
+                            setEditAgeGroups(next);
+                          },
+                        })}
+                      >
+                        {g.pct % 1 === 0 ? `${g.pct}%` : `${g.pct.toFixed(1)}%`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Country view */}
+            {audienceTab === "Country" && (
+              <div className="space-y-4">
+                {editCountries.map((c, idx) => (
+                  <div key={c.name}>
+                    <div
+                      className={cn("text-[14px] text-foreground mb-1.5", isEditMode && "cursor-pointer")}
+                      onClick={() => isEditMode && setEditModal({
+                        label: "Country name",
+                        value: c.name,
+                        isText: true,
+                        onSave: ((v: any) => {
+                          const next = [...editCountries];
+                          next[idx] = { ...next[idx], name: String(v) };
+                          setEditCountries(next);
+                        }) as any,
+                      })}
+                    >
+                      {c.name}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-[6px] rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${Math.min(100, c.pct)}%`, background: "hsl(320 90% 60%)" }}
+                        />
+                      </div>
+                      <span
+                        className={cn("text-[14px] text-foreground min-w-[48px] text-right", isEditMode && "cursor-pointer")}
+                        onClick={() => isEditMode && setEditModal({
+                          label: `${c.name} %`,
+                          value: String(c.pct),
+                          onSave: (v) => {
+                            const next = [...editCountries];
+                            next[idx] = { ...next[idx], pct: Math.min(100, Math.max(0, v)) };
+                            setEditCountries(next);
+                          },
+                        })}
+                      >
+                        {c.pct % 1 === 0 ? `${c.pct}%` : `${c.pct.toFixed(1)}%`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Gender view */}
+            {audienceTab === "Gender" && (
+              <div className="space-y-4">
+                {[
+                  { label: "Men", pct: editGenderMale },
+                  { label: "Women", pct: 100 - editGenderMale },
+                ].map(({ label, pct }) => (
+                  <div key={label}>
+                    <div className="text-[14px] text-foreground mb-1.5">{label}</div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-[6px] rounded-full bg-secondary overflow-hidden">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${Math.min(100, pct)}%`, background: "hsl(320 90% 60%)" }}
+                        />
+                      </div>
+                      <span
+                        className={cn("text-[14px] text-foreground min-w-[48px] text-right", isEditMode && label === "Men" && "cursor-pointer")}
+                        onClick={() => isEditMode && label === "Men" && setEditModal({
+                          label: "Men %",
+                          value: String(editGenderMale),
+                          onSave: (v) => setEditGenderMale(Math.min(100, Math.max(0, v))),
+                        })}
+                      >
+                        {pct % 1 === 0 ? `${pct}%` : `${pct.toFixed(1)}%`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
