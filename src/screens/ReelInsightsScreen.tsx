@@ -675,6 +675,35 @@ const ReelInsightsScreen = () => {
             </div>
           </div>
 
+          {/* What affects your views */}
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-[16px] font-bold text-foreground">What affects your views</h3>
+              <Info size={14} className="text-muted-foreground" />
+            </div>
+            <p className="text-[12px] text-muted-foreground mb-3">Rates are listed in order of importance to reach.</p>
+            <div className="space-y-1">
+              {[
+                { icon: Clock, label: "Skip rate", pct: editSkipRate },
+                { icon: Send, label: "Share rate", pct: views > 0 ? (editShares / views) * 100 : 0 },
+                { icon: Heart, label: "Like rate", pct: views > 0 ? (editLikes / views) * 100 : 0 },
+                { icon: Bookmark, label: "Save rate", pct: views > 0 ? (editSaves / views) * 100 : 0 },
+                { icon: Repeat2, label: "Repost rate", pct: views > 0 ? (editReposts / views) * 100 : 0 },
+                { icon: MessageCircle, label: "Comment rate", pct: views > 0 ? (editComments / views) * 100 : 0 },
+              ].map(({ icon: Icon, label, pct }) => (
+                <div key={label} className="flex items-center justify-between py-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
+                      <Icon size={18} className="text-foreground" strokeWidth={1.8} />
+                    </div>
+                    <span className="text-[15px] text-foreground">{label}</span>
+                  </div>
+                  <span className="text-[15px] font-bold text-foreground">{pct.toFixed(1)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* How long people watched your reel */}
           <div className="px-4 py-4">
             <div className="flex items-center gap-2 mb-4">
