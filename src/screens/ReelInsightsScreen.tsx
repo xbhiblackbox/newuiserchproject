@@ -580,7 +580,7 @@ const ReelInsightsScreen = () => {
 
       {/* Reel Preview - Large square thumbnail */}
       <div className="flex flex-col items-center pt-2 pb-3 px-4">
-        <label className={cn("w-[220px] rounded-lg overflow-hidden shadow-lg relative block", isEditMode && "cursor-pointer active:opacity-60")}>
+        <label className={cn("w-[120px] rounded-lg overflow-hidden shadow-md relative block", isEditMode && "cursor-pointer active:opacity-60")}>
           {isEditMode && (
             <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
               const file = e.target.files?.[0];
