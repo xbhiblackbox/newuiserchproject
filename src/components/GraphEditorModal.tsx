@@ -190,14 +190,13 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
   }, []);
 
   const handleSave = () => {
-    // Interpolate both lines to 5 evenly spaced points
+    // Interpolate both lines to 5 evenly spaced points (still in 0..1 space)
     const interpolate = (points: DrawPoint[], numOut: number): number[] => {
       if (points.length === 0) return Array(numOut).fill(0);
       const sorted = [...points].sort((a, b) => a.x - b.x);
       const result: number[] = [];
       for (let i = 0; i < numOut; i++) {
         const frac = i / (numOut - 1);
-        // Find surrounding points
         if (frac <= sorted[0].x) { result.push(sorted[0].y); continue; }
         if (frac >= sorted[sorted.length - 1].x) { result.push(sorted[sorted.length - 1].y); continue; }
         let lo = 0;
@@ -207,11 +206,14 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
         const t = (frac - sorted[lo].x) / (sorted[lo + 1].x - sorted[lo].x);
         result.push(sorted[lo].y + t * (sorted[lo + 1].y - sorted[lo].y));
       }
-      return result.map(v => Math.round(v));
+      return result;
     };
 
-    const reelVals = interpolate(reelPoints, 5);
-    const typicalVals = interpolate(typicalPoints, 5);
+    // Multiply normalized shape (0..1) by outer Y-axis top (maxViews)
+    // so the actual quantity is set by the outer chart, not the editor.
+    const scale = Math.max(maxViews, 1);
+    const reelVals = interpolate(reelPoints, 5).map(v => Math.round(v * scale));
+    const typicalVals = interpolate(typicalPoints, 5).map(v => Math.round(v * scale));
     const data: GraphPoint[] = [];
     for (let i = 0; i < 5; i++) {
       let day = "";
