@@ -1199,7 +1199,7 @@ const ReelInsightsScreen = () => {
                   onSave={(data) => { setCustomGraphData(data); if (data.length >= 5) { xDatesManuallyEdited.current = true; if (data[0].day) { setEditXDate1(data[0].day); setEditStartDate(data[0].day); } if (data[2].day) setEditXDate2(data[2].day); if (data[4].day) setEditXDate3(data[4].day); } saveToSupabase({ customGraphData: data }); }}
                   onDatesChange={(nd) => { xDatesManuallyEdited.current = true; setEditXDate1(nd[0]); setEditXDate2(nd[1]); setEditXDate3(nd[2]); }}
                   controlledDates={[editXDate1, editXDate2, editXDate3] as [string, string, string]}
-                  initialData={viewsOverTimeAll} maxViews={editViews} inline={true}
+                  initialData={viewsOverTimeAll} maxViews={editYTop} inline={true}
                 />
               </>
             )}
