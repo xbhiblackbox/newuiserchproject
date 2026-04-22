@@ -79,14 +79,18 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
     onDatesChange?.(nd);
   };
 
-  const initialMaxY = Math.max(maxViews * 1.5, 500);
-
-  // Convert initial data to draw points
+  // Editor works in NORMALIZED space (0..1). The actual quantity (views) is
+  // controlled by the outer chart's Y-axis top value. We only edit SHAPE here.
+  // Convert any incoming data to 0..1 by dividing by the data's own max.
   const initPoints = (key: "thisReel" | "typical"): DrawPoint[] => {
     if (!initialData || initialData.length < 2) return [];
+    const localMax = Math.max(
+      ...initialData.map(d => Math.max(d.thisReel, d.typical)),
+      1
+    );
     return initialData.map((d, i) => ({
       x: i / (initialData.length - 1),
-      y: d[key],
+      y: d[key] / localMax, // normalize to 0..1
     }));
   };
 
@@ -99,14 +103,12 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
   const draggingIdx = useRef<number | null>(null);
   const lastTap = useRef<number>(0);
 
-  // Compute maxY from all points
-  const allValues = [...reelPoints.map(p => p.y), ...typicalPoints.map(p => p.y)];
-  const currentMax = Math.max(...allValues, initialMaxY * 0.5);
-  const yTicks = getNiceTicks(currentMax);
-  const drawMaxY = yTicks[yTicks.length - 1];
+  // Fixed normalized canvas: 0..1, with labels showing % of max
+  const drawMaxY = 1;
+  const yTicks = [0, 0.5, 1];
 
   const valToY = (v: number) => PAD_T + DRAW_H - (v / drawMaxY) * DRAW_H;
-  const yToVal = (py: number) => Math.max(0, ((PAD_T + DRAW_H - py) / DRAW_H) * drawMaxY);
+  const yToVal = (py: number) => Math.max(0, Math.min(1, ((PAD_T + DRAW_H - py) / DRAW_H) * drawMaxY));
   const fracToX = (f: number) => PAD_L + f * DRAW_W;
   const xToFrac = (px: number) => Math.max(0, Math.min(1, (px - PAD_L) / DRAW_W));
 
