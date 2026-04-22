@@ -675,6 +675,64 @@ const ReelInsightsScreen = () => {
             </div>
           </div>
 
+          {/* Views over time graph (editable) */}
+          {showGraph && (
+            <div className="px-4 pt-2 pb-4">
+              {/* All / Followers / Non-followers pills */}
+              <div className="flex gap-2 mb-3">
+                {(["All", "Followers", "Non-followers"] as const).map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setViewsFilter(opt)}
+                    className={cn(
+                      "px-4 py-1.5 rounded-full text-[13px] font-semibold border transition-colors",
+                      viewsFilter === opt
+                        ? "bg-secondary text-foreground border-transparent"
+                        : "bg-transparent text-foreground border-border"
+                    )}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+
+              {/* Chart */}
+              <div
+                className={cn("h-[180px] -ml-2", isEditMode && "cursor-pointer active:opacity-80 transition-opacity")}
+                onClick={() => isEditMode && setGraphEditorOpen(true)}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={viewsOverTime} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid horizontal={true} vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
+                    <XAxis dataKey="day" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                    <YAxis
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      width={42}
+                      tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}K` : String(v)}
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                    />
+                    <Line type="monotone" dataKey="typical" stroke="hsl(var(--muted-foreground))" strokeWidth={2.5} strokeDasharray="6 6" dot={false} />
+                    <Line type="monotone" dataKey="thisReel" stroke="#E040FB" strokeWidth={3} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center gap-5 mt-2 px-1">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#E040FB]" />
+                  <span className="text-[12px] text-foreground">This reel</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground" />
+                  <span className="text-[12px] text-foreground">Your typical reel</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* What affects your views */}
           <div className="px-4 pt-4 pb-2">
             <div className="flex items-center gap-2 mb-1">
