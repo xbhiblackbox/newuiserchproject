@@ -698,7 +698,7 @@ const ReelInsightsScreen = () => {
 
               {/* Chart */}
               <div
-                className={cn("h-[180px] -ml-2", isEditMode && "cursor-pointer active:opacity-80 transition-opacity")}
+                className={cn("h-[180px] -ml-2 relative", isEditMode && "cursor-pointer active:opacity-80 transition-opacity")}
                 onClick={() => isEditMode && setGraphEditorOpen(true)}
               >
                 <ResponsiveContainer width="100%" height="100%">
@@ -710,13 +710,29 @@ const ReelInsightsScreen = () => {
                       tickLine={false}
                       axisLine={false}
                       width={42}
-                      tickFormatter={(v: number) => v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}K` : String(v)}
+                      domain={[0, editYTop]}
+                      ticks={[0, editYCenter, editYTop]}
+                      tickFormatter={(v: number) => v === 0 ? '0' : v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}K` : String(v)}
                       tick={{ fill: 'hsl(var(--muted-foreground))' }}
                     />
                     <Line type="monotone" dataKey="typical" stroke="hsl(var(--muted-foreground))" strokeWidth={2.5} strokeDasharray="6 6" dot={false} />
                     <Line type="monotone" dataKey="thisReel" stroke="#E040FB" strokeWidth={3} dot={false} />
                   </LineChart>
                 </ResponsiveContainer>
+                {isEditMode && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditModal({ label: "Y-axis Top value", value: String(editYTop), onSave: (v) => { setEditYTop(Math.max(1, v)); } }); }}
+                      className="absolute left-0 top-[6px] w-[42px] h-[26px] bg-[hsl(var(--ig-blue))]/15 rounded"
+                      aria-label="Edit top Y value"
+                    />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditModal({ label: "Y-axis Middle value", value: String(editYCenter), onSave: (v) => { setEditYCenter(Math.max(0, v)); } }); }}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[42px] h-[26px] bg-[hsl(var(--ig-blue))]/15 rounded"
+                      aria-label="Edit middle Y value"
+                    />
+                  </>
+                )}
               </div>
 
               {/* Legend */}
