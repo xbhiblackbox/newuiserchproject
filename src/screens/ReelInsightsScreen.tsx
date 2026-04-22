@@ -594,7 +594,7 @@ const ReelInsightsScreen = () => {
               } catch (err) { toast.error("Upload failed", { id: tid }); }
             }} />
           )}
-          <img src={postImage} alt="Reel thumbnail" className="w-full aspect-square object-cover" />
+          <img src={postImage} alt="Reel thumbnail" className="w-full aspect-[9/16] object-cover" />
           {isEditMode && (
             <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
               <Plus size={24} className="text-white drop-shadow-lg" />
