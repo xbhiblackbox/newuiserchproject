@@ -703,7 +703,6 @@ const ReelInsightsScreen = () => {
               >
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={viewsOverTime} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <CartesianGrid horizontal={true} vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
                     <XAxis dataKey="day" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
                     <YAxis
                       fontSize={11}
@@ -712,9 +711,14 @@ const ReelInsightsScreen = () => {
                       width={42}
                       domain={[0, editYTop]}
                       ticks={[0, editYCenter, editYTop]}
+                      interval={0}
                       tickFormatter={(v: number) => v === 0 ? '0' : v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}K` : String(v)}
                       tick={{ fill: 'hsl(var(--muted-foreground))' }}
                     />
+                    {/* Always show 3 horizontal grid lines: bottom, middle, top */}
+                    <ReferenceLine y={0} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                    <ReferenceLine y={editYCenter} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                    <ReferenceLine y={editYTop} stroke="hsl(var(--border))" strokeOpacity={0.5} />
                     <Line type="monotone" dataKey="typical" stroke="hsl(var(--muted-foreground))" strokeWidth={2.5} strokeDasharray="6 6" dot={false} />
                     <Line type="monotone" dataKey="thisReel" stroke="#E040FB" strokeWidth={3} dot={false} />
                   </LineChart>
