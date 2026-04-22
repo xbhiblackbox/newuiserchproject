@@ -352,7 +352,7 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
             <g key={tick}>
               <line x1={PAD_L} y1={valToY(tick)} x2={CANVAS_W - PAD_R} y2={valToY(tick)} stroke="hsl(var(--border))" strokeOpacity={0.3} strokeWidth={0.5} />
               <text x={PAD_L - 5} y={valToY(tick) + 3} textAnchor="end" fontSize={9} fill="hsl(var(--muted-foreground))" opacity={0.7}>
-                {fmtTick(tick)}
+                {`${Math.round(tick * 100)}%`}
               </text>
             </g>
           ))}
