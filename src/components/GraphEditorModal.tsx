@@ -79,14 +79,18 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
     onDatesChange?.(nd);
   };
 
-  const initialMaxY = Math.max(maxViews * 1.5, 500);
-
-  // Convert initial data to draw points
+  // Editor works in NORMALIZED space (0..1). The actual quantity (views) is
+  // controlled by the outer chart's Y-axis top value. We only edit SHAPE here.
+  // Convert any incoming data to 0..1 by dividing by the data's own max.
   const initPoints = (key: "thisReel" | "typical"): DrawPoint[] => {
     if (!initialData || initialData.length < 2) return [];
+    const localMax = Math.max(
+      ...initialData.map(d => Math.max(d.thisReel, d.typical)),
+      1
+    );
     return initialData.map((d, i) => ({
       x: i / (initialData.length - 1),
-      y: d[key],
+      y: d[key] / localMax, // normalize to 0..1
     }));
   };
 
@@ -99,14 +103,12 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
   const draggingIdx = useRef<number | null>(null);
   const lastTap = useRef<number>(0);
 
-  // Compute maxY from all points
-  const allValues = [...reelPoints.map(p => p.y), ...typicalPoints.map(p => p.y)];
-  const currentMax = Math.max(...allValues, initialMaxY * 0.5);
-  const yTicks = getNiceTicks(currentMax);
-  const drawMaxY = yTicks[yTicks.length - 1];
+  // Fixed normalized canvas: 0..1, with labels showing % of max
+  const drawMaxY = 1;
+  const yTicks = [0, 0.5, 1];
 
   const valToY = (v: number) => PAD_T + DRAW_H - (v / drawMaxY) * DRAW_H;
-  const yToVal = (py: number) => Math.max(0, ((PAD_T + DRAW_H - py) / DRAW_H) * drawMaxY);
+  const yToVal = (py: number) => Math.max(0, Math.min(1, ((PAD_T + DRAW_H - py) / DRAW_H) * drawMaxY));
   const fracToX = (f: number) => PAD_L + f * DRAW_W;
   const xToFrac = (px: number) => Math.max(0, Math.min(1, (px - PAD_L) / DRAW_W));
 
@@ -188,14 +190,13 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
   }, []);
 
   const handleSave = () => {
-    // Interpolate both lines to 5 evenly spaced points
+    // Interpolate both lines to 5 evenly spaced points (still in 0..1 space)
     const interpolate = (points: DrawPoint[], numOut: number): number[] => {
       if (points.length === 0) return Array(numOut).fill(0);
       const sorted = [...points].sort((a, b) => a.x - b.x);
       const result: number[] = [];
       for (let i = 0; i < numOut; i++) {
         const frac = i / (numOut - 1);
-        // Find surrounding points
         if (frac <= sorted[0].x) { result.push(sorted[0].y); continue; }
         if (frac >= sorted[sorted.length - 1].x) { result.push(sorted[sorted.length - 1].y); continue; }
         let lo = 0;
@@ -205,11 +206,14 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
         const t = (frac - sorted[lo].x) / (sorted[lo + 1].x - sorted[lo].x);
         result.push(sorted[lo].y + t * (sorted[lo + 1].y - sorted[lo].y));
       }
-      return result.map(v => Math.round(v));
+      return result;
     };
 
-    const reelVals = interpolate(reelPoints, 5);
-    const typicalVals = interpolate(typicalPoints, 5);
+    // Multiply normalized shape (0..1) by outer Y-axis top (maxViews)
+    // so the actual quantity is set by the outer chart, not the editor.
+    const scale = Math.max(maxViews, 1);
+    const reelVals = interpolate(reelPoints, 5).map(v => Math.round(v * scale));
+    const typicalVals = interpolate(typicalPoints, 5).map(v => Math.round(v * scale));
     const data: GraphPoint[] = [];
     for (let i = 0; i < 5; i++) {
       let day = "";
@@ -348,7 +352,7 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
             <g key={tick}>
               <line x1={PAD_L} y1={valToY(tick)} x2={CANVAS_W - PAD_R} y2={valToY(tick)} stroke="hsl(var(--border))" strokeOpacity={0.3} strokeWidth={0.5} />
               <text x={PAD_L - 5} y={valToY(tick) + 3} textAnchor="end" fontSize={9} fill="hsl(var(--muted-foreground))" opacity={0.7}>
-                {fmtTick(tick)}
+                {`${Math.round(tick * 100)}%`}
               </text>
             </g>
           ))}
