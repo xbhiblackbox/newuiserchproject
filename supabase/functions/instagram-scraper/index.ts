@@ -145,9 +145,12 @@ Deno.serve(async (req) => {
   // PROFILE
   if (wants("profile")) {
     try {
-      const raw = await rapid("/v1/info", { username_or_id_or_url: username });
+      const raw = await rapidTry(
+        ["/v1/info", "/v1/user_info", "/v1.2/info", "/api/v1/info", "/ig/info/"],
+        { username_or_id_or_url: username, username }
+      );
       result.profile = normalizeProfile(raw);
-      result.profileOk = true;
+      result.profileOk = !!result.profile.username;
     } catch (e) {
       console.error("profile err", e);
       result.profileOk = false;
@@ -157,7 +160,10 @@ Deno.serve(async (req) => {
   // REELS
   if (wants("reels")) {
     try {
-      const raw = await rapid("/v1/reels", { username_or_id_or_url: username });
+      const raw = await rapidTry(
+        ["/v1/reels", "/v1.2/reels", "/api/v1/reels", "/ig/reels/"],
+        { username_or_id_or_url: username, username }
+      );
       const items = pickItems(raw).slice(0, 12).map((x: any) => normalizeMediaItem(x.media ?? x));
       result.reels = items;
       result.reelsOk = true;
@@ -171,7 +177,10 @@ Deno.serve(async (req) => {
   // POSTS
   if (wants("posts")) {
     try {
-      const raw = await rapid("/v1/posts", { username_or_id_or_url: username });
+      const raw = await rapidTry(
+        ["/v1/posts", "/v1.2/posts", "/api/v1/posts", "/ig/posts/"],
+        { username_or_id_or_url: username, username }
+      );
       const items = pickItems(raw).slice(0, 12).map((x: any) => normalizeMediaItem(x.media ?? x));
       result.posts = items;
       result.postsOk = true;
@@ -185,7 +194,10 @@ Deno.serve(async (req) => {
   // HIGHLIGHTS
   if (wants("highlights")) {
     try {
-      const raw = await rapid("/v1/highlights", { username_or_id_or_url: username });
+      const raw = await rapidTry(
+        ["/v1/highlights", "/v1.2/highlights", "/api/v1/highlights", "/ig/highlights/"],
+        { username_or_id_or_url: username, username }
+      );
       const items = (raw?.data?.items ?? raw?.items ?? raw?.data ?? []).map(normalizeHighlight);
       result.highlights = items;
       result.highlightsOk = true;
