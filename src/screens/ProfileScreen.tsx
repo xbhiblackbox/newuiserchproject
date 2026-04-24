@@ -126,6 +126,16 @@ const ProfileScreen = () => {
     })();
   }, [isJust4abhii]);
 
+  useEffect(() => {
+    const syncClonedInstagram = () => {
+      if (!isJust4abhii) return;
+      setReelsData(loadReelsData());
+    };
+
+    window.addEventListener("ig-account-cloned", syncClonedInstagram as EventListener);
+    return () => window.removeEventListener("ig-account-cloned", syncClonedInstagram as EventListener);
+  }, [isJust4abhii]);
+
   const getThumb = (post: { thumbnail: string; videoUrl?: string }) => {
     // Always prioritize user-set thumbnail
     if (post.thumbnail) {
@@ -142,23 +152,30 @@ const ProfileScreen = () => {
 
   // Build user posts from either reelsData (for just4abhii) or account posts
   const userPosts = useMemo(() => {
-    if (isJust4abhii) {
-      return reelsData.map((reel, i) => ({
-        image: getThumb(reel),
-        videoUrl: reel.videoUrl,
-        isReel: true,
-        views: reel.insights.views,
-        likes: reel.insights.likes,
-      }));
-    }
     return account.posts.map((post, i) => ({
       image: getThumb(post),
       videoUrl: post.videoUrl,
-      isReel: true,
+      isReel: !!post.videoUrl,
       views: [93, 37, 764, 1200, 458, 89, 234, 567, 123][i] || Math.floor(Math.random() * 500 + 50),
       likes: Math.floor(Math.random() * 500 + 100),
     }));
-  }, [isJust4abhii, reelsData, account.posts]);
+  }, [account.posts]);
+
+  const reelPosts = useMemo(() => {
+    if (isJust4abhii) {
+      return reelsData
+        .filter((reel) => !!reel.videoUrl)
+        .map((reel) => ({
+          image: getThumb(reel),
+          videoUrl: reel.videoUrl,
+          isReel: true,
+          views: reel.insights.views,
+          likes: reel.insights.likes,
+        }));
+    }
+
+    return userPosts.filter((post) => post.isReel);
+  }, [isJust4abhii, reelsData, userPosts]);
 
   // Long press handlers
   const startPress = useCallback((index: number) => {
@@ -901,7 +918,7 @@ const ProfileScreen = () => {
       {/* Reels Grid */}
       {activeTab === "reels" && (
         <div className="grid grid-cols-3 gap-[1.5px] dark:gap-[3px]">
-          {userPosts.filter(p => p.isReel).map((post, i) => renderGridItem(post, i, "aspect-[2/3]", true))}
+          {reelPosts.map((post, i) => renderGridItem(post, i, "aspect-[2/3]", true))}
         </div>
       )}
 

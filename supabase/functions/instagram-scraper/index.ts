@@ -46,7 +46,7 @@ async function callRapid(path: string, init: RequestInit) {
 // Try multiple endpoint shapes (different RapidAPI providers use different paths/params)
 async function tryEndpoints(
   variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>
-): Promise<any> {
+): Promise<{ data: any; variant: { path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> } }> {
   let lastErr: any;
   for (const v of variants) {
     try {
@@ -57,12 +57,58 @@ async function tryEndpoints(
         init.body = JSON.stringify(v.body);
         init.headers = { "Content-Type": "application/json" };
       }
-      return await callRapid(u.pathname + u.search, init);
+      return { data: await callRapid(u.pathname + u.search, init), variant: v };
     } catch (e) {
       lastErr = e;
     }
   }
   throw lastErr ?? new Error("All endpoints failed");
+}
+
+function readPageInfo(raw: any) {
+  const result = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
+  const pageInfo =
+    result?.page_info ??
+    result?.data?.page_info ??
+    raw?.data?.page_info ??
+    raw?.page_info ??
+    null;
+
+  return {
+    hasNext: !!(pageInfo?.has_next_page ?? pageInfo?.hasNextPage),
+    cursor: str(
+      pageInfo?.end_cursor ??
+      pageInfo?.next_cursor ??
+      pageInfo?.max_id ??
+      pageInfo?.maxId ??
+      raw?.next_max_id ??
+      raw?.max_id
+    ),
+  };
+}
+
+function paginationVariants(
+  variant: { path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> },
+  cursor: string,
+) {
+  const method = variant.method ?? "GET";
+  if (method === "POST") {
+    return [
+      { ...variant, body: { ...(variant.body ?? {}), maxId: cursor } },
+      { ...variant, body: { ...(variant.body ?? {}), max_id: cursor } },
+      { ...variant, body: { ...(variant.body ?? {}), end_cursor: cursor } },
+      { ...variant, body: { ...(variant.body ?? {}), cursor } },
+      { ...variant, body: { ...(variant.body ?? {}), after: cursor } },
+    ];
+  }
+
+  return [
+    { ...variant, query: { ...(variant.query ?? {}), maxId: cursor } },
+    { ...variant, query: { ...(variant.query ?? {}), max_id: cursor } },
+    { ...variant, query: { ...(variant.query ?? {}), end_cursor: cursor } },
+    { ...variant, query: { ...(variant.query ?? {}), cursor } },
+    { ...variant, query: { ...(variant.query ?? {}), after: cursor } },
+  ];
 }
 
 // ---------- normalizers (handle multiple provider shapes) ----------
@@ -174,6 +220,17 @@ function pickItems(raw: any): any[] {
   );
 }
 
+function dedupeMediaItems(items: any[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = str(item?.id || item?.code || item?.shortcode || item?.pk || item?.media_id);
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function normalizeHighlight(h: any) {
   return {
     id: str(h.id ?? h.pk),
@@ -239,16 +296,26 @@ Deno.serve(async (req) => {
   // REELS
   if (wants("reels")) {
     try {
-      const raw = await tryEndpoints([
+      const first = await tryEndpoints([
         { path: "/api/instagram/reels", method: "POST", body: { username } },
         { path: "/api/instagram/userReels", method: "POST", body: { username } },
         { path: "/v1/reels", query: { username_or_id_or_url: username } },
         { path: "/reels", query: { username } },
       ]);
-      const items = pickItems(raw).map(normalizeMediaItem).filter(Boolean).slice(0, 12);
+      const page = readPageInfo(first.data);
+      let extraItems: any[] = [];
+      if (page.hasNext && page.cursor) {
+        try {
+          const next = await tryEndpoints(paginationVariants(first.variant, page.cursor));
+          extraItems = pickItems(next.data);
+        } catch (e) {
+          console.warn("reels page 2 err", e);
+        }
+      }
+      const items = dedupeMediaItems([...pickItems(first.data), ...extraItems]).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
       result.reels = items;
       result.reelsOk = true;
-      if (body.debug) result._raw_reels = raw;
+      if (body.debug) result._raw_reels = first.data;
     } catch (e) {
       console.error("reels err", e);
       result.reels = [];
@@ -259,16 +326,26 @@ Deno.serve(async (req) => {
   // POSTS
   if (wants("posts")) {
     try {
-      const raw = await tryEndpoints([
+      const first = await tryEndpoints([
         { path: "/api/instagram/posts", method: "POST", body: { username } },
         { path: "/api/instagram/userPosts", method: "POST", body: { username } },
         { path: "/v1/posts", query: { username_or_id_or_url: username } },
         { path: "/posts", query: { username } },
       ]);
-      const items = pickItems(raw).map(normalizeMediaItem).filter(Boolean).slice(0, 12);
+      const page = readPageInfo(first.data);
+      let extraItems: any[] = [];
+      if (page.hasNext && page.cursor) {
+        try {
+          const next = await tryEndpoints(paginationVariants(first.variant, page.cursor));
+          extraItems = pickItems(next.data);
+        } catch (e) {
+          console.warn("posts page 2 err", e);
+        }
+      }
+      const items = dedupeMediaItems([...pickItems(first.data), ...extraItems]).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
       result.posts = items;
       result.postsOk = true;
-      if (body.debug) result._raw_posts = raw;
+      if (body.debug) result._raw_posts = first.data;
     } catch (e) {
       console.error("posts err", e);
       result.posts = [];
