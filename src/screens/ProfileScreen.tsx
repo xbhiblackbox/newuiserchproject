@@ -152,23 +152,30 @@ const ProfileScreen = () => {
 
   // Build user posts from either reelsData (for just4abhii) or account posts
   const userPosts = useMemo(() => {
-    if (isJust4abhii) {
-      return reelsData.map((reel, i) => ({
-        image: getThumb(reel),
-        videoUrl: reel.videoUrl,
-        isReel: !!reel.videoUrl,
-        views: reel.insights.views,
-        likes: reel.insights.likes,
-      }));
-    }
     return account.posts.map((post, i) => ({
       image: getThumb(post),
       videoUrl: post.videoUrl,
-      isReel: true,
+      isReel: !!post.videoUrl,
       views: [93, 37, 764, 1200, 458, 89, 234, 567, 123][i] || Math.floor(Math.random() * 500 + 50),
       likes: Math.floor(Math.random() * 500 + 100),
     }));
-  }, [isJust4abhii, reelsData, account.posts]);
+  }, [account.posts]);
+
+  const reelPosts = useMemo(() => {
+    if (isJust4abhii) {
+      return reelsData
+        .filter((reel) => !!reel.videoUrl)
+        .map((reel) => ({
+          image: getThumb(reel),
+          videoUrl: reel.videoUrl,
+          isReel: true,
+          views: reel.insights.views,
+          likes: reel.insights.likes,
+        }));
+    }
+
+    return userPosts.filter((post) => post.isReel);
+  }, [isJust4abhii, reelsData, userPosts]);
 
   // Long press handlers
   const startPress = useCallback((index: number) => {
