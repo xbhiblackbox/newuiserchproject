@@ -220,6 +220,52 @@ function pickItems(raw: any): any[] {
   );
 }
 
+// Fetch a single media's full details (used to recover video_url for reels)
+async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
+  if (!codeOrId) return null;
+  try {
+    const { data } = await tryEndpoints([
+      { path: "/api/instagram/post", method: "POST", body: { shortcode: codeOrId } },
+      { path: "/api/instagram/post", method: "POST", body: { code: codeOrId } },
+      { path: "/api/instagram/postInfo", method: "POST", body: { shortcode: codeOrId } },
+      { path: "/api/instagram/mediaInfo", method: "POST", body: { shortcode: codeOrId } },
+      { path: "/api/instagram/mediaInfo", method: "POST", body: { media_id: codeOrId } },
+      { path: "/v1/post_info", query: { code_or_id_or_url: codeOrId } },
+      { path: "/v1/media_info", query: { code_or_id_or_url: codeOrId } },
+      { path: "/post", query: { shortcode: codeOrId } },
+    ]);
+    return data;
+  } catch (e) {
+    console.warn("media detail fetch failed", codeOrId, (e as Error).message);
+    return null;
+  }
+}
+
+function extractVideoUrlFromRaw(raw: any): string {
+  const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
+  const m =
+    r0?.media ??
+    r0?.item ??
+    r0?.items?.[0] ??
+    r0 ??
+    raw?.data?.media ??
+    raw?.data?.item ??
+    raw?.data ??
+    raw?.media ??
+    raw?.item ??
+    raw ??
+    {};
+  return str(
+    m.video_url ??
+      m.video_versions?.[0]?.url ??
+      m.video?.url ??
+      m.videoUrl ??
+      m.node?.video_url ??
+      m.carousel_media?.[0]?.video_versions?.[0]?.url ??
+      ""
+  );
+}
+
 function dedupeMediaItems(items: any[]) {
   const seen = new Set<string>();
   return items.filter((item) => {
