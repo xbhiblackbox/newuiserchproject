@@ -165,7 +165,13 @@ const HomeScreen = () => {
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
-        <InstagramLogo />
+        <button
+          onClick={() => setConnectOpen(true)}
+          className="active:scale-95 transition-transform"
+          aria-label="Connect Instagram account"
+        >
+          <InstagramLogo />
+        </button>
         <div className="flex items-center">
           <button className="relative text-foreground active:scale-90 transition-transform">
             <Heart size={30} strokeWidth={1.5} />
