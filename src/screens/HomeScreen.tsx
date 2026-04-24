@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useMemo } from "react";
-import { Heart } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { cloneInstagramAccount } from "@/lib/applyInstagramToMock";
 import StoryCircle from "@/components/StoryCircle";
 import StoryViewer from "@/components/StoryViewer";
 import PostCard from "@/components/PostCard";
