@@ -163,7 +163,7 @@ function normalizeMediaItem(it: any) {
   const code = str(m.code ?? m.shortcode ?? m.shortCode);
   const caption = str(
     m.caption?.text ??
-      (typeof m.caption === "string" ? m.caption : "") ??
+      (typeof m.caption === "string" ? m.caption : undefined) ??
       m.edge_media_to_caption?.edges?.[0]?.node?.text ??
       ""
   );
