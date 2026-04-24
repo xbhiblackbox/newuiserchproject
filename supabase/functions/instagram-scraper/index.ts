@@ -210,8 +210,10 @@ Deno.serve(async (req) => {
         { path: "/userinfo", query: { username } },
         { path: "/api/v1/users/web_profile_info", query: { username } },
       ]);
+      console.log("profile raw:", JSON.stringify(raw).slice(0, 800));
       result.profile = normalizeProfile(raw);
       result.profileOk = !!result.profile.username;
+      if (body.debug) result._raw_profile = raw;
     } catch (e) {
       console.error("profile err", e);
       result.profileOk = false;
