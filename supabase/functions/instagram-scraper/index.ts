@@ -243,23 +243,25 @@ async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
   }
 }
 
-function extractVideoUrlFromRaw(raw: any): string {
-  const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
+function extractDetailFields(raw: any): { videoUrl: string; caption: string; thumbnail: string } {
+  // Some endpoints return a top-level array (e.g. /api/instagram/links -> [{urls, meta}])
+  const top = Array.isArray(raw) ? raw[0] : raw;
+  const r0 = Array.isArray(top?.result) ? top.result[0] : top?.result;
   const m =
     r0?.media ??
     r0?.item ??
     r0?.items?.[0] ??
     r0 ??
-    raw?.data?.media ??
-    raw?.data?.item ??
-    raw?.data ??
-    raw?.media ??
-    raw?.item ??
-    raw ??
+    top?.data?.media ??
+    top?.data?.item ??
+    top?.data ??
+    top?.media ??
+    top?.item ??
+    top ??
     {};
 
-  // Direct fields
-  const direct = str(
+  // Direct video fields
+  let videoUrl = str(
     m.video_url ??
       m.video_versions?.[0]?.url ??
       m.video?.url ??
@@ -268,30 +270,51 @@ function extractVideoUrlFromRaw(raw: any): string {
       m.carousel_media?.[0]?.video_versions?.[0]?.url ??
       ""
   );
-  if (direct) return direct;
 
-  // links endpoint shape: { result: [{ url, type }] } or { result: { video: [...], ... } }
-  const linkArr =
-    (Array.isArray(r0) ? r0 : null) ??
-    r0?.links ??
-    r0?.urls ??
-    r0?.video ??
-    raw?.links ??
-    raw?.urls ??
-    raw?.video ??
-    null;
-  if (Array.isArray(linkArr)) {
-    for (const l of linkArr) {
-      const u = str(l?.url ?? l?.link ?? l);
-      if (u && /\.mp4($|\?)/i.test(u)) return u;
-    }
-    // fallback: any url in array
-    for (const l of linkArr) {
-      const u = str(l?.url ?? l?.link ?? l);
-      if (u) return u;
+  // links/urls array shape (links endpoint)
+  if (!videoUrl) {
+    const linkArr =
+      m.urls ??
+      m.links ??
+      m.video ??
+      r0?.urls ??
+      r0?.links ??
+      top?.urls ??
+      top?.links ??
+      null;
+    if (Array.isArray(linkArr)) {
+      // Prefer mp4 with highest quality
+      const mp4s = linkArr.filter((l: any) => {
+        const u = str(l?.url ?? l?.link ?? l);
+        const ext = str(l?.extension);
+        return /\.mp4($|\?)/i.test(u) || ext.toLowerCase() === "mp4";
+      });
+      const best = mp4s.sort((a: any, b: any) => num(b?.quality) - num(a?.quality))[0];
+      if (best) videoUrl = str(best?.url ?? best?.link ?? best);
+      if (!videoUrl) videoUrl = str(linkArr[0]?.url ?? linkArr[0]?.link ?? linkArr[0]);
     }
   }
-  return "";
+
+  const meta = m.meta ?? r0?.meta ?? top?.meta ?? {};
+  const caption = str(
+    m.caption?.text ??
+      (typeof m.caption === "string" ? m.caption : "") ??
+      m.edge_media_to_caption?.edges?.[0]?.node?.text ??
+      meta.title ??
+      meta.caption ??
+      ""
+  );
+  const thumbnail = str(
+    m.thumbnail_url ??
+      m.display_url ??
+      m.image_versions2?.candidates?.[0]?.url ??
+      m.cover?.url ??
+      meta.thumbnail ??
+      meta.image ??
+      ""
+  );
+
+  return { videoUrl, caption, thumbnail };
 }
 
 function dedupeMediaItems(items: any[]) {
