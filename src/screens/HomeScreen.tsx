@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useMemo } from "react";
-import { Heart } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { cloneInstagramAccount } from "@/lib/applyInstagramToMock";
 import StoryCircle from "@/components/StoryCircle";
 import StoryViewer from "@/components/StoryViewer";
 import PostCard from "@/components/PostCard";
@@ -34,6 +36,28 @@ const HomeScreen = () => {
   const [dmCount, setDmCount] = useState(2);
   const [dmEditOpen, setDmEditOpen] = useState(false);
   const [dmEditValue, setDmEditValue] = useState("");
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [connectValue, setConnectValue] = useState("");
+  const [connectLoading, setConnectLoading] = useState(false);
+
+  const handleConnectInstagram = async () => {
+    const clean = connectValue.trim().replace(/^@/, "");
+    if (!/^[a-zA-Z0-9._]{1,30}$/.test(clean)) {
+      toast.error("Invalid username");
+      return;
+    }
+    setConnectLoading(true);
+    try {
+      await cloneInstagramAccount(clean);
+      toast.success(`Cloned @${clean}`);
+      setConnectOpen(false);
+      setConnectValue("");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to clone account");
+    } finally {
+      setConnectLoading(false);
+    }
+  };
 
   // Feed videos state
   const [feedVideos, setFeedVideos] = useState<FeedVideo[]>(() =>
@@ -141,7 +165,13 @@ const HomeScreen = () => {
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
         </button>
-        <InstagramLogo />
+        <button
+          onClick={() => setConnectOpen(true)}
+          className="active:scale-95 transition-transform"
+          aria-label="Connect Instagram account"
+        >
+          <InstagramLogo />
+        </button>
         <div className="flex items-center">
           <button className="relative text-foreground active:scale-90 transition-transform">
             <Heart size={30} strokeWidth={1.5} />
@@ -234,6 +264,50 @@ const HomeScreen = () => {
               className="w-full mt-3 py-2.5 rounded-lg bg-[hsl(var(--ig-blue))] text-white text-[14px] font-semibold"
             >
               Done
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Connect Instagram Modal */}
+      {connectOpen && (
+        <div
+          className="fixed inset-0 z-[90] bg-black/60 flex items-center justify-center px-6"
+          onClick={() => !connectLoading && setConnectOpen(false)}
+        >
+          <div
+            className="w-full max-w-[320px] rounded-2xl bg-background p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-foreground text-center mb-1">
+              Connect Instagram
+            </h3>
+            <p className="text-xs text-muted-foreground text-center mb-4">
+              Enter a public username to clone its profile
+            </p>
+            <div className="flex items-center gap-1 bg-secondary rounded-lg px-3">
+              <span className="text-muted-foreground text-[15px]">@</span>
+              <input
+                value={connectValue}
+                onChange={(e) => setConnectValue(e.target.value.replace(/^@/, ""))}
+                placeholder="username"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && !connectLoading && handleConnectInstagram()}
+                className="flex-1 bg-transparent py-2.5 text-[16px] text-foreground outline-none"
+              />
+            </div>
+            <button
+              onClick={handleConnectInstagram}
+              disabled={connectLoading || !connectValue.trim()}
+              className="w-full mt-3 py-2.5 rounded-lg bg-[hsl(var(--ig-blue))] text-white text-[14px] font-semibold flex items-center justify-center disabled:opacity-60"
+            >
+              {connectLoading ? <Loader2 size={16} className="animate-spin" /> : "Clone Account"}
+            </button>
+            <button
+              onClick={() => !connectLoading && setConnectOpen(false)}
+              className="w-full mt-2 py-2 text-[13px] text-muted-foreground"
+            >
+              Cancel
             </button>
           </div>
         </div>
