@@ -429,5 +429,54 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ---------- ENRICHMENT ----------
+  // 1) Merge captions from posts into reels (match by id or code).
+  // 2) Fetch missing reel video URLs in parallel (cap to first N to limit RapidAPI load).
+  if (Array.isArray(result.reels) && result.reels.length) {
+    const postsArr: any[] = Array.isArray(result.posts) ? result.posts : [];
+    if (postsArr.length) {
+      const byId = new Map<string, any>();
+      const byCode = new Map<string, any>();
+      for (const p of postsArr) {
+        if (p?.id) byId.set(String(p.id), p);
+        if (p?.code) byCode.set(String(p.code), p);
+      }
+      result.reels = result.reels.map((r: any) => {
+        if (r?.caption && r?.thumbnail) return r;
+        const match = (r?.id && byId.get(String(r.id))) || (r?.code && byCode.get(String(r.code)));
+        if (!match) return r;
+        return {
+          ...r,
+          caption: r.caption || match.caption || "",
+          thumbnail: r.thumbnail || match.thumbnail || "",
+          videoUrl: r.videoUrl || match.videoUrl || "",
+          views: r.views || match.views || 0,
+          likes: r.likes || match.likes || 0,
+          comments: r.comments || match.comments || 0,
+          takenAt: r.takenAt || match.takenAt || 0,
+        };
+      });
+    }
+
+    const MAX_DETAIL_FETCH = 12;
+    const targets = result.reels
+      .map((r: any, idx: number) => ({ r, idx }))
+      .filter(({ r }: any) => !r?.videoUrl && (r?.code || r?.id))
+      .slice(0, MAX_DETAIL_FETCH);
+
+    if (targets.length) {
+      const detailResults = await Promise.allSettled(
+        targets.map(({ r }: any) => fetchMediaDetail(str(r.code || r.id)))
+      );
+      detailResults.forEach((res, i) => {
+        if (res.status !== "fulfilled" || !res.value) return;
+        const vurl = extractVideoUrlFromRaw(res.value);
+        if (!vurl) return;
+        const { idx } = targets[i];
+        result.reels[idx] = { ...result.reels[idx], videoUrl: vurl };
+      });
+    }
+  }
+
   return json(result, 200);
 });
