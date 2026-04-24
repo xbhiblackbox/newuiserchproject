@@ -224,17 +224,12 @@ function pickItems(raw: any): any[] {
 async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
   if (!codeOrId) return null;
   try {
+    // /api/instagram/links is the confirmed working endpoint on instagram120
     const { data } = await tryEndpoints([
-      // instagram120 specific
-      { path: "/api/instagram/mediabyshortcode", method: "POST", body: { shortcode: codeOrId } },
-      { path: "/api/instagram/mediaByShortcode", method: "POST", body: { shortcode: codeOrId } },
-      { path: "/api/instagram/links", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
       { path: "/api/instagram/links", method: "POST", body: { url: `https://www.instagram.com/reel/${codeOrId}/` } },
-      { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
+      { path: "/api/instagram/links", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
       { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/reel/${codeOrId}/` } },
-      // generic
-      { path: "/v1/post_info", query: { code_or_id_or_url: codeOrId } },
-      { path: "/v1/media_info", query: { code_or_id_or_url: codeOrId } },
+      { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
     ]);
     return data;
   } catch (e) {
