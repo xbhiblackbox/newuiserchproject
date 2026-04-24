@@ -225,14 +225,16 @@ async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
   if (!codeOrId) return null;
   try {
     const { data } = await tryEndpoints([
-      { path: "/api/instagram/post", method: "POST", body: { shortcode: codeOrId } },
-      { path: "/api/instagram/post", method: "POST", body: { code: codeOrId } },
-      { path: "/api/instagram/postInfo", method: "POST", body: { shortcode: codeOrId } },
-      { path: "/api/instagram/mediaInfo", method: "POST", body: { shortcode: codeOrId } },
-      { path: "/api/instagram/mediaInfo", method: "POST", body: { media_id: codeOrId } },
+      // instagram120 specific
+      { path: "/api/instagram/mediabyshortcode", method: "POST", body: { shortcode: codeOrId } },
+      { path: "/api/instagram/mediaByShortcode", method: "POST", body: { shortcode: codeOrId } },
+      { path: "/api/instagram/links", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
+      { path: "/api/instagram/links", method: "POST", body: { url: `https://www.instagram.com/reel/${codeOrId}/` } },
+      { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
+      { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/reel/${codeOrId}/` } },
+      // generic
       { path: "/v1/post_info", query: { code_or_id_or_url: codeOrId } },
       { path: "/v1/media_info", query: { code_or_id_or_url: codeOrId } },
-      { path: "/post", query: { shortcode: codeOrId } },
     ]);
     return data;
   } catch (e) {
@@ -255,7 +257,9 @@ function extractVideoUrlFromRaw(raw: any): string {
     raw?.item ??
     raw ??
     {};
-  return str(
+
+  // Direct fields
+  const direct = str(
     m.video_url ??
       m.video_versions?.[0]?.url ??
       m.video?.url ??
@@ -264,6 +268,30 @@ function extractVideoUrlFromRaw(raw: any): string {
       m.carousel_media?.[0]?.video_versions?.[0]?.url ??
       ""
   );
+  if (direct) return direct;
+
+  // links endpoint shape: { result: [{ url, type }] } or { result: { video: [...], ... } }
+  const linkArr =
+    (Array.isArray(r0) ? r0 : null) ??
+    r0?.links ??
+    r0?.urls ??
+    r0?.video ??
+    raw?.links ??
+    raw?.urls ??
+    raw?.video ??
+    null;
+  if (Array.isArray(linkArr)) {
+    for (const l of linkArr) {
+      const u = str(l?.url ?? l?.link ?? l);
+      if (u && /\.mp4($|\?)/i.test(u)) return u;
+    }
+    // fallback: any url in array
+    for (const l of linkArr) {
+      const u = str(l?.url ?? l?.link ?? l);
+      if (u) return u;
+    }
+  }
+  return "";
 }
 
 function dedupeMediaItems(items: any[]) {
