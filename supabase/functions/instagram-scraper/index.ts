@@ -107,7 +107,12 @@ function normalizeProfile(raw: any) {
 
 function normalizeMediaItem(it: any) {
   if (!it) return null;
-  const m = it.media ?? it.node ?? it;
+  // Drill through edge wrappers: { node: { media: {...} } } | { node: {...} } | { media: {...} } | direct
+  const m =
+    it?.node?.media ??
+    it?.media ??
+    it?.node ??
+    it;
   const id = str(m.id ?? m.pk ?? m.media_id);
   const code = str(m.code ?? m.shortcode ?? m.shortCode);
   const caption = str(
