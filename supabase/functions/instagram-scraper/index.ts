@@ -46,7 +46,7 @@ async function callRapid(path: string, init: RequestInit) {
 // Try multiple endpoint shapes (different RapidAPI providers use different paths/params)
 async function tryEndpoints(
   variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>
-): Promise<any> {
+): Promise<{ data: any; variant: { path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> } }> {
   let lastErr: any;
   for (const v of variants) {
     try {
@@ -57,12 +57,58 @@ async function tryEndpoints(
         init.body = JSON.stringify(v.body);
         init.headers = { "Content-Type": "application/json" };
       }
-      return await callRapid(u.pathname + u.search, init);
+      return { data: await callRapid(u.pathname + u.search, init), variant: v };
     } catch (e) {
       lastErr = e;
     }
   }
   throw lastErr ?? new Error("All endpoints failed");
+}
+
+function readPageInfo(raw: any) {
+  const result = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
+  const pageInfo =
+    result?.page_info ??
+    result?.data?.page_info ??
+    raw?.data?.page_info ??
+    raw?.page_info ??
+    null;
+
+  return {
+    hasNext: !!(pageInfo?.has_next_page ?? pageInfo?.hasNextPage),
+    cursor: str(
+      pageInfo?.end_cursor ??
+      pageInfo?.next_cursor ??
+      pageInfo?.max_id ??
+      pageInfo?.maxId ??
+      raw?.next_max_id ??
+      raw?.max_id
+    ),
+  };
+}
+
+function paginationVariants(
+  variant: { path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> },
+  cursor: string,
+) {
+  const method = variant.method ?? "GET";
+  if (method === "POST") {
+    return [
+      { ...variant, body: { ...(variant.body ?? {}), maxId: cursor } },
+      { ...variant, body: { ...(variant.body ?? {}), max_id: cursor } },
+      { ...variant, body: { ...(variant.body ?? {}), end_cursor: cursor } },
+      { ...variant, body: { ...(variant.body ?? {}), cursor } },
+      { ...variant, body: { ...(variant.body ?? {}), after: cursor } },
+    ];
+  }
+
+  return [
+    { ...variant, query: { ...(variant.query ?? {}), maxId: cursor } },
+    { ...variant, query: { ...(variant.query ?? {}), max_id: cursor } },
+    { ...variant, query: { ...(variant.query ?? {}), end_cursor: cursor } },
+    { ...variant, query: { ...(variant.query ?? {}), cursor } },
+    { ...variant, query: { ...(variant.query ?? {}), after: cursor } },
+  ];
 }
 
 // ---------- normalizers (handle multiple provider shapes) ----------
