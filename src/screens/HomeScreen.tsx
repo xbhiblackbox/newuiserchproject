@@ -36,6 +36,28 @@ const HomeScreen = () => {
   const [dmCount, setDmCount] = useState(2);
   const [dmEditOpen, setDmEditOpen] = useState(false);
   const [dmEditValue, setDmEditValue] = useState("");
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [connectValue, setConnectValue] = useState("");
+  const [connectLoading, setConnectLoading] = useState(false);
+
+  const handleConnectInstagram = async () => {
+    const clean = connectValue.trim().replace(/^@/, "");
+    if (!/^[a-zA-Z0-9._]{1,30}$/.test(clean)) {
+      toast.error("Invalid username");
+      return;
+    }
+    setConnectLoading(true);
+    try {
+      await cloneInstagramAccount(clean);
+      toast.success(`Cloned @${clean}`);
+      setConnectOpen(false);
+      setConnectValue("");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to clone account");
+    } finally {
+      setConnectLoading(false);
+    }
+  };
 
   // Feed videos state
   const [feedVideos, setFeedVideos] = useState<FeedVideo[]>(() =>
