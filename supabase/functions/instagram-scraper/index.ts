@@ -291,14 +291,14 @@ function extractDetailFields(raw: any): { videoUrl: string; caption: string; thu
   }
 
   const meta = m.meta ?? r0?.meta ?? top?.meta ?? {};
-  const caption = str(
+  const captionRaw =
     m.caption?.text ??
-      (typeof m.caption === "string" ? m.caption : "") ??
-      m.edge_media_to_caption?.edges?.[0]?.node?.text ??
-      meta.title ??
-      meta.caption ??
-      ""
-  );
+    (typeof m.caption === "string" ? m.caption : undefined) ??
+    m.edge_media_to_caption?.edges?.[0]?.node?.text ??
+    meta.title ??
+    meta.caption ??
+    "";
+  const caption = str(captionRaw);
   const thumbnail = str(
     m.thumbnail_url ??
       m.display_url ??
