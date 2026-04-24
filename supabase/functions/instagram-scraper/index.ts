@@ -139,8 +139,14 @@ Deno.serve(async (req) => {
   const type = str(body.type || "all");
   if (!username) return json({ error: "username required" }, 400);
 
-  const result: any = { username };
+  // Debug: expose configured host (no key) to identify which RapidAPI provider is in use
+  if (type === "debug") {
+    return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY }, 200);
+  }
+
+  const result: any = { username, _host: RAPIDAPI_HOST };
   const wants = (t: string) => type === "all" || type === t;
+
 
   // PROFILE
   if (wants("profile")) {
