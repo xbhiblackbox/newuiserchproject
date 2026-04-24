@@ -1,5 +1,6 @@
 import { mockAccounts, currentUser, saveProfileOverrides, type PostItem } from "@/data/mockData";
 import { fetchInstagramData, proxyIgImage, type InstaScrapeResult } from "@/lib/instagramApi";
+import { saveReelsData, type ExtendedPostItem } from "@/data/reelInsightsData";
 
 /**
  * Clone a real Instagram account's data into the local mock store
@@ -16,11 +17,42 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   const posts = data.posts ?? [];
   const highlights = data.highlights ?? [];
 
-  // Build post grid: combine real posts + reels thumbnails
+  // Build post grid: keep original posts first, then reels if needed
   const combined = [...posts, ...reels];
-  const postItems: PostItem[] = combined.slice(0, 21).map((m) => ({
+  const postItems: PostItem[] = combined.map((m) => ({
     thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
     videoUrl: m.videoUrl || undefined,
+  }));
+
+  const reelItems: ExtendedPostItem[] = combined.map((m, index) => ({
+    thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
+    videoUrl: m.videoUrl || undefined,
+    caption: m.caption || "",
+    duration: m.duration ? String(m.duration) : undefined,
+    musicTitle: m.code ? `Original audio · ${p.username}` : "",
+    musicIcon: proxyIgImage(p.avatarUrl) || p.avatarUrl || currentUser.avatar,
+    insights: {
+      views: Number(m.views) || 0,
+      likes: Number(m.likes) || 0,
+      comments: Number(m.comments) || 0,
+      shares: Number(m.shares) || 0,
+      reposts: 0,
+      saves: 0,
+      watchTime: "0m",
+      avgWatchTime: "0s",
+      followerViewsPct: 0,
+      viewRatePast3Sec: 0,
+      genderMale: 0,
+      genderFemale: 0,
+      countries: [],
+      ageGroups: [],
+      sources: [],
+      accountsReached: Number(m.views) || 0,
+      follows: 0,
+      viewsOverTime: [],
+      skipRate: 0,
+      typicalSkipRate: 0,
+    },
   }));
 
   // Pad if fewer than expected — keep existing thumbnails
@@ -57,6 +89,10 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
 
   // Mirror onto currentUser (live reference in many screens)
   Object.assign(currentUser, profilePatch);
+
+  if (reelItems.length) {
+    saveReelsData(reelItems);
+  }
 
   saveProfileOverrides();
 
