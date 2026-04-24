@@ -163,7 +163,7 @@ function normalizeMediaItem(it: any) {
   const code = str(m.code ?? m.shortcode ?? m.shortCode);
   const caption = str(
     m.caption?.text ??
-      (typeof m.caption === "string" ? m.caption : "") ??
+      (typeof m.caption === "string" ? m.caption : undefined) ??
       m.edge_media_to_caption?.edges?.[0]?.node?.text ??
       ""
   );
@@ -218,6 +218,98 @@ function pickItems(raw: any): any[] {
     (Array.isArray(raw?.data) ? raw.data : null) ??
     []
   );
+}
+
+// Fetch a single media's full details (used to recover video_url for reels)
+async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
+  if (!codeOrId) return null;
+  try {
+    // /api/instagram/links is the confirmed working endpoint on instagram120
+    const { data } = await tryEndpoints([
+      { path: "/api/instagram/links", method: "POST", body: { url: `https://www.instagram.com/reel/${codeOrId}/` } },
+      { path: "/api/instagram/links", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
+      { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/reel/${codeOrId}/` } },
+      { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
+    ]);
+    return data;
+  } catch (e) {
+    console.warn("media detail fetch failed", codeOrId, (e as Error).message);
+    return null;
+  }
+}
+
+function extractDetailFields(raw: any): { videoUrl: string; caption: string; thumbnail: string } {
+  // Some endpoints return a top-level array (e.g. /api/instagram/links -> [{urls, meta}])
+  const top = Array.isArray(raw) ? raw[0] : raw;
+  const r0 = Array.isArray(top?.result) ? top.result[0] : top?.result;
+  const m =
+    r0?.media ??
+    r0?.item ??
+    r0?.items?.[0] ??
+    r0 ??
+    top?.data?.media ??
+    top?.data?.item ??
+    top?.data ??
+    top?.media ??
+    top?.item ??
+    top ??
+    {};
+
+  // Direct video fields
+  let videoUrl = str(
+    m.video_url ??
+      m.video_versions?.[0]?.url ??
+      m.video?.url ??
+      m.videoUrl ??
+      m.node?.video_url ??
+      m.carousel_media?.[0]?.video_versions?.[0]?.url ??
+      ""
+  );
+
+  // links/urls array shape (links endpoint)
+  if (!videoUrl) {
+    const linkArr =
+      m.urls ??
+      m.links ??
+      m.video ??
+      r0?.urls ??
+      r0?.links ??
+      top?.urls ??
+      top?.links ??
+      null;
+    if (Array.isArray(linkArr)) {
+      // Prefer mp4 with highest quality
+      const mp4s = linkArr.filter((l: any) => {
+        const u = str(l?.url ?? l?.link ?? l);
+        const ext = str(l?.extension);
+        return /\.mp4($|\?)/i.test(u) || ext.toLowerCase() === "mp4";
+      });
+      const best = mp4s.sort((a: any, b: any) => num(b?.quality) - num(a?.quality))[0];
+      if (best) videoUrl = str(best?.url ?? best?.link ?? best);
+      if (!videoUrl) videoUrl = str(linkArr[0]?.url ?? linkArr[0]?.link ?? linkArr[0]);
+    }
+  }
+
+  const meta = m.meta ?? r0?.meta ?? top?.meta ?? {};
+  const captionRaw =
+    m.caption?.text ??
+    (typeof m.caption === "string" ? m.caption : undefined) ??
+    m.edge_media_to_caption?.edges?.[0]?.node?.text ??
+    meta.title ??
+    meta.caption ??
+    "";
+  const caption = str(captionRaw);
+  const thumbnail = str(
+    m.thumbnail_url ??
+      m.display_url ??
+      m.image_versions2?.candidates?.[0]?.url ??
+      m.cover?.url ??
+      meta.thumbnail ??
+      meta.image ??
+      ""
+  );
+
+  return { videoUrl, caption, thumbnail };
 }
 
 function dedupeMediaItems(items: any[]) {
@@ -302,17 +394,24 @@ Deno.serve(async (req) => {
         { path: "/v1/reels", query: { username_or_id_or_url: username } },
         { path: "/reels", query: { username } },
       ]);
-      const page = readPageInfo(first.data);
-      let extraItems: any[] = [];
-      if (page.hasNext && page.cursor) {
+      let allRaw: any[] = [pickItems(first.data)];
+      let cur = readPageInfo(first.data);
+      let lastVariant = first.variant;
+      let pages = 1;
+      const MAX_PAGES = 3;
+      while (cur.hasNext && cur.cursor && pages < MAX_PAGES) {
         try {
-          const next = await tryEndpoints(paginationVariants(first.variant, page.cursor));
-          extraItems = pickItems(next.data);
+          const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
+          allRaw.push(pickItems(next.data));
+          cur = readPageInfo(next.data);
+          lastVariant = next.variant;
+          pages++;
         } catch (e) {
-          console.warn("reels page 2 err", e);
+          console.warn(`reels page ${pages + 1} err`, e);
+          break;
         }
       }
-      const items = dedupeMediaItems([...pickItems(first.data), ...extraItems]).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
+      const items = dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, 120);
       result.reels = items;
       result.reelsOk = true;
       if (body.debug) result._raw_reels = first.data;
@@ -332,17 +431,24 @@ Deno.serve(async (req) => {
         { path: "/v1/posts", query: { username_or_id_or_url: username } },
         { path: "/posts", query: { username } },
       ]);
-      const page = readPageInfo(first.data);
-      let extraItems: any[] = [];
-      if (page.hasNext && page.cursor) {
+      let allRaw: any[] = [pickItems(first.data)];
+      let cur = readPageInfo(first.data);
+      let lastVariant = first.variant;
+      let pages = 1;
+      const MAX_PAGES = 3;
+      while (cur.hasNext && cur.cursor && pages < MAX_PAGES) {
         try {
-          const next = await tryEndpoints(paginationVariants(first.variant, page.cursor));
-          extraItems = pickItems(next.data);
+          const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
+          allRaw.push(pickItems(next.data));
+          cur = readPageInfo(next.data);
+          lastVariant = next.variant;
+          pages++;
         } catch (e) {
-          console.warn("posts page 2 err", e);
+          console.warn(`posts page ${pages + 1} err`, e);
+          break;
         }
       }
-      const items = dedupeMediaItems([...pickItems(first.data), ...extraItems]).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
+      const items = dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, 120);
       result.posts = items;
       result.postsOk = true;
       if (body.debug) result._raw_posts = first.data;
@@ -380,6 +486,61 @@ Deno.serve(async (req) => {
       console.error("highlights err", e);
       result.highlights = [];
       result.highlightsOk = false;
+    }
+  }
+
+  // ---------- ENRICHMENT ----------
+  // 1) Merge captions from posts into reels (match by id or code).
+  // 2) Fetch missing reel video URLs in parallel (cap to first N to limit RapidAPI load).
+  if (Array.isArray(result.reels) && result.reels.length) {
+    const postsArr: any[] = Array.isArray(result.posts) ? result.posts : [];
+    if (postsArr.length) {
+      const byId = new Map<string, any>();
+      const byCode = new Map<string, any>();
+      for (const p of postsArr) {
+        if (p?.id) byId.set(String(p.id), p);
+        if (p?.code) byCode.set(String(p.code), p);
+      }
+      result.reels = result.reels.map((r: any) => {
+        if (r?.caption && r?.thumbnail) return r;
+        const match = (r?.id && byId.get(String(r.id))) || (r?.code && byCode.get(String(r.code)));
+        if (!match) return r;
+        return {
+          ...r,
+          caption: r.caption || match.caption || "",
+          thumbnail: r.thumbnail || match.thumbnail || "",
+          videoUrl: r.videoUrl || match.videoUrl || "",
+          views: r.views || match.views || 0,
+          likes: r.likes || match.likes || 0,
+          comments: r.comments || match.comments || 0,
+          takenAt: r.takenAt || match.takenAt || 0,
+        };
+      });
+    }
+
+    const MAX_DETAIL_FETCH = 8;
+    const targets = result.reels
+      .map((r: any, idx: number) => ({ r, idx }))
+      .filter(({ r }: any) => !r?.videoUrl || !r?.caption)
+      .filter(({ r }: any) => r?.code || r?.id)
+      .slice(0, MAX_DETAIL_FETCH);
+
+    if (targets.length) {
+      const detailResults = await Promise.allSettled(
+        targets.map(({ r }: any) => fetchMediaDetail(str(r.code || r.id)))
+      );
+      detailResults.forEach((res, i) => {
+        if (res.status !== "fulfilled" || !res.value) return;
+        const fields = extractDetailFields(res.value);
+        const { idx } = targets[i];
+        const cur = result.reels[idx];
+        result.reels[idx] = {
+          ...cur,
+          videoUrl: cur.videoUrl || fields.videoUrl || "",
+          caption: cur.caption || fields.caption || "",
+          thumbnail: cur.thumbnail || fields.thumbnail || "",
+        };
+      });
     }
   }
 
