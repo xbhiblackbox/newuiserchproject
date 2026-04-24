@@ -338,6 +338,15 @@ const HomeScreen = () => {
               {connectLoading ? <Loader2 size={16} className="animate-spin" /> : "Clone Account"}
             </button>
             <button
+              onClick={handleRefreshInstagram}
+              disabled={connectLoading || !(connectValue.trim() || getConnectedUsername())}
+              className="w-full mt-2 py-2.5 rounded-lg border border-border bg-background text-foreground text-[14px] font-semibold flex items-center justify-center gap-1.5 disabled:opacity-60"
+              title="Clear cache and re-fetch live Instagram data"
+            >
+              <RefreshCw size={14} className={connectLoading ? "animate-spin" : ""} />
+              Refresh data
+            </button>
+            <button
               onClick={() => !connectLoading && setConnectOpen(false)}
               className="w-full mt-2 py-2 text-[13px] text-muted-foreground"
             >
