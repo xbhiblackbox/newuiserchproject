@@ -268,6 +268,50 @@ const HomeScreen = () => {
           </div>
         </div>
       )}
+
+      {/* Connect Instagram Modal */}
+      {connectOpen && (
+        <div
+          className="fixed inset-0 z-[90] bg-black/60 flex items-center justify-center px-6"
+          onClick={() => !connectLoading && setConnectOpen(false)}
+        >
+          <div
+            className="w-full max-w-[320px] rounded-2xl bg-background p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-foreground text-center mb-1">
+              Connect Instagram
+            </h3>
+            <p className="text-xs text-muted-foreground text-center mb-4">
+              Enter a public username to clone its profile
+            </p>
+            <div className="flex items-center gap-1 bg-secondary rounded-lg px-3">
+              <span className="text-muted-foreground text-[15px]">@</span>
+              <input
+                value={connectValue}
+                onChange={(e) => setConnectValue(e.target.value.replace(/^@/, ""))}
+                placeholder="username"
+                autoFocus
+                onKeyDown={(e) => e.key === "Enter" && !connectLoading && handleConnectInstagram()}
+                className="flex-1 bg-transparent py-2.5 text-[16px] text-foreground outline-none"
+              />
+            </div>
+            <button
+              onClick={handleConnectInstagram}
+              disabled={connectLoading || !connectValue.trim()}
+              className="w-full mt-3 py-2.5 rounded-lg bg-[hsl(var(--ig-blue))] text-white text-[14px] font-semibold flex items-center justify-center disabled:opacity-60"
+            >
+              {connectLoading ? <Loader2 size={16} className="animate-spin" /> : "Clone Account"}
+            </button>
+            <button
+              onClick={() => !connectLoading && setConnectOpen(false)}
+              className="w-full mt-2 py-2 text-[13px] text-muted-foreground"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
