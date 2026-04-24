@@ -23,8 +23,25 @@ async function rapid(path: string, params: Record<string, string>) {
     },
     signal: AbortSignal.timeout(40000),
   });
-  if (!r.ok) throw new Error(`RapidAPI ${r.status}`);
+  if (!r.ok) {
+    const body = await r.text().catch(() => "");
+    console.error(`RapidAPI ${r.status} ${u.pathname}${u.search} :: ${body.slice(0, 300)}`);
+    throw new Error(`RapidAPI ${r.status}`);
+  }
   return r.json();
+}
+
+// Try several known endpoint variants until one returns 200
+async function rapidTry(paths: string[], params: Record<string, string>) {
+  let lastErr: any;
+  for (const p of paths) {
+    try {
+      return await rapid(p, params);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr ?? new Error("All endpoints failed");
 }
 
 // ---------- normalizers ----------
