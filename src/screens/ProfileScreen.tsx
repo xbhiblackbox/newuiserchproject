@@ -126,6 +126,16 @@ const ProfileScreen = () => {
     })();
   }, [isJust4abhii]);
 
+  useEffect(() => {
+    const syncClonedInstagram = () => {
+      if (!isJust4abhii) return;
+      setReelsData(loadReelsData());
+    };
+
+    window.addEventListener("ig-account-cloned", syncClonedInstagram as EventListener);
+    return () => window.removeEventListener("ig-account-cloned", syncClonedInstagram as EventListener);
+  }, [isJust4abhii]);
+
   const getThumb = (post: { thumbnail: string; videoUrl?: string }) => {
     // Always prioritize user-set thumbnail
     if (post.thumbnail) {
@@ -146,7 +156,7 @@ const ProfileScreen = () => {
       return reelsData.map((reel, i) => ({
         image: getThumb(reel),
         videoUrl: reel.videoUrl,
-        isReel: true,
+        isReel: !!reel.videoUrl,
         views: reel.insights.views,
         likes: reel.insights.likes,
       }));
