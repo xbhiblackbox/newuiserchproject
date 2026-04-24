@@ -296,16 +296,26 @@ Deno.serve(async (req) => {
   // REELS
   if (wants("reels")) {
     try {
-      const raw = await tryEndpoints([
+      const first = await tryEndpoints([
         { path: "/api/instagram/reels", method: "POST", body: { username } },
         { path: "/api/instagram/userReels", method: "POST", body: { username } },
         { path: "/v1/reels", query: { username_or_id_or_url: username } },
         { path: "/reels", query: { username } },
       ]);
-      const items = dedupeMediaItems(pickItems(raw)).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
+      const page = readPageInfo(first.data);
+      let extraItems: any[] = [];
+      if (page.hasNext && page.cursor) {
+        try {
+          const next = await tryEndpoints(paginationVariants(first.variant, page.cursor));
+          extraItems = pickItems(next.data);
+        } catch (e) {
+          console.warn("reels page 2 err", e);
+        }
+      }
+      const items = dedupeMediaItems([...pickItems(first.data), ...extraItems]).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
       result.reels = items;
       result.reelsOk = true;
-      if (body.debug) result._raw_reels = raw;
+      if (body.debug) result._raw_reels = first.data;
     } catch (e) {
       console.error("reels err", e);
       result.reels = [];
@@ -316,16 +326,26 @@ Deno.serve(async (req) => {
   // POSTS
   if (wants("posts")) {
     try {
-      const raw = await tryEndpoints([
+      const first = await tryEndpoints([
         { path: "/api/instagram/posts", method: "POST", body: { username } },
         { path: "/api/instagram/userPosts", method: "POST", body: { username } },
         { path: "/v1/posts", query: { username_or_id_or_url: username } },
         { path: "/posts", query: { username } },
       ]);
-      const items = dedupeMediaItems(pickItems(raw)).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
+      const page = readPageInfo(first.data);
+      let extraItems: any[] = [];
+      if (page.hasNext && page.cursor) {
+        try {
+          const next = await tryEndpoints(paginationVariants(first.variant, page.cursor));
+          extraItems = pickItems(next.data);
+        } catch (e) {
+          console.warn("posts page 2 err", e);
+        }
+      }
+      const items = dedupeMediaItems([...pickItems(first.data), ...extraItems]).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
       result.posts = items;
       result.postsOk = true;
-      if (body.debug) result._raw_posts = raw;
+      if (body.debug) result._raw_posts = first.data;
     } catch (e) {
       console.error("posts err", e);
       result.posts = [];
