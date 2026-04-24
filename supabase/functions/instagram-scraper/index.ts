@@ -406,17 +406,24 @@ Deno.serve(async (req) => {
         { path: "/v1/posts", query: { username_or_id_or_url: username } },
         { path: "/posts", query: { username } },
       ]);
-      const page = readPageInfo(first.data);
-      let extraItems: any[] = [];
-      if (page.hasNext && page.cursor) {
+      let allRaw: any[] = [pickItems(first.data)];
+      let cur = readPageInfo(first.data);
+      let lastVariant = first.variant;
+      let pages = 1;
+      const MAX_PAGES = 4;
+      while (cur.hasNext && cur.cursor && pages < MAX_PAGES) {
         try {
-          const next = await tryEndpoints(paginationVariants(first.variant, page.cursor));
-          extraItems = pickItems(next.data);
+          const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
+          allRaw.push(pickItems(next.data));
+          cur = readPageInfo(next.data);
+          lastVariant = next.variant;
+          pages++;
         } catch (e) {
-          console.warn("posts page 2 err", e);
+          console.warn(`posts page ${pages + 1} err`, e);
+          break;
         }
       }
-      const items = dedupeMediaItems([...pickItems(first.data), ...extraItems]).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
+      const items = dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, 120);
       result.posts = items;
       result.postsOk = true;
       if (body.debug) result._raw_posts = first.data;
