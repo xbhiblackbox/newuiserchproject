@@ -67,10 +67,12 @@ async function tryEndpoints(
 
 // ---------- normalizers (handle multiple provider shapes) ----------
 function normalizeProfile(raw: any) {
-  // instagram120 returns { result: { user: {...} } } OR { data: {...} } OR direct user
+  // instagram120: { result: [{ status:"ok", user: {...} }] }
+  // others: { result: { user: {...} } } | { data: {...} } | direct user
+  const resultArr = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   const d =
+    resultArr?.user ??
     raw?.result?.user ??
-    raw?.result ??
     raw?.data?.user ??
     raw?.data ??
     raw?.user ??
@@ -81,7 +83,12 @@ function normalizeProfile(raw: any) {
     fullName: str(d.full_name ?? d.fullname ?? d.name),
     bio: str(d.biography ?? d.bio),
     avatarUrl: str(
-      d.profile_pic_url_hd ?? d.profile_pic_url ?? d.profile_picture ?? d.hd_profile_pic_url_info?.url ?? d.avatar
+      d.hd_profile_pic_url_info?.url ??
+        d.hd_profile_pic_versions?.slice(-1)?.[0]?.url ??
+        d.profile_pic_url_hd ??
+        d.profile_pic_url ??
+        d.profile_picture ??
+        d.avatar
     ),
     isVerified: !!(d.is_verified ?? d.verified),
     followers: num(
@@ -93,7 +100,7 @@ function normalizeProfile(raw: any) {
     postsCount: num(
       d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count
     ),
-    externalUrl: str(d.external_url ?? d.website),
+    externalUrl: str(d.external_url ?? d.website ?? d.bio_links?.[0]?.url),
     category: str(d.category ?? d.category_name),
   };
 }
