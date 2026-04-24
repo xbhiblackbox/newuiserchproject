@@ -241,12 +241,10 @@ Deno.serve(async (req) => {
         { path: "/v1/reels", query: { username_or_id_or_url: username } },
         { path: "/reels", query: { username } },
       ]);
-      const items = pickItems(raw)
-        .map(normalizeMediaItem)
-        .filter(Boolean)
-        .slice(0, 12);
+      const items = pickItems(raw).map(normalizeMediaItem).filter(Boolean).slice(0, 12);
       result.reels = items;
       result.reelsOk = true;
+      if (body.debug) result._raw_reels = raw;
     } catch (e) {
       console.error("reels err", e);
       result.reels = [];
@@ -263,12 +261,10 @@ Deno.serve(async (req) => {
         { path: "/v1/posts", query: { username_or_id_or_url: username } },
         { path: "/posts", query: { username } },
       ]);
-      const items = pickItems(raw)
-        .map(normalizeMediaItem)
-        .filter(Boolean)
-        .slice(0, 12);
+      const items = pickItems(raw).map(normalizeMediaItem).filter(Boolean).slice(0, 12);
       result.posts = items;
       result.postsOk = true;
+      if (body.debug) result._raw_posts = raw;
     } catch (e) {
       console.error("posts err", e);
       result.posts = [];
@@ -284,16 +280,21 @@ Deno.serve(async (req) => {
         { path: "/api/instagram/userHighlights", method: "POST", body: { username } },
         { path: "/v1/highlights", query: { username_or_id_or_url: username } },
       ]);
+      const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
       const items = (
+        r0?.items ??
+        r0?.tray ??
+        r0 ??
         raw?.result?.items ??
         raw?.result ??
         raw?.data?.items ??
         raw?.data ??
         raw?.items ??
         []
-      ).map(normalizeHighlight);
-      result.highlights = items;
+      );
+      result.highlights = (Array.isArray(items) ? items : []).map(normalizeHighlight);
       result.highlightsOk = true;
+      if (body.debug) result._raw_highlights = raw;
     } catch (e) {
       console.error("highlights err", e);
       result.highlights = [];
