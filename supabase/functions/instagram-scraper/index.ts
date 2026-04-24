@@ -174,6 +174,17 @@ function pickItems(raw: any): any[] {
   );
 }
 
+function dedupeMediaItems(items: any[]) {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = str(item?.id || item?.code || item?.shortcode || item?.pk || item?.media_id);
+    if (!key) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function normalizeHighlight(h: any) {
   return {
     id: str(h.id ?? h.pk),
@@ -245,7 +256,7 @@ Deno.serve(async (req) => {
         { path: "/v1/reels", query: { username_or_id_or_url: username } },
         { path: "/reels", query: { username } },
       ]);
-      const items = pickItems(raw).map(normalizeMediaItem).filter(Boolean).slice(0, 12);
+      const items = dedupeMediaItems(pickItems(raw)).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
       result.reels = items;
       result.reelsOk = true;
       if (body.debug) result._raw_reels = raw;
@@ -265,7 +276,7 @@ Deno.serve(async (req) => {
         { path: "/v1/posts", query: { username_or_id_or_url: username } },
         { path: "/posts", query: { username } },
       ]);
-      const items = pickItems(raw).map(normalizeMediaItem).filter(Boolean).slice(0, 12);
+      const items = dedupeMediaItems(pickItems(raw)).map(normalizeMediaItem).filter(Boolean).slice(0, 60);
       result.posts = items;
       result.postsOk = true;
       if (body.debug) result._raw_posts = raw;
