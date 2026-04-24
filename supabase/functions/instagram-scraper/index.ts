@@ -380,7 +380,7 @@ Deno.serve(async (req) => {
       let cur = readPageInfo(first.data);
       let lastVariant = first.variant;
       let pages = 1;
-      const MAX_PAGES = 4;
+      const MAX_PAGES = 3;
       while (cur.hasNext && cur.cursor && pages < MAX_PAGES) {
         try {
           const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
@@ -417,7 +417,7 @@ Deno.serve(async (req) => {
       let cur = readPageInfo(first.data);
       let lastVariant = first.variant;
       let pages = 1;
-      const MAX_PAGES = 4;
+      const MAX_PAGES = 3;
       while (cur.hasNext && cur.cursor && pages < MAX_PAGES) {
         try {
           const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
