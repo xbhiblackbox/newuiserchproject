@@ -54,7 +54,7 @@ const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 const USERNAME_KEY = "ig_connected_username";
-const CACHE_PREFIX = "ig_cache_v4";
+const CACHE_PREFIX = "ig_cache_v5";
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
 export const getConnectedUsername = (): string | null => {
