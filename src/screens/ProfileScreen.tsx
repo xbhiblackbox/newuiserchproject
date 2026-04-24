@@ -918,7 +918,7 @@ const ProfileScreen = () => {
       {/* Reels Grid */}
       {activeTab === "reels" && (
         <div className="grid grid-cols-3 gap-[1.5px] dark:gap-[3px]">
-          {userPosts.filter(p => p.isReel).map((post, i) => renderGridItem(post, i, "aspect-[2/3]", true))}
+          {reelPosts.map((post, i) => renderGridItem(post, i, "aspect-[2/3]", true))}
         </div>
       )}
 
