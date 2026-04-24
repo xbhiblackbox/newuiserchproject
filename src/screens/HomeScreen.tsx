@@ -41,6 +41,14 @@ const HomeScreen = () => {
   const [connectValue, setConnectValue] = useState("");
   const [connectLoading, setConnectLoading] = useState(false);
 
+  // Pre-fill input with the last connected username when modal opens
+  useEffect(() => {
+    if (connectOpen) {
+      const last = getConnectedUsername();
+      if (last) setConnectValue((v) => v || last);
+    }
+  }, [connectOpen]);
+
   const handleConnectInstagram = async () => {
     const clean = connectValue.trim().replace(/^@/, "");
     if (!/^[a-zA-Z0-9._]{1,30}$/.test(clean)) {
@@ -55,6 +63,31 @@ const HomeScreen = () => {
       setConnectValue("");
     } catch (e: any) {
       toast.error(e?.message || "Failed to clone account");
+    } finally {
+      setConnectLoading(false);
+    }
+  };
+
+  const handleRefreshInstagram = async () => {
+    const typed = connectValue.trim().replace(/^@/, "");
+    const target = typed || getConnectedUsername() || "";
+    if (!target) {
+      toast.error("Enter a username first");
+      return;
+    }
+    if (!/^[a-zA-Z0-9._]{1,30}$/.test(target)) {
+      toast.error("Invalid username");
+      return;
+    }
+    setConnectLoading(true);
+    try {
+      clearInstagramCache(target);
+      await cloneInstagramAccount(target);
+      toast.success(`Refreshed @${target}`);
+      setConnectOpen(false);
+      setConnectValue("");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to refresh");
     } finally {
       setConnectLoading(false);
     }
