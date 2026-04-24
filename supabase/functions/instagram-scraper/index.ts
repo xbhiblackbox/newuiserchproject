@@ -5,7 +5,7 @@ const corsHeaders = {
 };
 
 const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
-const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram-scraper-api2.p.rapidapi.com";
+const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.com";
 
 const json = (d: unknown, status = 200) =>
   new Response(JSON.stringify(d), {
@@ -13,21 +13,6 @@ const json = (d: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-async function rapid(path: string, params: Record<string, string>) {
-  const u = new URL(`https://${RAPIDAPI_HOST}${path}`);
-  Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, v));
-  const r = await fetch(u.toString(), {
-    headers: {
-      "x-rapidapi-key": RAPIDAPI_KEY,
-      "x-rapidapi-host": RAPIDAPI_HOST,
-    },
-    signal: AbortSignal.timeout(40000),
-  });
-  if (!r.ok) throw new Error(`RapidAPI ${r.status}`);
-  return r.json();
-}
-
-// ---------- normalizers ----------
 const num = (v: unknown): number => {
   if (typeof v === "number") return v;
   if (typeof v === "string") return Number(v.replace(/[^\d.]/g, "")) || 0;
@@ -35,38 +20,113 @@ const num = (v: unknown): number => {
 };
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
+async function callRapid(path: string, init: RequestInit) {
+  const url = `https://${RAPIDAPI_HOST}${path}`;
+  const r = await fetch(url, {
+    ...init,
+    headers: {
+      ...(init.headers ?? {}),
+      "x-rapidapi-key": RAPIDAPI_KEY,
+      "x-rapidapi-host": RAPIDAPI_HOST,
+    },
+    signal: AbortSignal.timeout(40000),
+  });
+  const text = await r.text();
+  if (!r.ok) {
+    console.error(`RapidAPI ${r.status} ${path} :: ${text.slice(0, 300)}`);
+    throw new Error(`RapidAPI ${r.status}`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {};
+  }
+}
+
+// Try multiple endpoint shapes (different RapidAPI providers use different paths/params)
+async function tryEndpoints(
+  variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>
+): Promise<any> {
+  let lastErr: any;
+  for (const v of variants) {
+    try {
+      const u = new URL(`https://${RAPIDAPI_HOST}${v.path}`);
+      Object.entries(v.query ?? {}).forEach(([k, val]) => u.searchParams.set(k, val));
+      const init: RequestInit = { method: v.method ?? "GET" };
+      if (v.body) {
+        init.body = JSON.stringify(v.body);
+        init.headers = { "Content-Type": "application/json" };
+      }
+      return await callRapid(u.pathname + u.search, init);
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr ?? new Error("All endpoints failed");
+}
+
+// ---------- normalizers (handle multiple provider shapes) ----------
 function normalizeProfile(raw: any) {
-  const d = raw?.data ?? raw?.user ?? raw ?? {};
+  // instagram120: { result: [{ status:"ok", user: {...} }] }
+  // others: { result: { user: {...} } } | { data: {...} } | direct user
+  const resultArr = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
+  const d =
+    resultArr?.user ??
+    raw?.result?.user ??
+    raw?.data?.user ??
+    raw?.data ??
+    raw?.user ??
+    raw ??
+    {};
   return {
     username: str(d.username ?? d.user_name),
     fullName: str(d.full_name ?? d.fullname ?? d.name),
     bio: str(d.biography ?? d.bio),
-    avatarUrl: str(d.profile_pic_url_hd ?? d.profile_pic_url ?? d.profile_picture ?? d.avatar),
+    avatarUrl: str(
+      d.hd_profile_pic_url_info?.url ??
+        d.hd_profile_pic_versions?.slice(-1)?.[0]?.url ??
+        d.profile_pic_url_hd ??
+        d.profile_pic_url ??
+        d.profile_picture ??
+        d.avatar
+    ),
     isVerified: !!(d.is_verified ?? d.verified),
-    followers: num(d.follower_count ?? d.followers ?? d.edge_followed_by?.count),
-    following: num(d.following_count ?? d.following ?? d.edge_follow?.count),
-    postsCount: num(d.media_count ?? d.posts_count ?? d.edge_owner_to_timeline_media?.count),
-    externalUrl: str(d.external_url ?? d.website),
+    followers: num(
+      d.follower_count ?? d.followers ?? d.followers_count ?? d.edge_followed_by?.count
+    ),
+    following: num(
+      d.following_count ?? d.following ?? d.followings ?? d.edge_follow?.count
+    ),
+    postsCount: num(
+      d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count
+    ),
+    externalUrl: str(d.external_url ?? d.website ?? d.bio_links?.[0]?.url),
     category: str(d.category ?? d.category_name),
   };
 }
 
 function normalizeMediaItem(it: any) {
-  const id = str(it.id ?? it.pk ?? it.media_id);
-  const code = str(it.code ?? it.shortcode ?? it.shortCode);
+  if (!it) return null;
+  const m = it.media ?? it.node ?? it;
+  const id = str(m.id ?? m.pk ?? m.media_id);
+  const code = str(m.code ?? m.shortcode ?? m.shortCode);
   const caption = str(
-    it.caption?.text ?? it.caption ?? it.edge_media_to_caption?.edges?.[0]?.node?.text ?? ""
+    m.caption?.text ??
+      (typeof m.caption === "string" ? m.caption : "") ??
+      m.edge_media_to_caption?.edges?.[0]?.node?.text ??
+      ""
   );
   const thumbnail = str(
-    it.thumbnail_url ??
-      it.display_url ??
-      it.image_versions2?.candidates?.[0]?.url ??
-      it.thumbnail_src ??
-      it.cover_frame_url ??
-      it.thumbnail
+    m.thumbnail_url ??
+      m.display_url ??
+      m.image_versions2?.candidates?.[0]?.url ??
+      m.thumbnail_src ??
+      m.cover_frame_url ??
+      m.thumbnail ??
+      m.cover?.url
   );
   const videoUrl = str(
-    it.video_url ?? it.video_versions?.[0]?.url ?? it.videoUrl ?? ""
+    m.video_url ?? m.video_versions?.[0]?.url ?? m.videoUrl ?? m.video?.url ?? ""
   );
   return {
     id,
@@ -74,24 +134,37 @@ function normalizeMediaItem(it: any) {
     caption,
     thumbnail,
     videoUrl,
-    duration: num(it.video_duration ?? it.duration),
-    views: num(it.play_count ?? it.video_view_count ?? it.view_count ?? it.views),
-    likes: num(it.like_count ?? it.likes ?? it.edge_liked_by?.count ?? it.edge_media_preview_like?.count),
-    comments: num(it.comment_count ?? it.comments ?? it.edge_media_to_comment?.count),
-    shares: num(it.reshare_count ?? it.share_count ?? it.shares),
-    takenAt: num(it.taken_at ?? it.taken_at_timestamp ?? it.takenAt),
+    duration: num(m.video_duration ?? m.duration),
+    views: num(m.play_count ?? m.video_view_count ?? m.view_count ?? m.views),
+    likes: num(
+      m.like_count ?? m.likes ?? m.edge_liked_by?.count ?? m.edge_media_preview_like?.count
+    ),
+    comments: num(m.comment_count ?? m.comments ?? m.edge_media_to_comment?.count),
+    shares: num(m.reshare_count ?? m.share_count ?? m.shares),
+    takenAt: num(m.taken_at ?? m.taken_at_timestamp ?? m.takenAt),
   };
 }
 
 function pickItems(raw: any): any[] {
+  // result may be array OR object
+  const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   return (
+    r0?.items ??
+    r0?.posts ??
+    r0?.reels ??
+    r0?.edges ??
+    r0?.data?.items ??
+    r0?.user?.edge_owner_to_timeline_media?.edges ??
     raw?.data?.items ??
-    raw?.items ??
-    raw?.data?.reels ??
-    raw?.reels ??
     raw?.data?.posts ??
+    raw?.data?.reels ??
+    raw?.data?.edges ??
+    raw?.items ??
     raw?.posts ??
-    raw?.data ??
+    raw?.reels ??
+    raw?.edges ??
+    (Array.isArray(raw?.result) ? raw.result : null) ??
+    (Array.isArray(raw?.data) ? raw.data : null) ??
     []
   );
 }
@@ -100,7 +173,14 @@ function normalizeHighlight(h: any) {
   return {
     id: str(h.id ?? h.pk),
     name: str(h.title ?? h.name),
-    image: str(h.cover_media?.cropped_image_version?.url ?? h.cover_image ?? h.image ?? h.thumbnail),
+    image: str(
+      h.cover_media?.cropped_image_version?.url ??
+        h.cover_media?.url ??
+        h.cover_image ??
+        h.cover?.url ??
+        h.image ??
+        h.thumbnail
+    ),
   };
 }
 
@@ -122,15 +202,29 @@ Deno.serve(async (req) => {
   const type = str(body.type || "all");
   if (!username) return json({ error: "username required" }, 400);
 
+  if (type === "debug") {
+    return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY }, 200);
+  }
+
   const result: any = { username };
   const wants = (t: string) => type === "all" || type === t;
 
-  // PROFILE
+  // PROFILE — try all known endpoint shapes
   if (wants("profile")) {
     try {
-      const raw = await rapid("/v1/info", { username_or_id_or_url: username });
+      const raw = await tryEndpoints([
+        // instagram120
+        { path: "/api/instagram/userInfo", method: "POST", body: { username } },
+        { path: "/api/instagram/userInfoByUsername", method: "POST", body: { username } },
+        // instagram-scraper-api2
+        { path: "/v1/info", query: { username_or_id_or_url: username } },
+        // generic GET
+        { path: "/userinfo", query: { username } },
+        { path: "/api/v1/users/web_profile_info", query: { username } },
+      ]);
       result.profile = normalizeProfile(raw);
-      result.profileOk = true;
+      result.profileOk = !!result.profile.username;
+      if (body.debug) result._raw_profile = raw;
     } catch (e) {
       console.error("profile err", e);
       result.profileOk = false;
@@ -140,10 +234,16 @@ Deno.serve(async (req) => {
   // REELS
   if (wants("reels")) {
     try {
-      const raw = await rapid("/v1/reels", { username_or_id_or_url: username });
-      const items = pickItems(raw).slice(0, 12).map((x: any) => normalizeMediaItem(x.media ?? x));
+      const raw = await tryEndpoints([
+        { path: "/api/instagram/reels", method: "POST", body: { username } },
+        { path: "/api/instagram/userReels", method: "POST", body: { username } },
+        { path: "/v1/reels", query: { username_or_id_or_url: username } },
+        { path: "/reels", query: { username } },
+      ]);
+      const items = pickItems(raw).map(normalizeMediaItem).filter(Boolean).slice(0, 12);
       result.reels = items;
       result.reelsOk = true;
+      if (body.debug) result._raw_reels = raw;
     } catch (e) {
       console.error("reels err", e);
       result.reels = [];
@@ -154,10 +254,16 @@ Deno.serve(async (req) => {
   // POSTS
   if (wants("posts")) {
     try {
-      const raw = await rapid("/v1/posts", { username_or_id_or_url: username });
-      const items = pickItems(raw).slice(0, 12).map((x: any) => normalizeMediaItem(x.media ?? x));
+      const raw = await tryEndpoints([
+        { path: "/api/instagram/posts", method: "POST", body: { username } },
+        { path: "/api/instagram/userPosts", method: "POST", body: { username } },
+        { path: "/v1/posts", query: { username_or_id_or_url: username } },
+        { path: "/posts", query: { username } },
+      ]);
+      const items = pickItems(raw).map(normalizeMediaItem).filter(Boolean).slice(0, 12);
       result.posts = items;
       result.postsOk = true;
+      if (body.debug) result._raw_posts = raw;
     } catch (e) {
       console.error("posts err", e);
       result.posts = [];
@@ -168,10 +274,26 @@ Deno.serve(async (req) => {
   // HIGHLIGHTS
   if (wants("highlights")) {
     try {
-      const raw = await rapid("/v1/highlights", { username_or_id_or_url: username });
-      const items = (raw?.data?.items ?? raw?.items ?? raw?.data ?? []).map(normalizeHighlight);
-      result.highlights = items;
+      const raw = await tryEndpoints([
+        { path: "/api/instagram/highlights", method: "POST", body: { username } },
+        { path: "/api/instagram/userHighlights", method: "POST", body: { username } },
+        { path: "/v1/highlights", query: { username_or_id_or_url: username } },
+      ]);
+      const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
+      const items = (
+        r0?.items ??
+        r0?.tray ??
+        r0 ??
+        raw?.result?.items ??
+        raw?.result ??
+        raw?.data?.items ??
+        raw?.data ??
+        raw?.items ??
+        []
+      );
+      result.highlights = (Array.isArray(items) ? items : []).map(normalizeHighlight);
       result.highlightsOk = true;
+      if (body.debug) result._raw_highlights = raw;
     } catch (e) {
       console.error("highlights err", e);
       result.highlights = [];
