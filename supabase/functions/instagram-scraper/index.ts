@@ -146,11 +146,17 @@ function normalizeMediaItem(it: any) {
 }
 
 function pickItems(raw: any): any[] {
+  // instagram120 wraps in result[0]
+  const r0 = Array.isArray(raw?.result) ? raw.result[0] : null;
   return (
+    r0?.items ??
+    r0?.posts ??
+    r0?.reels ??
+    r0?.data?.items ??
+    r0?.user?.edge_owner_to_timeline_media?.edges ??
     raw?.result?.items ??
     raw?.result?.posts ??
     raw?.result?.reels ??
-    raw?.result?.data ??
     raw?.data?.items ??
     raw?.data?.posts ??
     raw?.data?.reels ??
@@ -158,8 +164,8 @@ function pickItems(raw: any): any[] {
     raw?.posts ??
     raw?.reels ??
     raw?.edges ??
-    raw?.result ??
-    raw?.data ??
+    (Array.isArray(raw?.result) ? raw.result : null) ??
+    (Array.isArray(raw?.data) ? raw.data : null) ??
     []
   );
 }
