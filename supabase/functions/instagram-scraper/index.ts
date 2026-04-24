@@ -523,30 +523,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    const MAX_DETAIL_FETCH = 6;
+    const MAX_DETAIL_FETCH = 8;
     const targets = result.reels
       .map((r: any, idx: number) => ({ r, idx }))
-      .filter(({ r }: any) => !r?.videoUrl && (r?.code || r?.id))
+      .filter(({ r }: any) => !r?.videoUrl || !r?.caption)
+      .filter(({ r }: any) => r?.code || r?.id)
       .slice(0, MAX_DETAIL_FETCH);
 
     if (targets.length) {
-      // Probe with first target to find a working detail endpoint, then reuse it
-      const probe = await fetchMediaDetail(str(targets[0].r.code || targets[0].r.id));
-      const probeUrl = probe ? extractVideoUrlFromRaw(probe) : "";
-      if (probeUrl) {
-        result.reels[targets[0].idx] = { ...result.reels[targets[0].idx], videoUrl: probeUrl };
-        const rest = targets.slice(1);
-        const detailResults = await Promise.allSettled(
-          rest.map(({ r }: any) => fetchMediaDetail(str(r.code || r.id)))
-        );
-        detailResults.forEach((res, i) => {
-          if (res.status !== "fulfilled" || !res.value) return;
-          const vurl = extractVideoUrlFromRaw(res.value);
-          if (!vurl) return;
-          const { idx } = rest[i];
-          result.reels[idx] = { ...result.reels[idx], videoUrl: vurl };
-        });
-      }
+      const detailResults = await Promise.allSettled(
+        targets.map(({ r }: any) => fetchMediaDetail(str(r.code || r.id)))
+      );
+      detailResults.forEach((res, i) => {
+        if (res.status !== "fulfilled" || !res.value) return;
+        const fields = extractDetailFields(res.value);
+        const { idx } = targets[i];
+        const cur = result.reels[idx];
+        result.reels[idx] = {
+          ...cur,
+          videoUrl: cur.videoUrl || fields.videoUrl || "",
+          caption: cur.caption || fields.caption || "",
+          thumbnail: cur.thumbnail || fields.thumbnail || "",
+        };
+      });
     }
   }
 
