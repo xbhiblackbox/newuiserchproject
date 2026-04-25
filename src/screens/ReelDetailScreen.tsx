@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Heart, MessageCircle, Send, Bookmark, MoreVertical, ArrowLeft } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, MoreVertical, ArrowLeft } from "lucide-react";
+import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import { mockAccounts, currentUser, loadFeedVideos } from "@/data/mockData";
 import { loadReelsData } from "@/data/reelInsightsData";
 import { cn } from "@/lib/utils";
@@ -198,9 +199,7 @@ const ProfileReelCard = ({
             onPointerLeave={endPress}
             className="flex flex-col items-center gap-0.5"
           >
-            <svg width="28" height="28" viewBox="0 0 24 24">
-              <path d="M21.39 2.97c.46-.46.06-1.24-.56-1.06L2.42 6.86c-.56.16-.6.95-.06 1.18l6.93 2.97 6.18-4.47c.24-.18.5.1.3.32l-4.47 6.18 2.97 6.93c.22.54 1.02.5 1.18-.06l4.94-18.41c.04-.14.02-.28-.04-.4l.04-.13z" fill="none" stroke="white" strokeWidth="1.2" />
-            </svg>
+            <InstagramShareIcon size={28} className="text-white" />
             <span className="text-[12px] text-white font-semibold">{fmtK(sendCount)}</span>
           </button>
           {/* Bookmark */}

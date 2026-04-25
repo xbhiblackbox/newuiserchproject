@@ -1,4 +1,5 @@
-import { Copy, Link, MessageCircle, Send } from "lucide-react";
+import { Copy, Link, MessageCircle } from "lucide-react";
+import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
@@ -18,7 +19,7 @@ const shareContacts = [
 
 const shareOptions = [
   { icon: Link, label: "Copy link" },
-  { icon: Send, label: "Share to..." },
+  { icon: InstagramShareIcon, label: "Share to..." },
   { icon: MessageCircle, label: "SMS" },
   { icon: Copy, label: "More" },
 ];

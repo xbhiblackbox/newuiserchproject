@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, MoreHorizontal, BadgeCheck } from "lucide-react";
+import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import { useNavigate } from "react-router-dom";
 import type { Post } from "@/data/mockData";
 import { cn } from "@/lib/utils";
@@ -210,7 +211,7 @@ const PostCard = ({ post }: PostCardProps) => {
             </svg>
           </motion.button>
           <motion.button whileTap={{ scale: 0.8 }} onClick={() => setShowShare(true)}>
-            <Send size={22} className="text-foreground" />
+            <InstagramShareIcon size={22} className="text-foreground" />
           </motion.button>
         </div>
 

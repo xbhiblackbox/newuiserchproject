@@ -2,12 +2,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Heart,
   MessageCircle,
-  Send,
   MoreVertical,
   Music,
   Bookmark,
   Camera,
 } from "lucide-react";
+import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
@@ -326,7 +326,7 @@ const ReelCard = ({
             onPointerLeave={endPress}
             className="flex flex-col items-center gap-1"
           >
-            <Send size={26} className="text-white" />
+            <InstagramShareIcon size={26} className="text-white" />
             <span className="text-[12px] text-white font-medium">
               {formatCount(shareCount)}
             </span>
