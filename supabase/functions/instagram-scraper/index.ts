@@ -112,9 +112,18 @@ function paginationVariants(
 }
 
 // ---------- normalizers (handle multiple provider shapes) ----------
-function normalizeProfile(raw: any) {
-  // instagram120: { result: [{ status:"ok", user: {...} }] }
+function unwrap(raw: any): any {
+  // Some providers wrap everything in { data: {...} } — unwrap once.
+  if (raw && typeof raw === "object" && raw.data && (raw.data.result || raw.data.user || raw.data.items || raw.data.posts || raw.data.reels || raw.data.edges || raw.data.tray)) {
+    return raw.data;
+  }
+  return raw;
+}
+
+function normalizeProfile(rawIn: any) {
+  // instagram120: { data: { result: [{ status:"ok", user: {...} }] } }
   // others: { result: { user: {...} } } | { data: {...} } | direct user
+  const raw = unwrap(rawIn);
   const resultArr = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   const d =
     resultArr?.user ??
