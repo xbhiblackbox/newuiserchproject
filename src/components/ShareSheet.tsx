@@ -1,4 +1,5 @@
-import { Copy, Link, MessageCircle, Send } from "lucide-react";
+import { Copy, Link, MessageCircle } from "lucide-react";
+import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 
