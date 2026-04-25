@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import VideoThumbnail from "@/components/VideoThumbnail";
 import { supabase } from "@/integrations/supabase/client";
 import { clearAuthSession } from "@/lib/auth";
+import HugeRepostIcon from "@/components/icons/RepostIcon";
 
 const ProfileScreen = () => {
   const [activeTab, setActiveTab] = useState("posts");
@@ -452,12 +453,7 @@ const ProfileScreen = () => {
   );
 
   const RepostIcon = () => (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="17 1 21 5 17 9" />
-      <path d="M3 12V9a4 4 0 0 1 4-4h14" />
-      <polyline points="7 23 3 19 7 15" />
-      <path d="M21 12v3a4 4 0 0 1-4 4H3" />
-    </svg>
+    <HugeRepostIcon size={22} strokeWidth={2} />
   );
 
   const TaggedIcon = ({ active }: { active: boolean }) => (

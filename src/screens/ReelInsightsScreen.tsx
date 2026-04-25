@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import * as React from "react";
 
-import { ArrowLeft, MoreVertical, Heart, MessageCircle, Bookmark, Repeat2, Info, Pencil, X, Plus, TrendingUp, ChevronRight, Clock } from "lucide-react";
+import { ArrowLeft, MoreVertical, Heart, MessageCircle, Bookmark, Info, Pencil, X, Plus, TrendingUp, ChevronRight, Clock } from "lucide-react";
 import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
+import RepostIcon from "@/components/icons/RepostIcon";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
 import { mockAccounts, currentUser } from "@/data/mockData";
@@ -609,7 +610,7 @@ const ReelInsightsScreen = () => {
         {[
           { icon: <Heart size={18} className="text-foreground" />, val: likes, set: setEditLikes, label: "Likes" },
           { icon: <MessageCircle size={18} className="text-foreground -scale-x-100" />, val: comments, set: setEditComments, label: "Comments" },
-          { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"><polyline points="17 1 21 5 17 9" /><path d="M3 12V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 12v3a4 4 0 0 1-4 4H3" /></svg>, val: reposts, set: setEditReposts, label: "Reposts" },
+          { icon: <RepostIcon size={18} className="text-foreground" />, val: reposts, set: setEditReposts, label: "Reposts" },
           { icon: <InstagramShareIcon size={18} className="text-foreground" />, val: shares, set: setEditShares, label: "Shares" },
           { icon: <Bookmark size={18} className="text-foreground" />, val: saves, set: setEditSaves, label: "Saves" },
         ].map((item) => (
@@ -767,7 +768,7 @@ const ReelInsightsScreen = () => {
                 { icon: InstagramShareIcon, label: "Share rate", pct: views > 0 ? (editShares / views) * 100 : 0, onEdit: () => setEditModal({ label: "Share rate %", value: String(views > 0 ? ((editShares / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditShares(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
                 { icon: Heart, label: "Like rate", pct: views > 0 ? (editLikes / views) * 100 : 0, onEdit: () => setEditModal({ label: "Like rate %", value: String(views > 0 ? ((editLikes / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditLikes(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
                 { icon: Bookmark, label: "Save rate", pct: views > 0 ? (editSaves / views) * 100 : 0, onEdit: () => setEditModal({ label: "Save rate %", value: String(views > 0 ? ((editSaves / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditSaves(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
-                { icon: Repeat2, label: "Repost rate", pct: views > 0 ? (editReposts / views) * 100 : 0, onEdit: () => setEditModal({ label: "Repost rate %", value: String(views > 0 ? ((editReposts / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditReposts(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
+                { icon: RepostIcon, label: "Repost rate", pct: views > 0 ? (editReposts / views) * 100 : 0, onEdit: () => setEditModal({ label: "Repost rate %", value: String(views > 0 ? ((editReposts / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditReposts(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
                 { icon: MessageCircle, label: "Comment rate", pct: views > 0 ? (editComments / views) * 100 : 0, onEdit: () => setEditModal({ label: "Comment rate %", value: String(views > 0 ? ((editComments / views) * 100).toFixed(2) : "0"), onSave: (v) => setEditComments(Math.round((Math.min(100, Math.max(0, v)) / 100) * views)) }) },
               ].map(({ icon: Icon, label, pct, onEdit }) => (
                 <div
