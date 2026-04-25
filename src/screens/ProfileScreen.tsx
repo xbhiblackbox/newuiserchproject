@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import VideoThumbnail from "@/components/VideoThumbnail";
 import { supabase } from "@/integrations/supabase/client";
 import { clearAuthSession } from "@/lib/auth";
+import HugeRepostIcon from "@/components/icons/RepostIcon";
 
 const ProfileScreen = () => {
   const [activeTab, setActiveTab] = useState("posts");
