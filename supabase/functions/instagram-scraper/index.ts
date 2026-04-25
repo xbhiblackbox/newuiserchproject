@@ -189,20 +189,33 @@ function normalizeMediaItem(it: any) {
   const videoUrl = str(
     m.video_url ?? m.video_versions?.[0]?.url ?? m.videoUrl ?? m.video?.url ?? ""
   );
+  const productType = str(m.product_type ?? m.media_type_name ?? "");
+  const mediaType = num(m.media_type);
+  const isVideo = !!videoUrl || productType === "clips" || mediaType === 2;
   return {
     id,
     code,
     caption,
     thumbnail,
     videoUrl,
-    duration: num(m.video_duration ?? m.duration),
-    views: num(m.play_count ?? m.video_view_count ?? m.view_count ?? m.views),
+    duration: num(m.video_duration ?? m.duration ?? m.clips_metadata?.duration),
+    views: num(
+      m.play_count ??
+      m.ig_play_count ??
+      m.video_play_count ??
+      m.video_view_count ??
+      m.view_count ??
+      m.views ??
+      m.fb_play_count
+    ),
     likes: num(
       m.like_count ?? m.likes ?? m.edge_liked_by?.count ?? m.edge_media_preview_like?.count
     ),
     comments: num(m.comment_count ?? m.comments ?? m.edge_media_to_comment?.count),
     shares: num(m.reshare_count ?? m.share_count ?? m.shares),
     takenAt: num(m.taken_at ?? m.taken_at_timestamp ?? m.takenAt),
+    productType,
+    isVideo,
   };
 }
 
@@ -495,6 +508,24 @@ Deno.serve(async (req) => {
       console.error("highlights err", e);
       result.highlights = [];
       result.highlightsOk = false;
+    }
+  }
+
+  // ---------- FALLBACK: derive reels from video posts when reels endpoint failed ----------
+  // This RapidAPI provider often doesn't expose a dedicated /reels endpoint, but
+  // posts already include all video clips with thumbnail + videoUrl + likes + comments.
+  if (
+    wants("reels") &&
+    (!Array.isArray(result.reels) || result.reels.length === 0) &&
+    Array.isArray(result.posts) &&
+    result.posts.length
+  ) {
+    const videoPosts = result.posts.filter(
+      (p: any) => p?.isVideo || p?.videoUrl || p?.productType === "clips"
+    );
+    if (videoPosts.length) {
+      result.reels = videoPosts.slice(0, 120);
+      result.reelsOk = true;
     }
   }
 
