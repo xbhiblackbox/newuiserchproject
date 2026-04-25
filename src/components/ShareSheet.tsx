@@ -19,7 +19,7 @@ const shareContacts = [
 
 const shareOptions = [
   { icon: Link, label: "Copy link" },
-  { icon: Send, label: "Share to..." },
+  { icon: InstagramShareIcon, label: "Share to..." },
   { icon: MessageCircle, label: "SMS" },
   { icon: Copy, label: "More" },
 ];
