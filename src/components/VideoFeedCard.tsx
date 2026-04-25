@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Heart, MessageCircle, Bookmark, MoreHorizontal, BadgeCheck } from "lucide-react";
 import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
+import RepostIcon from "@/components/icons/RepostIcon";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
