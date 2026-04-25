@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Heart, MessageCircle, Bookmark, MoreVertical, ArrowLeft } from "lucide-react";
 import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
+import RepostIcon from "@/components/icons/RepostIcon";
 import { mockAccounts, currentUser, loadFeedVideos } from "@/data/mockData";
 import { loadReelsData } from "@/data/reelInsightsData";
 import { cn } from "@/lib/utils";
