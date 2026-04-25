@@ -511,6 +511,24 @@ Deno.serve(async (req) => {
     }
   }
 
+  // ---------- FALLBACK: derive reels from video posts when reels endpoint failed ----------
+  // This RapidAPI provider often doesn't expose a dedicated /reels endpoint, but
+  // posts already include all video clips with thumbnail + videoUrl + likes + comments.
+  if (
+    wants("reels") &&
+    (!Array.isArray(result.reels) || result.reels.length === 0) &&
+    Array.isArray(result.posts) &&
+    result.posts.length
+  ) {
+    const videoPosts = result.posts.filter(
+      (p: any) => p?.isVideo || p?.videoUrl || p?.productType === "clips"
+    );
+    if (videoPosts.length) {
+      result.reels = videoPosts.slice(0, 120);
+      result.reelsOk = true;
+    }
+  }
+
   // ---------- ENRICHMENT ----------
   // 1) Merge captions from posts into reels (match by id or code).
   // 2) Fetch missing reel video URLs in parallel (cap to first N to limit RapidAPI load).
