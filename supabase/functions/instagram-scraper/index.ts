@@ -65,7 +65,8 @@ async function tryEndpoints(
   throw lastErr ?? new Error("All endpoints failed");
 }
 
-function readPageInfo(raw: any) {
+function readPageInfo(rawIn: any) {
+  const raw = unwrap(rawIn);
   const result = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   const pageInfo =
     result?.page_info ??
@@ -112,9 +113,18 @@ function paginationVariants(
 }
 
 // ---------- normalizers (handle multiple provider shapes) ----------
-function normalizeProfile(raw: any) {
-  // instagram120: { result: [{ status:"ok", user: {...} }] }
+function unwrap(raw: any): any {
+  // Some providers wrap everything in { data: {...} } — unwrap once.
+  if (raw && typeof raw === "object" && raw.data && (raw.data.result || raw.data.user || raw.data.items || raw.data.posts || raw.data.reels || raw.data.edges || raw.data.tray)) {
+    return raw.data;
+  }
+  return raw;
+}
+
+function normalizeProfile(rawIn: any) {
+  // instagram120: { data: { result: [{ status:"ok", user: {...} }] } }
   // others: { result: { user: {...} } } | { data: {...} } | direct user
+  const raw = unwrap(rawIn);
   const resultArr = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   const d =
     resultArr?.user ??
@@ -196,7 +206,8 @@ function normalizeMediaItem(it: any) {
   };
 }
 
-function pickItems(raw: any): any[] {
+function pickItems(rawIn: any): any[] {
+  const raw = unwrap(rawIn);
   // result may be array OR object
   const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   return (
@@ -238,8 +249,9 @@ async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
   }
 }
 
-function extractDetailFields(raw: any): { videoUrl: string; caption: string; thumbnail: string } {
+function extractDetailFields(rawIn: any): { videoUrl: string; caption: string; thumbnail: string } {
   // Some endpoints return a top-level array (e.g. /api/instagram/links -> [{urls, meta}])
+  const raw = unwrap(rawIn);
   const top = Array.isArray(raw) ? raw[0] : raw;
   const r0 = Array.isArray(top?.result) ? top.result[0] : top?.result;
   const m =
@@ -462,26 +474,23 @@ Deno.serve(async (req) => {
   // HIGHLIGHTS
   if (wants("highlights")) {
     try {
-      const raw = await tryEndpoints([
+      const resp = await tryEndpoints([
         { path: "/api/instagram/highlights", method: "POST", body: { username } },
         { path: "/api/instagram/userHighlights", method: "POST", body: { username } },
         { path: "/v1/highlights", query: { username_or_id_or_url: username } },
       ]);
+      const raw = unwrap(resp.data);
       const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
       const items = (
         r0?.items ??
         r0?.tray ??
         r0 ??
-        raw?.result?.items ??
-        raw?.result ??
-        raw?.data?.items ??
-        raw?.data ??
         raw?.items ??
         []
       );
       result.highlights = (Array.isArray(items) ? items : []).map(normalizeHighlight);
       result.highlightsOk = true;
-      if (body.debug) result._raw_highlights = raw;
+      if (body.debug) result._raw_highlights = resp.data;
     } catch (e) {
       console.error("highlights err", e);
       result.highlights = [];
