@@ -2,12 +2,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Heart,
   MessageCircle,
-  Send,
   MoreVertical,
   Music,
   Bookmark,
   Camera,
 } from "lucide-react";
+import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
