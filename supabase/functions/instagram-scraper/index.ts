@@ -189,20 +189,33 @@ function normalizeMediaItem(it: any) {
   const videoUrl = str(
     m.video_url ?? m.video_versions?.[0]?.url ?? m.videoUrl ?? m.video?.url ?? ""
   );
+  const productType = str(m.product_type ?? m.media_type_name ?? "");
+  const mediaType = num(m.media_type);
+  const isVideo = !!videoUrl || productType === "clips" || mediaType === 2;
   return {
     id,
     code,
     caption,
     thumbnail,
     videoUrl,
-    duration: num(m.video_duration ?? m.duration),
-    views: num(m.play_count ?? m.video_view_count ?? m.view_count ?? m.views),
+    duration: num(m.video_duration ?? m.duration ?? m.clips_metadata?.duration),
+    views: num(
+      m.play_count ??
+      m.ig_play_count ??
+      m.video_play_count ??
+      m.video_view_count ??
+      m.view_count ??
+      m.views ??
+      m.fb_play_count
+    ),
     likes: num(
       m.like_count ?? m.likes ?? m.edge_liked_by?.count ?? m.edge_media_preview_like?.count
     ),
     comments: num(m.comment_count ?? m.comments ?? m.edge_media_to_comment?.count),
     shares: num(m.reshare_count ?? m.share_count ?? m.shares),
     takenAt: num(m.taken_at ?? m.taken_at_timestamp ?? m.takenAt),
+    productType,
+    isVideo,
   };
 }
 
