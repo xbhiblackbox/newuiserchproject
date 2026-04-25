@@ -249,8 +249,9 @@ async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
   }
 }
 
-function extractDetailFields(raw: any): { videoUrl: string; caption: string; thumbnail: string } {
+function extractDetailFields(rawIn: any): { videoUrl: string; caption: string; thumbnail: string } {
   // Some endpoints return a top-level array (e.g. /api/instagram/links -> [{urls, meta}])
+  const raw = unwrap(rawIn);
   const top = Array.isArray(raw) ? raw[0] : raw;
   const r0 = Array.isArray(top?.result) ? top.result[0] : top?.result;
   const m =
