@@ -17,8 +17,15 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   const posts = data.posts ?? [];
   const highlights = data.highlights ?? [];
 
-  // Build post grid: keep original posts first, then reels if needed
-  const combined = [...posts, ...reels];
+  // Build post grid: keep original posts first, then any reels not already in posts (dedupe by id/code)
+  const seen = new Set<string>();
+  const combined: typeof posts = [];
+  for (const item of [...posts, ...reels]) {
+    const key = String((item as any).id || (item as any).code || "");
+    if (key && seen.has(key)) continue;
+    if (key) seen.add(key);
+    combined.push(item);
+  }
   const postItems: PostItem[] = combined.map((m) => ({
     thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
     videoUrl: m.videoUrl || undefined,
