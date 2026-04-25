@@ -211,7 +211,7 @@ const PostCard = ({ post }: PostCardProps) => {
             </svg>
           </motion.button>
           <motion.button whileTap={{ scale: 0.8 }} onClick={() => setShowShare(true)}>
-            <Send size={22} className="text-foreground" />
+            <InstagramShareIcon size={22} className="text-foreground" />
           </motion.button>
         </div>
 
