@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, BadgeCheck } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, MoreHorizontal, BadgeCheck } from "lucide-react";
+import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import { useNavigate } from "react-router-dom";
 import type { Post } from "@/data/mockData";
 import { cn } from "@/lib/utils";
