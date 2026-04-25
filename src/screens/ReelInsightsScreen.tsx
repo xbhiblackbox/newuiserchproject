@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import * as React from "react";
 
-import { ArrowLeft, MoreVertical, Heart, MessageCircle, Send, Bookmark, Repeat2, Info, Pencil, X, Plus, TrendingUp, ChevronRight, Clock } from "lucide-react";
+import { ArrowLeft, MoreVertical, Heart, MessageCircle, Bookmark, Repeat2, Info, Pencil, X, Plus, TrendingUp, ChevronRight, Clock } from "lucide-react";
+import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
 import { mockAccounts, currentUser } from "@/data/mockData";
