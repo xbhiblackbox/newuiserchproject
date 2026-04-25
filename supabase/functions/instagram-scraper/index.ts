@@ -65,7 +65,8 @@ async function tryEndpoints(
   throw lastErr ?? new Error("All endpoints failed");
 }
 
-function readPageInfo(raw: any) {
+function readPageInfo(rawIn: any) {
+  const raw = unwrap(rawIn);
   const result = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   const pageInfo =
     result?.page_info ??
@@ -205,7 +206,8 @@ function normalizeMediaItem(it: any) {
   };
 }
 
-function pickItems(raw: any): any[] {
+function pickItems(rawIn: any): any[] {
+  const raw = unwrap(rawIn);
   // result may be array OR object
   const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   return (
@@ -471,26 +473,23 @@ Deno.serve(async (req) => {
   // HIGHLIGHTS
   if (wants("highlights")) {
     try {
-      const raw = await tryEndpoints([
+      const resp = await tryEndpoints([
         { path: "/api/instagram/highlights", method: "POST", body: { username } },
         { path: "/api/instagram/userHighlights", method: "POST", body: { username } },
         { path: "/v1/highlights", query: { username_or_id_or_url: username } },
       ]);
+      const raw = unwrap(resp.data);
       const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
       const items = (
         r0?.items ??
         r0?.tray ??
         r0 ??
-        raw?.result?.items ??
-        raw?.result ??
-        raw?.data?.items ??
-        raw?.data ??
         raw?.items ??
         []
       );
       result.highlights = (Array.isArray(items) ? items : []).map(normalizeHighlight);
       result.highlightsOk = true;
-      if (body.debug) result._raw_highlights = raw;
+      if (body.debug) result._raw_highlights = resp.data;
     } catch (e) {
       console.error("highlights err", e);
       result.highlights = [];
