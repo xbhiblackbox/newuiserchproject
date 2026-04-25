@@ -610,7 +610,7 @@ const ReelInsightsScreen = () => {
         {[
           { icon: <Heart size={18} className="text-foreground" />, val: likes, set: setEditLikes, label: "Likes" },
           { icon: <MessageCircle size={18} className="text-foreground -scale-x-100" />, val: comments, set: setEditComments, label: "Comments" },
-          { icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-foreground"><polyline points="17 1 21 5 17 9" /><path d="M3 12V9a4 4 0 0 1 4-4h14" /><polyline points="7 23 3 19 7 15" /><path d="M21 12v3a4 4 0 0 1-4 4H3" /></svg>, val: reposts, set: setEditReposts, label: "Reposts" },
+          { icon: <RepostIcon size={18} className="text-foreground" />, val: reposts, set: setEditReposts, label: "Reposts" },
           { icon: <InstagramShareIcon size={18} className="text-foreground" />, val: shares, set: setEditShares, label: "Shares" },
           { icon: <Bookmark size={18} className="text-foreground" />, val: saves, set: setEditSaves, label: "Saves" },
         ].map((item) => (
