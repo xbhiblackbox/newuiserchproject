@@ -904,10 +904,10 @@ const ProfileScreen = () => {
         })}
       </div>
 
-      {/* Posts Grid */}
+      {/* Posts Grid (excludes reels — reels live in their own tab) */}
       {activeTab === "posts" && (
         <div className="grid grid-cols-3 gap-[1.5px]">
-          {userPosts.map((post, i) => renderGridItem(post, i, "aspect-[4/5]"))}
+          {userPosts.filter((p) => !p.isReel).map((post, i) => renderGridItem(post, i, "aspect-[4/5]"))}
         </div>
       )}
 
