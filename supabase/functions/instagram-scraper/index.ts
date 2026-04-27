@@ -255,6 +255,113 @@ const heatSnapshot = () => {
   };
 };
 
+// ---- latency & error-rate metrics ----
+// Per-key rolling sample of latencies + error count. Two namespaces:
+//   "user:<username>"  → end-to-end request latency for that username
+//   "rapid:<path>"     → individual RapidAPI call latency for that path
+// Samples are bounded to the last N to keep memory/CPU bounded under load.
+interface MetricRec {
+  samples: number[];   // ring buffer of recent latencies in ms
+  ringIdx: number;     // next write index in `samples`
+  total: number;       // total observations ever recorded
+  errors: number;      // total errors ever recorded
+  lastAt: number;
+}
+const METRICS = new Map<string, MetricRec>();
+const METRIC_SAMPLES_MAX = 500;
+const METRICS_MAX = 1000;
+
+const metricRecord = (key: string, ms: number, isError: boolean) => {
+  let r = METRICS.get(key);
+  if (!r) {
+    if (METRICS.size >= METRICS_MAX) {
+      // Evict oldest by lastAt to bound memory.
+      let oldKey: string | null = null; let oldAt = Infinity;
+      for (const [k, v] of METRICS) {
+        if (v.lastAt < oldAt) { oldAt = v.lastAt; oldKey = k; }
+      }
+      if (oldKey) METRICS.delete(oldKey);
+    }
+    r = { samples: [], ringIdx: 0, total: 0, errors: 0, lastAt: 0 };
+    METRICS.set(key, r);
+  }
+  if (r.samples.length < METRIC_SAMPLES_MAX) {
+    r.samples.push(ms);
+  } else {
+    r.samples[r.ringIdx] = ms;
+    r.ringIdx = (r.ringIdx + 1) % METRIC_SAMPLES_MAX;
+  }
+  r.total++;
+  if (isError) r.errors++;
+  r.lastAt = Date.now();
+};
+
+// Compute percentile from a sorted ascending array. Linear interpolation.
+const percentile = (sorted: number[], p: number): number => {
+  if (sorted.length === 0) return 0;
+  if (sorted.length === 1) return sorted[0];
+  const rank = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(rank);
+  const hi = Math.ceil(rank);
+  if (lo === hi) return sorted[lo];
+  return Math.round(sorted[lo] + (sorted[hi] - sorted[lo]) * (rank - lo));
+};
+
+interface MetricSummary {
+  key: string;
+  count: number;
+  errors: number;
+  errorRate: number; // 0..1, rounded to 4 decimals
+  p50: number;
+  p95: number;
+  p99: number;
+}
+const summarizeMetric = (key: string, r: MetricRec): MetricSummary => {
+  const sorted = r.samples.slice().sort((a, b) => a - b);
+  return {
+    key,
+    count: r.total,
+    errors: r.errors,
+    errorRate: r.total > 0 ? Math.round((r.errors / r.total) * 10000) / 10000 : 0,
+    p50: percentile(sorted, 50),
+    p95: percentile(sorted, 95),
+    p99: percentile(sorted, 99),
+  };
+};
+
+// Snapshot all metrics, sorted by traffic (count desc). Optional prefix filter
+// lets callers pull just `user:` or `rapid:` slices.
+const metricsSnapshot = (prefix?: string): MetricSummary[] => {
+  const out: MetricSummary[] = [];
+  for (const [k, r] of METRICS) {
+    if (prefix && !k.startsWith(prefix)) continue;
+    out.push(summarizeMetric(k, r));
+  }
+  out.sort((a, b) => b.count - a.count);
+  return out;
+};
+
+// Compact summary for the per-request structured log: just the relevant
+// username + RapidAPI paths touched in this request.
+const metricsForRequest = (username: string, ctx: ReqCtx): {
+  user: MetricSummary | null;
+  rapid: MetricSummary[];
+} => {
+  const userKey = `user:${username}`;
+  const userRec = METRICS.get(userKey);
+  const touchedPaths = Array.from(new Set(ctx.rapidCalls.map(c => c.path)));
+  const rapid: MetricSummary[] = [];
+  for (const p of touchedPaths) {
+    const rec = METRICS.get(`rapid:${p}`);
+    if (rec) rapid.push(summarizeMetric(`rapid:${p}`, rec));
+  }
+  return {
+    user: userRec ? summarizeMetric(userKey, userRec) : null,
+    rapid,
+  };
+};
+
+
 // Fire-and-forget background refresh. EdgeRuntime.waitUntil keeps the isolate
 // alive past the response so the refresh actually completes.
 function scheduleRevalidation(cacheKey: string, username: string, type: string, parentTrace?: string) {
