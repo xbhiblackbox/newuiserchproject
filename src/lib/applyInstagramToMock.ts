@@ -1,6 +1,9 @@
 import { mockAccounts, currentUser, saveProfileOverrides, type PostItem } from "@/data/mockData";
 import { fetchInstagramData, proxyIgImage, type InstaScrapeResult } from "@/lib/instagramApi";
 import { saveReelsData, type ExtendedPostItem } from "@/data/reelInsightsData";
+import { supabase } from "@/integrations/supabase/client";
+
+const MAX_REELS = 15;
 
 /**
  * Clone a real Instagram account's data into the local mock store
@@ -17,15 +20,17 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   const posts = data.posts ?? [];
   const highlights = data.highlights ?? [];
 
-  // Build post grid: keep original posts first, then any reels not already in posts (dedupe by id/code)
+  // Merge posts + reels, dedupe by id/code, then sort latest-first by takenAt and cap to MAX_REELS
   const seen = new Set<string>();
-  const combined: typeof posts = [];
+  const merged: typeof posts = [];
   for (const item of [...posts, ...reels]) {
     const key = String((item as any).id || (item as any).code || "");
     if (key && seen.has(key)) continue;
     if (key) seen.add(key);
-    combined.push(item);
+    merged.push(item);
   }
+  merged.sort((a, b) => (Number((b as any).takenAt) || 0) - (Number((a as any).takenAt) || 0));
+  const combined = merged.slice(0, MAX_REELS);
   const postItems: PostItem[] = combined.map((m) => ({
     thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
     videoUrl: m.videoUrl || undefined,
