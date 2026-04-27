@@ -1432,13 +1432,24 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     const totalMs = Date.now() - reqStart;
+    const errMsg = (e as Error).message;
     metricRecord(`user:${username}`, totalMs, true);
     slog("error", traceId, "fatal", {
-      totalMs, err: (e as Error).message,
+      totalMs, err: errMsg,
       rapidCalls: ctx.rapidCalls.length,
       rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
     });
-    return json({ error: "Scrape failed", message: (e as Error).message, traceId }, 502, { "X-Trace-Id": traceId });
+    if (!isReplay) recordTrace({
+      traceId, recordedAt: Date.now(),
+      username, type, pages, cursor, force,
+      cache: "ERROR", totalMs,
+      rapidCalls: ctx.rapidCalls.length,
+      rapidTotalMs: ctx.rapidCalls.reduce((s, c) => s + c.ms, 0),
+      rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+      slowest: slowestRapidCalls(ctx, 5),
+      err: errMsg,
+    });
+    return json({ error: "Scrape failed", message: errMsg, traceId }, 502, { "X-Trace-Id": traceId });
   }
 });
 
