@@ -442,7 +442,11 @@ async function callRapid(path: string, init: RequestInit, ctx?: ReqCtx) {
     errMsg = errMsg ?? (e as Error).message;
     throw e;
   } finally {
-    if (ctx) ctx.rapidCalls.push({ path, ms: Date.now() - startedAt, status, err: errMsg });
+    const ms = Date.now() - startedAt;
+    if (ctx) ctx.rapidCalls.push({ path, ms, status, err: errMsg });
+    // Per-RapidAPI-path metrics for the dashboard. Always recorded, even when
+    // ctx is missing (e.g. background revalidation paths).
+    metricRecord(`rapid:${path}`, ms, status === "err");
   }
 }
 
