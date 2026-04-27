@@ -37,36 +37,44 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
     videoUrl: m.videoUrl || undefined,
   }));
 
-  const reelItems: ExtendedPostItem[] = combined.map((m, index) => ({
-    thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
-    videoUrl: m.videoUrl || undefined,
-    caption: m.caption || "",
-    duration: m.duration ? String(m.duration) : undefined,
-    musicTitle: m.code ? `Original audio · ${p.username}` : "",
-    musicIcon: proxyIgImage(p.avatarUrl) || p.avatarUrl || currentUser.avatar,
-    insights: {
-      views: Number(m.views) || 0,
-      likes: Number(m.likes) || 0,
-      comments: Number(m.comments) || 0,
-      shares: Number(m.shares) || 0,
-      reposts: 0,
-      saves: 0,
-      watchTime: "0m",
-      avgWatchTime: "0s",
-      followerViewsPct: 0,
-      viewRatePast3Sec: 0,
-      genderMale: 0,
-      genderFemale: 0,
-      countries: [],
-      ageGroups: [],
-      sources: [],
-      accountsReached: Number(m.views) || 0,
-      follows: 0,
-      viewsOverTime: [],
-      skipRate: 0,
-      typicalSkipRate: 0,
-    },
-  }));
+  const randInt = (min: number, max: number) => Math.floor(min + Math.random() * (max - min + 1));
+
+  const reelItems: ExtendedPostItem[] = combined.map((m, index) => {
+    const views = Number(m.views) > 0 ? Number(m.views) : randInt(10000, 20000);
+    const likes = Number(m.likes) > 0 ? Number(m.likes) : Math.floor(views * (0.04 + Math.random() * 0.04));
+    const comments = Number(m.comments) > 0 ? Number(m.comments) : Math.floor(views * (0.005 + Math.random() * 0.01));
+    const shares = Number(m.shares) > 0 ? Number(m.shares) : Math.floor(views * (0.01 + Math.random() * 0.02));
+    return {
+      thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
+      videoUrl: m.videoUrl || undefined,
+      caption: m.caption || "",
+      duration: m.duration ? String(m.duration) : undefined,
+      musicTitle: m.code ? `Original audio · ${p.username}` : "",
+      musicIcon: proxyIgImage(p.avatarUrl) || p.avatarUrl || currentUser.avatar,
+      insights: {
+        views,
+        likes,
+        comments,
+        shares,
+        reposts: 0,
+        saves: Math.floor(views * (0.01 + Math.random() * 0.02)),
+        watchTime: "0m",
+        avgWatchTime: "0s",
+        followerViewsPct: 0,
+        viewRatePast3Sec: 0,
+        genderMale: 0,
+        genderFemale: 0,
+        countries: [],
+        ageGroups: [],
+        sources: [],
+        accountsReached: views,
+        follows: 0,
+        viewsOverTime: [],
+        skipRate: 0,
+        typicalSkipRate: 0,
+      },
+    };
+  });
 
   // Apply to the canonical "just4abhii" slot which the UI uses everywhere.
   // We REPLACE posts entirely (no padding from previous account) to avoid leakage.
