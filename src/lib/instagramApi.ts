@@ -55,7 +55,8 @@ const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 const USERNAME_KEY = "ig_connected_username";
 const CACHE_PREFIX = "ig_cache_v6";
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min — server caches too, so client can be aggressive
+const CACHE_SOFT_TTL_MS = 5 * 60 * 1000;       // serve without background refresh
+const CACHE_HARD_TTL_MS = 24 * 60 * 60 * 1000; // serve stale up to a day, refresh in bg
 
 export const getConnectedUsername = (): string | null => {
   try {
@@ -178,29 +179,37 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
       }
       const key = `${CACHE_PREFIX}:${username}:${type}`;
       const cached = readCache(key);
-      const fresh = cached && Date.now() - cached.cachedAt < CACHE_TTL_MS;
+      const age = cached ? Date.now() - cached.cachedAt : Infinity;
+      const fresh = cached && age < CACHE_SOFT_TTL_MS;
+      const usableStale = cached && age < CACHE_HARD_TTL_MS;
 
-      if (cached) {
+      // Always paint cached data instantly if usable (even if stale).
+      if (cached && usableStale) {
         setData(cached.data);
         setCachedAt(cached.cachedAt);
       }
 
+      // Fresh + not forced → done, no network call.
       if (fresh && !force) return;
 
+      // Stale-but-usable + not forced → silent background refresh (no spinner).
+      const isBackground = !force && !!usableStale;
+
       const reqId = ++reqRef.current;
-      setLoading(true);
+      if (!isBackground) setLoading(true);
       setError(null);
       try {
-        const fresh = await fetchInstagramData(username, type, { force });
+        const next = await fetchInstagramData(username, type, { force });
         if (reqRef.current !== reqId) return;
-        writeCache(key, fresh);
-        setData(fresh);
+        writeCache(key, next);
+        setData(next);
         setCachedAt(Date.now());
       } catch (e: any) {
         if (reqRef.current !== reqId) return;
-        setError(e?.message || "Failed to load");
+        // Don't surface errors when we already have stale data on screen.
+        if (!isBackground) setError(e?.message || "Failed to load");
       } finally {
-        if (reqRef.current === reqId) setLoading(false);
+        if (reqRef.current === reqId && !isBackground) setLoading(false);
       }
     },
     [username, type]
