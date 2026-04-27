@@ -2,7 +2,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Expose-Headers": "x-trace-id, x-cache, x-cache-age, x-duration-ms",
+  "Access-Control-Expose-Headers": "x-trace-id, x-cache, x-cache-age, x-duration-ms, x-cache-heatmap, x-cache-stats",
 };
 
 const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
