@@ -1241,6 +1241,10 @@ Deno.serve(async (req) => {
   // Use client-supplied trace id if present (so client logs and server logs
   // share the same id), otherwise mint a fresh one.
   const traceId = req.headers.get("x-trace-id") || newTraceId();
+  // Replay self-calls set this header so we can skip re-recording them into
+  // the TRACES map (which would create infinite-replay-of-replays chains).
+  const replayOf = req.headers.get("x-replay-of") || "";
+  const isReplay = !!replayOf;
   const reqStart = Date.now();
 
   let body: any;
