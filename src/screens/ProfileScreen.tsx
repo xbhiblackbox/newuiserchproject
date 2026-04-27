@@ -904,10 +904,10 @@ const ProfileScreen = () => {
         })}
       </div>
 
-      {/* Posts Grid (excludes reels — reels live in their own tab) */}
+      {/* Posts Grid — Instagram shows all content (posts + reels) here */}
       {activeTab === "posts" && (
         <div className="grid grid-cols-3 gap-[1.5px]">
-          {userPosts.filter((p) => !p.isReel).map((post, i) => renderGridItem(post, i, "aspect-[4/5]"))}
+          {userPosts.map((post, i) => renderGridItem(post, i, "aspect-[4/5]"))}
         </div>
       )}
 
