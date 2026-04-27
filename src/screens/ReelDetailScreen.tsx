@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Heart, MessageCircle, Bookmark, MoreVertical, ArrowLeft } from "lucide-react";
 import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import RepostIcon from "@/components/icons/RepostIcon";
-import { mockAccounts, currentUser, loadFeedVideos } from "@/data/mockData";
+import { mockAccounts, currentUser } from "@/data/mockData";
 import { loadReelsData } from "@/data/reelInsightsData";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -333,11 +333,12 @@ const ReelDetailScreen = () => {
     return null;
   }
 
-  const isMainAccount = accountUsername === "just4abhii" || account.profile === currentUser;
+  const isMainAccount = accountUsername === "just4abhii" || account.profile === currentUser || account.profile.username.toLowerCase() === currentUser.username.toLowerCase();
   const reelsData = isMainAccount ? loadReelsData() : null;
 
   // Build all reels data for this profile
-  const allProfileReels: ProfileReelData[] = account.posts.map((post, index) => {
+  const sourcePosts = isMainAccount && reelsData?.length ? reelsData : account.posts;
+  const allProfileReels: ProfileReelData[] = sourcePosts.map((post, index) => {
     const reelData = isMainAccount && reelsData ? reelsData[index] : null;
     const ins = reelData?.insights;
     const thumb = reelData?.thumbnail || post.thumbnail;
@@ -347,8 +348,8 @@ const ReelDetailScreen = () => {
       index,
       thumbnail: thumb,
       videoUrl,
-      caption: reelData?.caption || "🔥 Attitude level 💀🔥",
-      musicTitle: reelData?.musicTitle || "",
+      caption: reelData?.caption || "",
+      musicTitle: reelData?.musicTitle || (isMainAccount ? `Original audio · ${account.profile.username}` : ""),
       musicIcon: reelData?.musicIcon || "",
       likes: ins?.likes ?? 725,
       comments: ins?.comments ?? 10,
