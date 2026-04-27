@@ -859,7 +859,7 @@ const ReelInsightsScreen = () => {
               {retentionImageUrl ? (
                 <img src={retentionImageUrl} alt="Retention graph" className="w-full h-auto object-contain rounded-lg shadow-sm" />
               ) : (
-                <div className={cn("h-[150px]", isEditMode && "cursor-pointer active:opacity-80 transition-opacity")} onClick={() => isEditMode && setRetentionEditorOpen(true)}>
+                <div className={cn("h-[150px]", isEditMode && "cursor-pointer active:opacity-80 transition-opacity")} onClick={() => { if (isEditMode) { setRetentionEditorMode("retention"); setRetentionEditorOpen(true); } }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={editRetentionCurve} margin={{ top: 5, right: 5, left: -5, bottom: 0 }}>
                       <CartesianGrid horizontal={true} vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
@@ -1291,6 +1291,9 @@ const ReelInsightsScreen = () => {
                 open={retentionEditorOpen} onClose={() => setRetentionEditorOpen(false)}
                 initialData={editRetentionCurve} initialTypical={typicalRetentionCurve}
                 onSave={(thisReel, typical) => { setEditRetentionCurve(thisReel); setTypicalRetentionCurve(typical); saveToSupabase({ retentionCurve: thisReel, typicalRetentionCurve: typical }); }}
+                threeLineScale={retentionEditorMode === "engagement"}
+                yCenter={editEngagementYCenter}
+                yTop={editEngagementYTop}
                 inline={true}
               />
             )}
