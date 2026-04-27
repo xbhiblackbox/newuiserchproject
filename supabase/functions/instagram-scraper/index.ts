@@ -820,13 +820,52 @@ Deno.serve(async (req) => {
 
   if (type === "debug") return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY }, 200, { "X-Trace-Id": traceId });
 
-  const cacheKey = `${username}::${type}`;
   const force = !!body.force;
+  // pages: how many pages of posts to fetch on initial scrape (1..5). Defaults
+  // to 1 so cold-start requests are as fast and cheap as possible.
+  const pages = Math.max(1, Math.min(5, num(body.pages) || 1));
+  // cursor: opaque token from a previous response. When set, we run the
+  // "load more" path which bypasses cache and only fetches the next batch.
+  const cursor = str(body.cursor || "").trim();
 
   slog("info", traceId, "request", {
-    username, type, force,
+    username, type, force, pages, hasCursor: !!cursor,
     ua: req.headers.get("user-agent")?.slice(0, 80) ?? null,
   });
+
+  // ---- LOAD-MORE PATH ----
+  // Cursor requests are stateless and not cached: each cursor is unique and
+  // the response is small, so caching would just bloat memory.
+  if (cursor) {
+    const ctx = newCtx(traceId, username, type);
+    try {
+      const payload = await paginatePostsResult(username, type, cursor, pages, ctx);
+      const totalMs = Date.now() - reqStart;
+      const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
+      slog("info", traceId, "response", {
+        cache: "PAGINATE", totalMs, rapidCalls: ctx.rapidCalls.length, rapidTotalMs,
+        hasMore: payload.postsHasMore ?? payload.reelsHasMore ?? false,
+      });
+      return json(payload, 200, {
+        "X-Cache": "PAGINATE",
+        "X-Duration-Ms": String(totalMs),
+        "X-Trace-Id": traceId,
+        // Don't cache load-more responses at the CDN — each cursor is unique.
+        "Cache-Control": "no-store",
+      });
+    } catch (e) {
+      const totalMs = Date.now() - reqStart;
+      const msg = (e as Error).message;
+      slog("warn", traceId, "paginate_failed", { totalMs, err: msg });
+      const status = msg === "Invalid cursor" ? 400 : 502;
+      return json({ error: msg, traceId }, status, { "X-Trace-Id": traceId });
+    }
+  }
+
+  // ---- INITIAL FETCH PATH ----
+  // Cache key includes pages so a 1-page request and a 3-page request stay
+  // separate (different result sizes).
+  const cacheKey = `${username}::${type}::p${pages}`;
 
   // 1) Stale-While-Revalidate: serve from cache instantly when available.
   if (!force) {
@@ -857,7 +896,7 @@ Deno.serve(async (req) => {
     isCoalesced = false;
     inflight = (async () => {
       try {
-        const r = await buildResult(username, type, ctx);
+        const r = await buildResult(username, type, ctx, { pages });
         cacheSet(cacheKey, r);
         return r;
       } finally {
