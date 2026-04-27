@@ -67,12 +67,8 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
     },
   }));
 
-  // Pad if fewer than expected — keep existing thumbnails
-  const existingPosts = mockAccounts["just4abhii"]?.posts ?? [];
-  while (postItems.length < Math.min(21, existingPosts.length)) {
-    postItems.push(existingPosts[postItems.length]);
-  }
-
+  // Apply to the canonical "just4abhii" slot which the UI uses everywhere.
+  // We REPLACE posts entirely (no padding from previous account) to avoid leakage.
   const profilePatch = {
     username: p.username,
     fullName: p.fullName || p.username,
@@ -85,26 +81,35 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
     website: p.externalUrl || "",
   };
 
-  // Apply to the canonical "just4abhii" slot which the UI uses everywhere
   const slot = mockAccounts["just4abhii"];
   if (slot) {
     Object.assign(slot.profile, profilePatch);
-    slot.posts = postItems.length ? postItems : slot.posts;
+    slot.posts = postItems;
     slot.highlights = highlights.length
       ? highlights.slice(0, 8).map((h) => ({
           name: h.name || "Highlight",
           image: proxyIgImage(h.image) || h.image,
         }))
-      : slot.highlights;
+      : [];
     if (p.category) slot.category = p.category;
   }
 
   // Mirror onto currentUser (live reference in many screens)
   Object.assign(currentUser, profilePatch);
 
-  if (reelItems.length) {
-    saveReelsData(reelItems);
+  // Wipe stale Supabase reels_data rows for this slot so previous-account
+  // overrides (thumbnails/videos/captions) don't leak into the new account.
+  try {
+    await (supabase as any)
+      .from("reels_data")
+      .delete()
+      .eq("account", "just4abhii");
+  } catch (e) {
+    console.warn("[Clone] Failed to clear stale reels_data:", e);
   }
+
+  // Always save reels (even if empty) so localStorage reflects the new account
+  saveReelsData(reelItems);
 
   saveProfileOverrides();
 
