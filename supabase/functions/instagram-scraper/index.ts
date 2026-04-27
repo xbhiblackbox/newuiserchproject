@@ -255,6 +255,113 @@ const heatSnapshot = () => {
   };
 };
 
+// ---- latency & error-rate metrics ----
+// Per-key rolling sample of latencies + error count. Two namespaces:
+//   "user:<username>"  → end-to-end request latency for that username
+//   "rapid:<path>"     → individual RapidAPI call latency for that path
+// Samples are bounded to the last N to keep memory/CPU bounded under load.
+interface MetricRec {
+  samples: number[];   // ring buffer of recent latencies in ms
+  ringIdx: number;     // next write index in `samples`
+  total: number;       // total observations ever recorded
+  errors: number;      // total errors ever recorded
+  lastAt: number;
+}
+const METRICS = new Map<string, MetricRec>();
+const METRIC_SAMPLES_MAX = 500;
+const METRICS_MAX = 1000;
+
+const metricRecord = (key: string, ms: number, isError: boolean) => {
+  let r = METRICS.get(key);
+  if (!r) {
+    if (METRICS.size >= METRICS_MAX) {
+      // Evict oldest by lastAt to bound memory.
+      let oldKey: string | null = null; let oldAt = Infinity;
+      for (const [k, v] of METRICS) {
+        if (v.lastAt < oldAt) { oldAt = v.lastAt; oldKey = k; }
+      }
+      if (oldKey) METRICS.delete(oldKey);
+    }
+    r = { samples: [], ringIdx: 0, total: 0, errors: 0, lastAt: 0 };
+    METRICS.set(key, r);
+  }
+  if (r.samples.length < METRIC_SAMPLES_MAX) {
+    r.samples.push(ms);
+  } else {
+    r.samples[r.ringIdx] = ms;
+    r.ringIdx = (r.ringIdx + 1) % METRIC_SAMPLES_MAX;
+  }
+  r.total++;
+  if (isError) r.errors++;
+  r.lastAt = Date.now();
+};
+
+// Compute percentile from a sorted ascending array. Linear interpolation.
+const percentile = (sorted: number[], p: number): number => {
+  if (sorted.length === 0) return 0;
+  if (sorted.length === 1) return sorted[0];
+  const rank = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(rank);
+  const hi = Math.ceil(rank);
+  if (lo === hi) return sorted[lo];
+  return Math.round(sorted[lo] + (sorted[hi] - sorted[lo]) * (rank - lo));
+};
+
+interface MetricSummary {
+  key: string;
+  count: number;
+  errors: number;
+  errorRate: number; // 0..1, rounded to 4 decimals
+  p50: number;
+  p95: number;
+  p99: number;
+}
+const summarizeMetric = (key: string, r: MetricRec): MetricSummary => {
+  const sorted = r.samples.slice().sort((a, b) => a - b);
+  return {
+    key,
+    count: r.total,
+    errors: r.errors,
+    errorRate: r.total > 0 ? Math.round((r.errors / r.total) * 10000) / 10000 : 0,
+    p50: percentile(sorted, 50),
+    p95: percentile(sorted, 95),
+    p99: percentile(sorted, 99),
+  };
+};
+
+// Snapshot all metrics, sorted by traffic (count desc). Optional prefix filter
+// lets callers pull just `user:` or `rapid:` slices.
+const metricsSnapshot = (prefix?: string): MetricSummary[] => {
+  const out: MetricSummary[] = [];
+  for (const [k, r] of METRICS) {
+    if (prefix && !k.startsWith(prefix)) continue;
+    out.push(summarizeMetric(k, r));
+  }
+  out.sort((a, b) => b.count - a.count);
+  return out;
+};
+
+// Compact summary for the per-request structured log: just the relevant
+// username + RapidAPI paths touched in this request.
+const metricsForRequest = (username: string, ctx: ReqCtx): {
+  user: MetricSummary | null;
+  rapid: MetricSummary[];
+} => {
+  const userKey = `user:${username}`;
+  const userRec = METRICS.get(userKey);
+  const touchedPaths = Array.from(new Set(ctx.rapidCalls.map(c => c.path)));
+  const rapid: MetricSummary[] = [];
+  for (const p of touchedPaths) {
+    const rec = METRICS.get(`rapid:${p}`);
+    if (rec) rapid.push(summarizeMetric(`rapid:${p}`, rec));
+  }
+  return {
+    user: userRec ? summarizeMetric(userKey, userRec) : null,
+    rapid,
+  };
+};
+
+
 // Fire-and-forget background refresh. EdgeRuntime.waitUntil keeps the isolate
 // alive past the response so the refresh actually completes.
 function scheduleRevalidation(cacheKey: string, username: string, type: string, parentTrace?: string) {
@@ -335,7 +442,11 @@ async function callRapid(path: string, init: RequestInit, ctx?: ReqCtx) {
     errMsg = errMsg ?? (e as Error).message;
     throw e;
   } finally {
-    if (ctx) ctx.rapidCalls.push({ path, ms: Date.now() - startedAt, status, err: errMsg });
+    const ms = Date.now() - startedAt;
+    if (ctx) ctx.rapidCalls.push({ path, ms, status, err: errMsg });
+    // Per-RapidAPI-path metrics for the dashboard. Always recorded, even when
+    // ctx is missing (e.g. background revalidation paths).
+    metricRecord(`rapid:${path}`, ms, status === "err");
   }
 }
 
@@ -954,13 +1065,24 @@ async function paginatePostsResult(
 // ---------- main ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  // GET /...?debug=heatmap → JSON snapshot of cache stats for ad-hoc inspection.
+  // GET /...?debug=heatmap → cache HIT/MISS/STALE counts per username.
+  // GET /...?debug=metrics → p50/p95/p99 latency + error rate per user/RapidAPI path.
   if (req.method === "GET") {
     const u = new URL(req.url);
-    if (u.searchParams.get("debug") === "heatmap") {
+    const debug = u.searchParams.get("debug");
+    if (debug === "heatmap") {
       return json(heatSnapshot(), 200, {
         "X-Cache-Heatmap": heatHeaderValue(),
         "X-Cache-Stats": heatStatsHeader(),
+      });
+    }
+    if (debug === "metrics") {
+      // Optional ?prefix=user: or ?prefix=rapid: to filter the slice.
+      const prefix = u.searchParams.get("prefix") ?? undefined;
+      return json({
+        users: metricsSnapshot("user:"),
+        rapid: metricsSnapshot("rapid:"),
+        ...(prefix ? { filtered: metricsSnapshot(prefix) } : {}),
       });
     }
     return json({ error: "POST only" }, 405);
@@ -1017,7 +1139,10 @@ Deno.serve(async (req) => {
         slowest,
       });
       heatTrack(username, "PAGINATE");
-      const debugPayload = { ...payload, _debug: buildDebugSummary(ctx, totalMs) };
+      metricRecord(`user:${username}`, totalMs, false);
+      const reqMetrics = metricsForRequest(username, ctx);
+      slog("info", traceId, "metrics", { username, ...reqMetrics });
+      const debugPayload = { ...payload, _debug: { ...buildDebugSummary(ctx, totalMs), metrics: reqMetrics } };
       return json(debugPayload, 200, {
         "X-Cache": "PAGINATE",
         "X-Duration-Ms": String(totalMs),
@@ -1030,6 +1155,7 @@ Deno.serve(async (req) => {
     } catch (e) {
       const totalMs = Date.now() - reqStart;
       const msg = (e as Error).message;
+      metricRecord(`user:${username}`, totalMs, true);
       slog("warn", traceId, "paginate_failed", { totalMs, err: msg });
       const status = msg === "Invalid cursor" ? 400 : 502;
       return json({ error: msg, traceId }, status, { "X-Trace-Id": traceId });
@@ -1055,6 +1181,7 @@ Deno.serve(async (req) => {
         totalMs, rapidCalls: 0,
       });
       heatTrack(username, cacheState);
+      metricRecord(`user:${username}`, totalMs, false);
       return json(cached.payload, 200, {
         "X-Cache": cacheState,
         "X-Cache-Age": String(Math.round(cached.ageMs / 1000)),
@@ -1103,10 +1230,13 @@ Deno.serve(async (req) => {
       slowest,
     });
     heatTrack(username, cacheState);
+    metricRecord(`user:${username}`, totalMs, false);
+    const reqMetrics = metricsForRequest(username, ctx);
+    slog("info", traceId, "metrics", { username, ...reqMetrics });
     // Attach _debug only when we actually made calls (skip pure coalesced
     // responses where ctx is empty — they share the upstream payload).
     const debugPayload = ctx.rapidCalls.length > 0
-      ? { ...(payload as Record<string, unknown>), _debug: buildDebugSummary(ctx, totalMs) }
+      ? { ...(payload as Record<string, unknown>), _debug: { ...buildDebugSummary(ctx, totalMs), metrics: reqMetrics } }
       : payload;
     return json(debugPayload, 200, {
       "X-Cache": cacheState,
@@ -1118,6 +1248,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     const totalMs = Date.now() - reqStart;
+    metricRecord(`user:${username}`, totalMs, true);
     slog("error", traceId, "fatal", {
       totalMs, err: (e as Error).message,
       rapidCalls: ctx.rapidCalls.length,
