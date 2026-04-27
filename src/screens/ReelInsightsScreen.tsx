@@ -197,6 +197,7 @@ const ReelInsightsScreen = () => {
     ]
   );
   const [retentionEditorOpen, setRetentionEditorOpen] = useState(false);
+  const [retentionEditorMode, setRetentionEditorMode] = useState<"retention" | "engagement">("retention");
   const [editYCenter, setEditYCenter] = useState(post?.yCenter ?? 500);
   const [editYTop, setEditYTop] = useState(post?.yTop ?? 1000);
   const [editEngagementYCenter, setEditEngagementYCenter] = useState((post as any)?.engagementYCenter ?? 35);
@@ -493,6 +494,8 @@ const ReelInsightsScreen = () => {
     }
     reel.yCenter = editYCenter;
     reel.yTop = editYTop;
+    (reel as any).engagementYCenter = editEngagementYCenter;
+    (reel as any).engagementYTop = editEngagementYTop;
     reel.showGraph = showGraph;
     if (postImage !== undefined) reel.thumbnail = postImage;
     if (postCaption !== undefined) reel.caption = postCaption;
@@ -500,7 +503,7 @@ const ReelInsightsScreen = () => {
     freshData[postIndex] = reel;
     saveReelsData(freshData);
     console.log("[InsightsPersist] Saved edits for reel", postIndex);
-  }, [isMainAccount, postIndex, editViews, editLikes, editComments, editShares, editSaves, editReposts, editFollowerPct, editGenderMale, editViewRate, editStartDate, editDuration, editXDate1, editXDate2, editXDate3, customGraphData, editYCenter, editYTop, editSkipRate, editTypicalSkipRate, editRetentionCurve, editWatchTime, editAvgWatchTime, showGraph, editSources, editCountries, editAgeGroups, editAccountsReached, editFollows, postImage, postCaption, postVideoUrl]);
+  }, [isMainAccount, postIndex, editViews, editLikes, editComments, editShares, editSaves, editReposts, editFollowerPct, editGenderMale, editViewRate, editStartDate, editDuration, editXDate1, editXDate2, editXDate3, customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editSkipRate, editTypicalSkipRate, editRetentionCurve, editWatchTime, editAvgWatchTime, showGraph, editSources, editCountries, editAgeGroups, editAccountsReached, editFollows, postImage, postCaption, postVideoUrl]);
 
   // Auto-persist edits to localStorage (skip initial mount)
   const hasMounted = useRef(false);
