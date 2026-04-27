@@ -84,6 +84,62 @@ const buildDebugSummary = (ctx: ReqCtx, totalMs: number) => {
   };
 };
 
+// ---- trace recorder ----
+// Captures the inputs + outcome of each non-replay request, keyed by trace id,
+// so we can re-run that exact request later via ?debug=replay&trace=<id> and
+// diff cache state, latency, and RapidAPI calls against the original.
+interface TraceRecord {
+  traceId: string;
+  recordedAt: number;
+  // inputs (enough to reconstruct an equivalent POST body)
+  username: string;
+  type: string;
+  pages: number;
+  cursor: string;
+  force: boolean;
+  // outcome
+  cache: string;             // HIT | STALE | MISS | BYPASS | COALESCED | PAGINATE | ERROR
+  totalMs: number;
+  rapidCalls: number;
+  rapidTotalMs: number;
+  rapidErrors: number;
+  slowest: Array<{ path: string; ms: number; status: "ok" | "err"; err?: string }>;
+  err?: string;
+}
+const TRACES = new Map<string, TraceRecord>();
+const TRACES_MAX = 500;
+
+const recordTrace = (rec: TraceRecord) => {
+  if (TRACES.size >= TRACES_MAX) {
+    // Evict oldest by recordedAt to bound memory.
+    let oldKey: string | null = null; let oldAt = Infinity;
+    for (const [k, v] of TRACES) {
+      if (v.recordedAt < oldAt) { oldAt = v.recordedAt; oldKey = k; }
+    }
+    if (oldKey) TRACES.delete(oldKey);
+  }
+  TRACES.set(rec.traceId, rec);
+};
+
+const tracesSnapshot = (limit = 50) => {
+  return Array.from(TRACES.values())
+    .sort((a, b) => b.recordedAt - a.recordedAt)
+    .slice(0, limit);
+};
+
+// Compute a compact diff between original trace and the replay outcome.
+// Useful to spot cache state changes (MISS → HIT) and latency drift.
+const diffTrace = (orig: TraceRecord, rep: TraceRecord) => ({
+  cache: { from: orig.cache, to: rep.cache, changed: orig.cache !== rep.cache },
+  totalMs: { from: orig.totalMs, to: rep.totalMs, deltaMs: rep.totalMs - orig.totalMs },
+  rapidCalls: { from: orig.rapidCalls, to: rep.rapidCalls, delta: rep.rapidCalls - orig.rapidCalls },
+  rapidTotalMs: { from: orig.rapidTotalMs, to: rep.rapidTotalMs, deltaMs: rep.rapidTotalMs - orig.rapidTotalMs },
+  rapidErrors: { from: orig.rapidErrors, to: rep.rapidErrors, delta: rep.rapidErrors - orig.rapidErrors },
+  slowestPath: {
+    from: orig.slowest[0]?.path ?? null,
+    to: rep.slowest[0]?.path ?? null,
+  },
+});
 
 
 // ---- in-memory cache & request coalescing (per edge instance) ----
