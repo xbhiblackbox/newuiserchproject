@@ -152,7 +152,16 @@ export async function fetchInstagramData(
         console.warn(
           `[ig-scraper] ${u} ${type} FAIL ${res.status} ms=${ms} trace=${serverTrace} :: ${t.slice(0, 200)}`,
         );
-        throw new Error(`Scraper ${res.status}: ${t}`);
+        const err = new Error(`Scraper ${res.status}: ${t.slice(0, 200)}`) as Error & {
+          __trace?: { traceId: string; serverTraceId: string; status: number; url: string };
+        };
+        err.__trace = {
+          traceId,
+          serverTraceId: serverTrace,
+          status: res.status,
+          url: `${SUPABASE_URL}/functions/v1/instagram-scraper`,
+        };
+        throw err;
       }
       const tag = opts.cursor ? "more" : `p${opts.pages ?? 1}`;
       console.log(
