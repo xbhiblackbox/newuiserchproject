@@ -90,7 +90,13 @@ const ProfileScreen = () => {
   const profile = account.profile;
   const highlights = account.highlights;
 
-  const isJust4abhii = activeUsername === "just4abhii" || account.profile === currentUser;
+  // The "owned" account = original just4abhii, or whatever it was renamed to.
+  // After rename, mockAccounts entry has a fresh profile object (not === currentUser),
+  // so also match by username string against the live currentUser.username.
+  const isJust4abhii =
+    activeUsername === "just4abhii" ||
+    account.profile === currentUser ||
+    activeUsername.toLowerCase() === (currentUser.username || "").toLowerCase();
 
   // Load media (thumbnails, videos) from Supabase for cross-device sync
   useEffect(() => {
