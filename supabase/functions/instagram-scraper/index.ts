@@ -1009,13 +1009,16 @@ Deno.serve(async (req) => {
     try {
       const payload = await paginatePostsResult(username, type, cursor, pages, ctx);
       const totalMs = Date.now() - reqStart;
+      const slowest = slowestRapidCalls(ctx, 5);
       const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
       slog("info", traceId, "response", {
         cache: "PAGINATE", totalMs, rapidCalls: ctx.rapidCalls.length, rapidTotalMs,
         hasMore: payload.postsHasMore ?? payload.reelsHasMore ?? false,
+        slowest,
       });
       heatTrack(username, "PAGINATE");
-      return json(payload, 200, {
+      const debugPayload = { ...payload, _debug: buildDebugSummary(ctx, totalMs) };
+      return json(debugPayload, 200, {
         "X-Cache": "PAGINATE",
         "X-Duration-Ms": String(totalMs),
         "X-Trace-Id": traceId,
