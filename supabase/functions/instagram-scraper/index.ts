@@ -876,6 +876,17 @@ async function paginatePostsResult(
 // ---------- main ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // GET /...?debug=heatmap → JSON snapshot of cache stats for ad-hoc inspection.
+  if (req.method === "GET") {
+    const u = new URL(req.url);
+    if (u.searchParams.get("debug") === "heatmap") {
+      return json(heatSnapshot(), 200, {
+        "X-Cache-Heatmap": heatHeaderValue(),
+        "X-Cache-Stats": heatStatsHeader(),
+      });
+    }
+    return json({ error: "POST only" }, 405);
+  }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!RAPIDAPI_KEY) return json({ error: "RAPIDAPI_KEY missing" }, 500);
 
