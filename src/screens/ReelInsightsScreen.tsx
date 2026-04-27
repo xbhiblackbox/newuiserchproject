@@ -386,8 +386,8 @@ const ReelInsightsScreen = () => {
   const genderFemale = 100 - genderMale;
   const watchTime = editWatchTime;
   const avgWatchTime = editAvgWatchTime;
-  const countries = editCountries;
-  const ageGroups = editAgeGroups;
+  const countries = hasAudienceRows(editCountries) ? editCountries : defaultCountries;
+  const ageGroups = hasAudienceRows(editAgeGroups) ? editAgeGroups : defaultAgeGroups;
   const sources = editSources.slice(0, 4);
   const accountsReached = editAccountsReached;
   const follows = editFollows;
