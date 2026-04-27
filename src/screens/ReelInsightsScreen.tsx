@@ -703,28 +703,50 @@ const ReelInsightsScreen = () => {
                 className={cn("h-[180px] -ml-2 relative", isEditMode && "cursor-pointer active:opacity-80 transition-opacity")}
                 onClick={() => isEditMode && setGraphEditorOpen(true)}
               >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={viewsOverTime} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                    <XAxis dataKey="day" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                    <YAxis
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                      width={42}
-                      domain={[0, editYTop]}
-                      ticks={[0, editYCenter, editYTop]}
-                      interval={0}
-                      tickFormatter={(v: number) => v === 0 ? '0' : v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}K` : String(v)}
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                    />
-                    {/* Always show 3 horizontal grid lines: bottom, middle, top */}
-                    <ReferenceLine y={0} stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                    <ReferenceLine y={editYCenter} stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                    <ReferenceLine y={editYTop} stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                    <Line type="monotone" dataKey="typical" stroke="hsl(var(--muted-foreground))" strokeWidth={2.5} strokeDasharray="6 6" dot={false} />
-                    <Line type="monotone" dataKey="thisReel" stroke="#E040FB" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+                {(() => {
+                  // Remap data values onto a fixed visual scale [0..2] so the 3 gridlines
+                  // (bottom=0, middle=1, top=2) are ALWAYS evenly spaced regardless of
+                  // the actual numeric values entered for middle/top labels.
+                  const topVal = Math.max(1, editYTop);
+                  const midVal = Math.min(Math.max(0, editYCenter), topVal);
+                  const remap = (v: number) => {
+                    if (v <= 0) return 0;
+                    if (v <= midVal) return midVal === 0 ? 0 : (v / midVal); // 0..1
+                    if (v >= topVal) return 2;
+                    return 1 + (v - midVal) / (topVal - midVal); // 1..2
+                  };
+                  const visualData = viewsOverTime.map(d => ({
+                    ...d,
+                    thisReel: remap(d.thisReel),
+                    typical: remap(d.typical),
+                  }));
+                  const fmt = (v: number) => v === 0 ? '0' : v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}K` : String(v);
+                  const tickLabel = (v: number) => v === 0 ? fmt(0) : v === 1 ? fmt(midVal) : fmt(topVal);
+                  return (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={visualData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <XAxis dataKey="day" fontSize={11} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={false}
+                          width={42}
+                          domain={[0, 2]}
+                          ticks={[0, 1, 2]}
+                          interval={0}
+                          tickFormatter={tickLabel}
+                          tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                        />
+                        {/* Always 3 evenly-spaced gridlines: bottom, middle, top */}
+                        <ReferenceLine y={0} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                        <ReferenceLine y={1} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                        <ReferenceLine y={2} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                        <Line type="monotone" dataKey="typical" stroke="hsl(var(--muted-foreground))" strokeWidth={2.5} strokeDasharray="6 6" dot={false} />
+                        <Line type="monotone" dataKey="thisReel" stroke="#E040FB" strokeWidth={3} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
                 {isEditMode && (
                   <>
                     <button
