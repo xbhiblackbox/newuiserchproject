@@ -405,10 +405,11 @@ const ReelDetailScreen = () => {
       comments: ins?.comments ?? 10,
       sends: ins?.shares ?? 24,
       saves: ins?.saves ?? 60,
-      views: ins ? fmtK(ins.views) : "7K",
+      viewsNum: ins?.views ?? 7000,
       accountUsername,
       profileAvatar: account.profile.avatar,
       profileUsername: account.profile.username,
+      isMainAccount,
     };
   });
 
