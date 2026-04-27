@@ -211,7 +211,7 @@ const ProfileReelCard = ({
         <div className="absolute right-5 bottom-[130px] flex flex-col items-center gap-5 z-10">
           {/* Heart */}
           <button
-            onClick={(e) => { e.stopPropagation(); setLiked(!liked); setLikeCount(c => liked ? c - 1 : c + 1); }}
+            onClick={(e) => { e.stopPropagation(); const next = liked ? likeCount - 1 : likeCount + 1; setLiked(!liked); setLikeCount(next); persistInsights({ likes: next }); }}
             onPointerDown={() => startPress("likes", String(likeCount))}
             onPointerUp={endPress}
             onPointerLeave={endPress}
