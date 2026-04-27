@@ -213,6 +213,20 @@ const mergeUnique = <T extends { id?: string; code?: string }>(
   return out;
 };
 
+export type FailureStep = "fetch" | "cache" | "parse";
+
+export interface LoadFailure {
+  step: FailureStep;
+  message: string;
+  traceId?: string;
+  serverTraceId?: string;
+  status?: number;
+  url?: string;
+  username?: string;
+  type?: InstaScrapeType;
+  at: number;
+}
+
 export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "all") {
   const [username, setUsername] = useState<string | null>(
     () => usernameArg ?? getConnectedUsername()
@@ -222,6 +236,7 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<LoadFailure | null>(null);
   const reqRef = useRef(0);
 
   // sync with localStorage changes / arg changes
@@ -240,21 +255,28 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
         return;
       }
       const key = `${CACHE_PREFIX}:${username}:${type}`;
-      const cached = readCache(key);
+      let cached: CacheEntry | null = null;
+      try {
+        cached = readCache(key);
+      } catch (e: any) {
+        setFailure({
+          step: "cache",
+          message: e?.message || "Cache read failed",
+          username,
+          type,
+          at: Date.now(),
+        });
+      }
       const age = cached ? Date.now() - cached.cachedAt : Infinity;
       const fresh = cached && age < CACHE_SOFT_TTL_MS;
       const usableStale = cached && age < CACHE_HARD_TTL_MS;
 
-      // Always paint cached data instantly if usable (even if stale).
       if (cached && usableStale) {
         setData(cached.data);
         setCachedAt(cached.cachedAt);
       }
 
-      // Fresh + not forced → done, no network call.
       if (fresh && !force) return;
-
-      // Stale-but-usable + not forced → silent background refresh (no spinner).
       const isBackground = !force && !!usableStale;
 
       const reqId = ++reqRef.current;
@@ -263,12 +285,50 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
       try {
         const next = await fetchInstagramData(username, type, { force });
         if (reqRef.current !== reqId) return;
-        writeCache(key, next);
-        setData(next);
-        setCachedAt(Date.now());
+        try {
+          writeCache(key, next);
+        } catch (e: any) {
+          setFailure({
+            step: "cache",
+            message: e?.message || "Cache write failed",
+            username,
+            type,
+            at: Date.now(),
+          });
+        }
+        try {
+          setData(next);
+          setCachedAt(Date.now());
+          setFailure(null);
+        } catch (e: any) {
+          setFailure({
+            step: "parse",
+            message: e?.message || "Parse failed",
+            username,
+            type,
+            at: Date.now(),
+          });
+          throw e;
+        }
       } catch (e: any) {
         if (reqRef.current !== reqId) return;
-        if (!isBackground) setError(e?.message || "Failed to load");
+        const meta = e?.__trace as
+          | { traceId?: string; serverTraceId?: string; status?: number; url?: string }
+          | undefined;
+        if (!isBackground) {
+          setError(e?.message || "Failed to load");
+          setFailure({
+            step: "fetch",
+            message: e?.message || "Network request failed",
+            traceId: meta?.traceId,
+            serverTraceId: meta?.serverTraceId,
+            status: meta?.status,
+            url: meta?.url,
+            username,
+            type,
+            at: Date.now(),
+          });
+        }
       } finally {
         if (reqRef.current === reqId && !isBackground) setLoading(false);
       }
@@ -277,11 +337,9 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
   );
 
   // Load the next page of posts/reels using the cursor returned in `data`.
-  // Appends to the existing arrays and updates the cached entry.
   const loadMore = useCallback(async () => {
     if (!username || !data || loadingMore) return;
-    const cursor =
-      data.reelsNextCursor || data.postsNextCursor || "";
+    const cursor = data.reelsNextCursor || data.postsNextCursor || "";
     const hasMore = !!(data.reelsHasMore ?? data.postsHasMore ?? false);
     if (!cursor || !hasMore) return;
 
@@ -313,6 +371,7 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
   }, [load]);
 
   const refetch = useCallback((force = true) => load(force), [load]);
+  const dismissFailure = useCallback(() => setFailure(null), []);
 
   const hasMore = !!(data?.reelsHasMore ?? data?.postsHasMore ?? false);
 
@@ -321,6 +380,8 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
     loading,
     loadingMore,
     error,
+    failure,
+    dismissFailure,
     refetch,
     loadMore,
     hasMore,
