@@ -109,10 +109,13 @@ const newClientTraceId = (): string =>
 export async function fetchInstagramData(
   username: string,
   type: InstaScrapeType = "all",
-  opts: { force?: boolean } = {}
+  opts: { force?: boolean; pages?: number; cursor?: string } = {}
 ): Promise<InstaScrapeResult> {
   const u = username.trim().replace(/^@/, "").toLowerCase();
-  const key = `${u}::${type}::${opts.force ? "f" : ""}`;
+  // Cursor requests are unique per call — never coalesce them.
+  const key = opts.cursor
+    ? `${u}::${type}::cursor:${opts.cursor.slice(0, 24)}`
+    : `${u}::${type}::p${opts.pages ?? 1}::${opts.force ? "f" : ""}`;
   const existing = inflight.get(key);
   if (existing) return existing;
 
@@ -121,6 +124,11 @@ export async function fetchInstagramData(
 
   const p = (async () => {
     try {
+      const reqBody: Record<string, unknown> = { username: u, type };
+      if (opts.force) reqBody.force = true;
+      if (opts.pages && opts.pages > 1) reqBody.pages = opts.pages;
+      if (opts.cursor) reqBody.cursor = opts.cursor;
+
       const res = await fetch(`${SUPABASE_URL}/functions/v1/instagram-scraper`, {
         method: "POST",
         headers: {
@@ -129,7 +137,7 @@ export async function fetchInstagramData(
           apikey: SUPABASE_KEY,
           "x-trace-id": traceId,
         },
-        body: JSON.stringify({ username: u, type, force: !!opts.force }),
+        body: JSON.stringify(reqBody),
         signal: AbortSignal.timeout(45000),
       });
       const ms = Date.now() - startedAt;
@@ -144,12 +152,12 @@ export async function fetchInstagramData(
         );
         throw new Error(`Scraper ${res.status}: ${t}`);
       }
+      const tag = opts.cursor ? "more" : `p${opts.pages ?? 1}`;
       console.log(
-        `[ig-scraper] ${u} ${type} ${cache}${cacheAge ? `(${cacheAge}s)` : ""} clientMs=${ms} serverMs=${serverMs ?? "?"} trace=${serverTrace}`,
+        `[ig-scraper] ${u} ${type} ${tag} ${cache}${cacheAge ? `(${cacheAge}s)` : ""} clientMs=${ms} serverMs=${serverMs ?? "?"} trace=${serverTrace}`,
       );
       return (await res.json()) as InstaScrapeResult;
     } finally {
-      // Clear after settle so next non-overlapping call can fire fresh
       inflight.delete(key);
     }
   })();
