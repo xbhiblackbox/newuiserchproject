@@ -250,7 +250,7 @@ const ProfileReelCard = ({
           </button>
           {/* Bookmark */}
           <button
-            onClick={(e) => { e.stopPropagation(); setSaved(!saved); setSaveCount(c => saved ? c - 1 : c + 1); }}
+            onClick={(e) => { e.stopPropagation(); const next = saved ? saveCount - 1 : saveCount + 1; setSaved(!saved); setSaveCount(next); persistInsights({ saves: next }); }}
             onPointerDown={() => startPress("saves", String(saveCount))}
             onPointerUp={endPress}
             onPointerLeave={endPress}
