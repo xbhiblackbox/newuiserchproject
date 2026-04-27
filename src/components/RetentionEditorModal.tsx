@@ -257,7 +257,7 @@ const RetentionEditorModal = ({
                     onTouchEnd={handlePointerUp}
                 >
                     {/* Grid lines */}
-                    {[0, 25, 50, 75, 100].map(tick => (
+                    {(threeLineScale ? [0, safeCenter, safeTop] : [0, 25, 50, 75, 100]).map(tick => (
                         <g key={tick}>
                             <line x1={PL} y1={valToY(tick)} x2={CW - PR} y2={valToY(tick)}
                                 stroke="hsl(var(--border))" strokeOpacity={0.3} strokeWidth={0.5} />
