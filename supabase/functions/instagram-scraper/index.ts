@@ -56,6 +56,34 @@ const newCtx = (traceId: string, username: string, type: string): ReqCtx => ({
   rapidCalls: [],
 });
 
+// Sort RapidAPI calls slowest-first and keep the top N for compact reporting.
+// Used both inline in structured logs and attached to the JSON response under
+// `_debug.rapidCalls` for client-side debugging without re-querying logs.
+const slowestRapidCalls = (
+  ctx: ReqCtx,
+  limit = 5,
+): Array<{ path: string; ms: number; status: "ok" | "err"; err?: string }> => {
+  return ctx.rapidCalls
+    .slice()
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, limit)
+    .map(c => ({ path: c.path, ms: c.ms, status: c.status, ...(c.err ? { err: c.err.slice(0, 120) } : {}) }));
+};
+
+// Build a debug summary that we attach to the JSON payload. Kept small to
+// avoid bloating responses.
+const buildDebugSummary = (ctx: ReqCtx, totalMs: number) => {
+  const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
+  return {
+    traceId: ctx.traceId,
+    totalMs,
+    rapidCalls: ctx.rapidCalls.length,
+    rapidTotalMs,
+    rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+    slowest: slowestRapidCalls(ctx, 5),
+  };
+};
+
 
 
 // ---- in-memory cache & request coalescing (per edge instance) ----
@@ -981,13 +1009,16 @@ Deno.serve(async (req) => {
     try {
       const payload = await paginatePostsResult(username, type, cursor, pages, ctx);
       const totalMs = Date.now() - reqStart;
+      const slowest = slowestRapidCalls(ctx, 5);
       const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
       slog("info", traceId, "response", {
         cache: "PAGINATE", totalMs, rapidCalls: ctx.rapidCalls.length, rapidTotalMs,
         hasMore: payload.postsHasMore ?? payload.reelsHasMore ?? false,
+        slowest,
       });
       heatTrack(username, "PAGINATE");
-      return json(payload, 200, {
+      const debugPayload = { ...payload, _debug: buildDebugSummary(ctx, totalMs) };
+      return json(debugPayload, 200, {
         "X-Cache": "PAGINATE",
         "X-Duration-Ms": String(totalMs),
         "X-Trace-Id": traceId,
@@ -1063,14 +1094,21 @@ Deno.serve(async (req) => {
     // RapidAPI timing summary (only when we actually scraped, not coalesced).
     const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
     const rapidErrors = ctx.rapidCalls.filter(c => c.status === "err").length;
+    const slowest = slowestRapidCalls(ctx, 5);
     slog("info", traceId, "response", {
       cache: cacheState, totalMs, coalesced: isCoalesced,
       rapidCalls: ctx.rapidCalls.length,
       rapidTotalMs, rapidErrors,
-      slowestPath: ctx.rapidCalls.slice().sort((a, b) => b.ms - a.ms)[0]?.path ?? null,
+      slowestPath: slowest[0]?.path ?? null,
+      slowest,
     });
     heatTrack(username, cacheState);
-    return json(payload, 200, {
+    // Attach _debug only when we actually made calls (skip pure coalesced
+    // responses where ctx is empty — they share the upstream payload).
+    const debugPayload = ctx.rapidCalls.length > 0
+      ? { ...(payload as Record<string, unknown>), _debug: buildDebugSummary(ctx, totalMs) }
+      : payload;
+    return json(debugPayload, 200, {
       "X-Cache": cacheState,
       "X-Duration-Ms": String(totalMs),
       "X-Trace-Id": traceId,
