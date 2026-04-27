@@ -187,6 +187,15 @@ const ReelInsightsScreen = () => {
       { t: "0:19", pct: 2 },
     ]
   );
+  const [editEngagementCurve, setEditEngagementCurve] = useState<{ t: string; pct: number }[]>(
+    (post as any)?.engagementCurve || ins?.retentionCurve || [
+      { t: "0:00", pct: 68 },
+      { t: "", pct: 0 },
+      { t: "", pct: 18 },
+      { t: "", pct: 0 },
+      { t: "0:30", pct: 0 },
+    ]
+  );
   const [typicalRetentionCurve, setTypicalRetentionCurve] = useState<{ t: string; pct: number }[]>(
     ins?.typicalRetentionCurve || [
       { t: "0:00", pct: 100 },
@@ -253,6 +262,7 @@ const ReelInsightsScreen = () => {
       watchTime: editWatchTime, avgWatchTime: editAvgWatchTime,
       skipRate: editSkipRate, typicalSkipRate: editTypicalSkipRate,
       retentionCurve: editRetentionCurve,
+      engagementCurve: editEngagementCurve,
       typicalRetentionCurve,
       customGraphData,
       yCenter: editYCenter, yTop: editYTop,
@@ -285,7 +295,7 @@ const ReelInsightsScreen = () => {
     editFollowerPct, editGenderMale, editViewRate,
     editStartDate, editDisplayDate, editDuration,
     editWatchTime, editAvgWatchTime,
-    editSkipRate, editTypicalSkipRate, editRetentionCurve, typicalRetentionCurve,
+    editSkipRate, editTypicalSkipRate, editRetentionCurve, editEngagementCurve, typicalRetentionCurve,
     customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editTypicalTop,
     editXDate1, editXDate2, editXDate3, timeRangeMode, showGraph,
     editSources, editCountries, editAgeGroups, editAccountsReached, editFollows,
