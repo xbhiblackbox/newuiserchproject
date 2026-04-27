@@ -28,10 +28,24 @@ const getScreenPalId = (url: string): string | null => {
   return match ? match[1] : null;
 };
 
-const VideoThumbnail = ({ videoUrl, fallbackThumbnail, className = "", alt = "" }: VideoThumbnailProps) => {
+const VideoThumbnail = ({ videoUrl, fallbackThumbnail, altThumbnails, className = "", alt = "" }: VideoThumbnailProps) => {
   const [thumbError, setThumbError] = useState(0);
+  const [posterFailed, setPosterFailed] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [capturedFrame, setCapturedFrame] = useState<string | null>(null);
   const isStreamable = videoUrl.includes("streamable.com") && !videoUrl.includes("screenpal");
   const isScreenPal = videoUrl.includes("screenpal.com");
+
+  // For Instagram CDN URLs that go through our proxy: try to derive the raw URL as a fallback
+  const derivedAlts: string[] = [];
+  if (fallbackThumbnail?.includes("/functions/v1/ig-image-proxy")) {
+    try {
+      const u = new URL(fallbackThumbnail);
+      const raw = u.searchParams.get("url");
+      if (raw) derivedAlts.push(raw);
+    } catch {}
+  }
+  const candidate = useThumbCandidates(fallbackThumbnail, [...derivedAlts, ...(altThumbnails || [])]);
 
   // ScreenPal thumbnail — prefer fallback image, otherwise use iframe snapshot
   if (isScreenPal) {
@@ -56,13 +70,12 @@ const VideoThumbnail = ({ videoUrl, fallbackThumbnail, className = "", alt = "" 
   }
 
   if (isStreamable) {
-    // Prefer fallback thumbnail if available (static image from data)
     if (fallbackThumbnail) {
       return (
-        <img 
-          src={fallbackThumbnail} 
-          alt={alt} 
-          className={className} 
+        <img
+          src={fallbackThumbnail}
+          alt={alt}
+          className={className}
           loading="lazy"
           draggable={false}
         />
@@ -74,7 +87,6 @@ const VideoThumbnail = ({ videoUrl, fallbackThumbnail, className = "", alt = "" 
       return <div className={className + " bg-secondary"} />;
     }
 
-    // Try CDN thumbnail URLs
     const thumbUrls = [
       `https://cdn-cf-east.streamable.com/image/${videoId}.jpg`,
       `https://cdn-eu-west.streamable.com/image/${videoId}.jpg`,
@@ -97,37 +109,81 @@ const VideoThumbnail = ({ videoUrl, fallbackThumbnail, className = "", alt = "" 
     }
 
     return (
-      <img 
-        src={currentThumbUrl} 
-        alt={alt} 
-        className={className} 
+      <img
+        src={currentThumbUrl}
+        alt={alt}
+        className={className}
         loading="lazy"
         draggable={false}
-        onError={() => setThumbError(prev => prev + 1)}
+        onError={() => setThumbError((prev) => prev + 1)}
       />
     );
   }
 
-  // For direct video URLs (.mp4 etc), show first frame using video element
-  const isVideo = videoUrl.match(/\.(mp4|webm|mov|ogg)(\?|$)/i) || videoUrl.includes("video") || videoUrl.startsWith("blob:");
-  
+  const isVideo =
+    videoUrl.match(/\.(mp4|webm|mov|ogg)(\?|$)/i) ||
+    videoUrl.includes("video") ||
+    videoUrl.startsWith("blob:");
+
+  // 1) Try image candidates (proxied → raw IG → user-supplied alts)
+  if (!candidate.exhausted && candidate.current) {
+    return (
+      <img
+        src={candidate.current}
+        alt={alt}
+        className={className}
+        loading="lazy"
+        draggable={false}
+        onError={candidate.fail}
+      />
+    );
+  }
+
+  // 2) Captured poster frame from the video itself
+  if (capturedFrame) {
+    return <img src={capturedFrame} alt={alt} className={className} loading="lazy" draggable={false} />;
+  }
+
+  // 3) Render a hidden <video> to extract a poster frame, fall back to a neutral placeholder
   if (isVideo) {
     return (
-      <video
-        src={videoUrl}
-        className={className}
-        muted
-        playsInline
-        preload="metadata"
-        poster={fallbackThumbnail}
-        style={{ pointerEvents: "none" }}
-      />
+      <div className={"relative overflow-hidden bg-secondary " + className}>
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          className="absolute inset-0 h-full w-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+          crossOrigin="anonymous"
+          onLoadedData={() => {
+            const v = videoRef.current;
+            if (!v) return;
+            try {
+              const c = document.createElement("canvas");
+              c.width = v.videoWidth || 320;
+              c.height = v.videoHeight || 568;
+              const ctx = c.getContext("2d");
+              if (!ctx) return;
+              ctx.drawImage(v, 0, 0, c.width, c.height);
+              setCapturedFrame(c.toDataURL("image/jpeg", 0.7));
+            } catch {
+              // CORS-blocked: just leave the <video> tag rendering its first frame natively
+            }
+          }}
+          onError={() => setPosterFailed(true)}
+          style={{ pointerEvents: "none" }}
+        />
+      </div>
     );
   }
 
-  // Fallback: treat as image thumbnail
-  const src = fallbackThumbnail || videoUrl;
-  return <img src={src} alt={alt} className={className} loading="lazy" draggable={false} />;
+  // 4) Last resort — neutral placeholder block (instead of a black image)
+  return (
+    <div className={"flex items-center justify-center bg-secondary text-muted-foreground text-xs " + className}>
+      <span>No preview</span>
+    </div>
+  );
 };
 
 export default VideoThumbnail;
