@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { ArrowLeft, ChevronDown, Check, Film, Camera, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import reelsIcon from "@/assets/reels-icon.png";
+import { getInsightTopReels } from "@/lib/insightTopReels";
 
 interface FollowersData {
   totalFollowers: string;
@@ -91,6 +92,7 @@ const FollowersDetailScreen = () => {
   const [ageTab, setAgeTab] = useState("All");
   const [locationTab, setLocationTab] = useState("Towns/cities");
   const [activeDayTab, setActiveDayTab] = useState("Su");
+  const topContent = useMemo(() => isEditing ? data.topContent : getInsightTopReels("follows", 4).map(item => ({ image: item.image, count: item.value, date: item.date })), [data.topContent, isEditing]);
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -311,7 +313,7 @@ const FollowersDetailScreen = () => {
           </div>
 
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-            {data.topContent.map((item, i) => (
+            {topContent.map((item, i) => (
               <div key={i} className="flex-shrink-0" style={{ width: 'calc((100% - 24px) / 4)' }}>
                 <div 
                   onClick={() => isEditing && handleImageUpload(i)}
