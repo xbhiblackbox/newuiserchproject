@@ -1230,10 +1230,13 @@ Deno.serve(async (req) => {
       slowest,
     });
     heatTrack(username, cacheState);
+    metricRecord(`user:${username}`, totalMs, false);
+    const reqMetrics = metricsForRequest(username, ctx);
+    slog("info", traceId, "metrics", { username, ...reqMetrics });
     // Attach _debug only when we actually made calls (skip pure coalesced
     // responses where ctx is empty — they share the upstream payload).
     const debugPayload = ctx.rapidCalls.length > 0
-      ? { ...(payload as Record<string, unknown>), _debug: buildDebugSummary(ctx, totalMs) }
+      ? { ...(payload as Record<string, unknown>), _debug: { ...buildDebugSummary(ctx, totalMs), metrics: reqMetrics } }
       : payload;
     return json(debugPayload, 200, {
       "X-Cache": cacheState,
