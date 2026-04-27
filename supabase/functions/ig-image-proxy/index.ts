@@ -57,7 +57,10 @@ Deno.serve(async (req) => {
       headers: {
         ...corsHeaders,
         "Content-Type": upstream.headers.get("content-type") ?? "image/jpeg",
-        "Cache-Control": "public, max-age=86400",
+        // Aggressive CDN caching: 30 days fresh, 7 days stale-while-revalidate.
+        // IG image URLs include signed tokens that effectively make them immutable.
+        "Cache-Control": "public, max-age=86400, s-maxage=2592000, stale-while-revalidate=604800, immutable",
+        "CDN-Cache-Control": "public, max-age=2592000, immutable",
       },
     });
   } catch (e) {
