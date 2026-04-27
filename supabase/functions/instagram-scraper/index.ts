@@ -1352,6 +1352,13 @@ Deno.serve(async (req) => {
       });
       heatTrack(username, cacheState);
       metricRecord(`user:${username}`, totalMs, false);
+      if (!isReplay) recordTrace({
+        traceId, recordedAt: Date.now(),
+        username, type, pages, cursor, force,
+        cache: cacheState, totalMs,
+        rapidCalls: 0, rapidTotalMs: 0, rapidErrors: 0,
+        slowest: [],
+      });
       return json(cached.payload, 200, {
         "X-Cache": cacheState,
         "X-Cache-Age": String(Math.round(cached.ageMs / 1000)),
