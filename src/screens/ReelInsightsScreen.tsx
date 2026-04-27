@@ -971,7 +971,7 @@ const ReelInsightsScreen = () => {
                     if (clamped <= midVal) return midVal === 0 ? 0 : clamped / midVal;
                     return 1 + (clamped - midVal) / (topVal - midVal || 1);
                   };
-                  const engagementGraphData = editRetentionCurve.map((d) => ({ ...d, pct: remapPct(d.pct) }));
+                  const engagementGraphData = editEngagementCurve.map((d) => ({ ...d, pct: remapPct(d.pct) }));
                   return (
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={engagementGraphData} margin={{ top: 5, right: 5, left: -5, bottom: 0 }}>
@@ -1301,8 +1301,17 @@ const ReelInsightsScreen = () => {
             {retentionEditorOpen && (
               <RetentionEditorModal
                 open={retentionEditorOpen} onClose={() => setRetentionEditorOpen(false)}
-                initialData={editRetentionCurve} initialTypical={typicalRetentionCurve}
-                onSave={(thisReel, typical) => { setEditRetentionCurve(thisReel); setTypicalRetentionCurve(typical); saveToSupabase({ retentionCurve: thisReel, typicalRetentionCurve: typical }); }}
+                initialData={retentionEditorMode === "engagement" ? editEngagementCurve : editRetentionCurve} initialTypical={typicalRetentionCurve}
+                onSave={(thisReel, typical) => {
+                  if (retentionEditorMode === "engagement") {
+                    setEditEngagementCurve(thisReel);
+                    saveToSupabase({ engagementCurve: thisReel });
+                  } else {
+                    setEditRetentionCurve(thisReel);
+                    setTypicalRetentionCurve(typical);
+                    saveToSupabase({ retentionCurve: thisReel, typicalRetentionCurve: typical });
+                  }
+                }}
                 threeLineScale={retentionEditorMode === "engagement"}
                 yCenter={editEngagementYCenter}
                 yTop={editEngagementYTop}
