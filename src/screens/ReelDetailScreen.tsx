@@ -166,10 +166,11 @@ const ProfileReelCard = ({
   const saveEdit = () => {
     if (!editField) return;
     const v = Math.max(0, parseInt(editValue) || 0);
-    if (editField === "likes") setLikeCount(v);
-    else if (editField === "comments") setCommentCount(v);
-    else if (editField === "sends") setSendCount(v);
-    else if (editField === "saves") setSaveCount(v);
+    if (editField === "likes") { setLikeCount(v); persistInsights({ likes: v }); }
+    else if (editField === "comments") { setCommentCount(v); persistInsights({ comments: v }); }
+    else if (editField === "sends") { setSendCount(v); persistInsights({ shares: v }); }
+    else if (editField === "saves") { setSaveCount(v); persistInsights({ saves: v }); }
+    else if (editField === "views") { setViewCount(v); persistInsights({ views: v }); }
     setEditField(null);
   };
 
