@@ -669,7 +669,7 @@ const ReelInsightsScreen = () => {
             )}
           >
             {tab}
-            {activeTab === tab && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-foreground" />}
+            {activeTab === tab && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] w-[91px] bg-foreground" />}
           </button>
         ))}
       </div>
