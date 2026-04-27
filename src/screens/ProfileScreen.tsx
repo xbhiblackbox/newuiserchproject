@@ -101,18 +101,22 @@ const ProfileScreen = () => {
   // Load media (thumbnails, videos) from Supabase for cross-device sync
   useEffect(() => {
     if (!isJust4abhii) return;
+    const profileUsername = (profile.username || "").toLowerCase();
     (async () => {
       try {
         const { data: rows } = await (supabase as any)
           .from('reels_data')
           .select('post_index, data')
-          .eq('account', 'just4abhii');
+          .eq('account', 'just4abhii')
+          .order('post_index');
         if (!rows || rows.length === 0) return;
         setReelsData(prev => {
           const updated = [...prev];
           for (const row of rows) {
             const idx = row.post_index;
             const d = row.data as Record<string, unknown>;
+            const sourceUsername = typeof d.sourceUsername === 'string' ? d.sourceUsername.toLowerCase() : "";
+            if (profileUsername !== "just4abhii" && sourceUsername !== profileUsername) continue;
             if (idx >= 0 && idx < updated.length) {
               const reel = { ...updated[idx] };
               if (d.thumbnail && typeof d.thumbnail === 'string') reel.thumbnail = d.thumbnail;
@@ -131,7 +135,7 @@ const ProfileScreen = () => {
         console.warn('[Profile] Failed to load media from Supabase:', err);
       }
     })();
-  }, [isJust4abhii]);
+  }, [isJust4abhii, profile.username]);
 
   useEffect(() => {
     const syncClonedInstagram = () => {
@@ -163,11 +167,11 @@ const ProfileScreen = () => {
     // (they don't have separate mock posts — sab content unke reels hi hain).
     if (isJust4abhii) {
       return reelsData
-        .filter((reel): reel is NonNullable<typeof reel> => !!reel && !!reel.videoUrl)
+        .filter((reel): reel is NonNullable<typeof reel> => !!reel && (!!reel.thumbnail || !!reel.videoUrl))
         .map((reel) => ({
           image: getThumb(reel),
           videoUrl: reel.videoUrl,
-          isReel: true,
+          isReel: !!reel.videoUrl,
           views: reel.insights?.views ?? 0,
           likes: reel.insights?.likes ?? 0,
         }));
