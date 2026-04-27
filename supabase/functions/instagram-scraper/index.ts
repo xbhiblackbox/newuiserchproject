@@ -1294,6 +1294,14 @@ Deno.serve(async (req) => {
       metricRecord(`user:${username}`, totalMs, false);
       const reqMetrics = metricsForRequest(username, ctx);
       slog("info", traceId, "metrics", { username, ...reqMetrics });
+      if (!isReplay) recordTrace({
+        traceId, recordedAt: Date.now(),
+        username, type, pages, cursor, force,
+        cache: "PAGINATE", totalMs,
+        rapidCalls: ctx.rapidCalls.length, rapidTotalMs,
+        rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+        slowest,
+      });
       const debugPayload = { ...payload, _debug: { ...buildDebugSummary(ctx, totalMs), metrics: reqMetrics } };
       return json(debugPayload, 200, {
         "X-Cache": "PAGINATE",
