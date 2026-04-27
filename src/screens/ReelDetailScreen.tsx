@@ -309,7 +309,13 @@ const ProfileReelCard = ({
           {/* View Insights + Boost Reel */}
           <div className="border-t-[2px] border-white/25 mt-1" />
           <div className="flex items-center justify-between pt-4 pb-2 px-4">
-            <button onClick={onNavigateInsights} className="flex items-center gap-1.5">
+            <button
+              onClick={onNavigateInsights}
+              onPointerDown={() => startPress("views", String(viewCount))}
+              onPointerUp={endPress}
+              onPointerLeave={endPress}
+              className="flex items-center gap-1.5"
+            >
               <svg width="13" height="11" viewBox="0 0 120 100">
                 <defs>
                   <mask id={`eye-mask-${data.index}`}>
@@ -320,7 +326,7 @@ const ProfileReelCard = ({
                 <path d="M15 45 C30 8, 90 8, 105 45" stroke="white" strokeWidth="10" strokeLinecap="round" fill="none" />
                 <circle cx="60" cy="62" r="30" fill="white" mask={`url(#eye-mask-${data.index})`} />
               </svg>
-              <span className="text-[12px] text-white/90 font-normal">{data.views} · View Insights</span>
+              <span className="text-[12px] text-white/90 font-normal">{fmtK(viewCount)} · View Insights</span>
             </button>
             <button className="flex items-center gap-1.5">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-85">
