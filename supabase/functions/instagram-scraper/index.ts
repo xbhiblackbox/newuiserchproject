@@ -379,7 +379,7 @@ function pickItems(rawIn: any): any[] {
 }
 
 // Fetch a single media's full details (used to recover video_url for reels)
-async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
+async function fetchMediaDetail(codeOrId: string, ctx?: ReqCtx): Promise<any | null> {
   if (!codeOrId) return null;
   try {
     // /api/instagram/links is the confirmed working endpoint on instagram120
@@ -388,10 +388,10 @@ async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
       { path: "/api/instagram/links", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
       { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/reel/${codeOrId}/` } },
       { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
-    ]);
+    ], ctx);
     return data;
   } catch (e) {
-    console.warn("media detail fetch failed", codeOrId, (e as Error).message);
+    if (ctx) slog("warn", ctx.traceId, "media_detail_failed", { code: codeOrId, err: (e as Error).message });
     return null;
   }
 }
