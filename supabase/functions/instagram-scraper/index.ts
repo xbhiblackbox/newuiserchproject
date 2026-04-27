@@ -1155,6 +1155,7 @@ Deno.serve(async (req) => {
     } catch (e) {
       const totalMs = Date.now() - reqStart;
       const msg = (e as Error).message;
+      metricRecord(`user:${username}`, totalMs, true);
       slog("warn", traceId, "paginate_failed", { totalMs, err: msg });
       const status = msg === "Invalid cursor" ? 400 : 502;
       return json({ error: msg, traceId }, status, { "X-Trace-Id": traceId });
