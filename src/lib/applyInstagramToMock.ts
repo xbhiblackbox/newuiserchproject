@@ -11,7 +11,8 @@ const MAX_REELS = 15;
  */
 export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaScrapeResult> {
   const username = usernameRaw.trim().replace(/^@/, "");
-  const data = await fetchInstagramData(username, "all");
+  // Cloning needs ~15 reels — request 3 pages up-front (server will SWR-cache it).
+  const data = await fetchInstagramData(username, "all", { pages: 3 });
 
   const p = data.profile;
   if (!p?.username) throw new Error("Account not found");
