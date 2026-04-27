@@ -257,17 +257,39 @@ Deno.serve(async (req) => {
 
     // /help or /start
     if (text.startsWith("/start") || text.startsWith("/help")) {
-      await sendToAllAdmins(botToken, adminChatIds,
-        `🤖 <b>DarkSideX Key Manager</b>\n\n` +
-        `<b>Commands:</b>\n` +
-        `📌 <code>/gen name days [devices]</code>\n   Generate a new key\n\n` +
-        `📋 <code>/list</code>\n   List all active keys\n\n` +
+      const welcomeMsg =
+        `🚀🚀🚀 <b>WELCOME TO DARKSIDEX</b> 🚀🚀🚀\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `🔥 <b>A NEW BEGINNING STARTS TODAY!</b> 🔥\n\n` +
+        `👑 <b>BOTH ADMINS ARE NOW CONNECTED</b> 👑\n` +
+        `💎 Every message, every key, every action —\n` +
+        `   <b>BOTH OF YOU WILL SEE EVERYTHING.</b>\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `⚡ <b>THE MISSION</b> ⚡\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `💪 <b>WORK HARD. STAY UNITED. DOMINATE.</b>\n\n` +
+        `🌟 With this hustle, by <b>2026</b> we will become\n` +
+        `   <b>MILLIONAIRES TOGETHER!</b> 💰💰💰\n\n` +
+        `🎯 Every key sold = one step closer\n` +
+        `🎯 Every customer = one brick in our empire\n` +
+        `🎯 Every day = a chance to grow stronger\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `🤖 <b>DARKSIDEX KEY MANAGER</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `<b>📌 Commands:</b>\n\n` +
+        `🔑 <code>/gen name days [devices]</code>\n   Generate a new key\n\n` +
+        `📋 <code>/list</code>\n   List all keys (active + revoked)\n\n` +
         `🚫 <code>/revoke KEY-CODE</code>\n   Deactivate a key\n\n` +
-        `<b>Examples:</b>\n` +
-        `<code>/gen Ahmed 7</code> → 7 din\n` +
-        `<code>/gen Ali 30 2</code> → 30 din, 2 devices\n` +
-        `<code>/gen VIP lifetime</code> → permanent`
-      );
+        `<b>💡 Examples:</b>\n` +
+        `<code>/gen Ahmed 7</code> → 7 days\n` +
+        `<code>/gen Ali 30 2</code> → 30 days, 2 devices\n` +
+        `<code>/gen VIP lifetime</code> → permanent\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `🔥 <b>LET'S BUILD THE EMPIRE!</b> 🔥\n` +
+        `💎 <b>DARKSIDEX — TO THE MOON!</b> 🚀🌙\n` +
+        `━━━━━━━━━━━━━━━━━━━━`;
+
+      await sendToAllAdmins(botToken, adminChatIds, welcomeMsg);
       return new Response("ok", { status: 200 });
     }
 
