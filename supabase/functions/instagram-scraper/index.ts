@@ -971,11 +971,14 @@ Deno.serve(async (req) => {
         cache: cacheState, ageSec: Math.round(cached.ageMs / 1000),
         totalMs, rapidCalls: 0,
       });
+      heatTrack(username, cacheState);
       return json(cached.payload, 200, {
         "X-Cache": cacheState,
         "X-Cache-Age": String(Math.round(cached.ageMs / 1000)),
         "X-Duration-Ms": String(totalMs),
         "X-Trace-Id": traceId,
+        "X-Cache-Heatmap": heatHeaderValue(),
+        "X-Cache-Stats": heatStatsHeader(),
         "Cache-Control": "public, max-age=300",
       });
     }
