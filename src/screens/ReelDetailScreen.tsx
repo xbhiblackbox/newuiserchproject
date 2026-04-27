@@ -4,7 +4,7 @@ import { Heart, MessageCircle, Bookmark, MoreVertical, ArrowLeft } from "lucide-
 import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import RepostIcon from "@/components/icons/RepostIcon";
 import { mockAccounts, currentUser } from "@/data/mockData";
-import { loadReelsData } from "@/data/reelInsightsData";
+import { loadReelsData, saveReelsData } from "@/data/reelInsightsData";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,10 +36,11 @@ interface ProfileReelData {
   comments: number;
   sends: number;
   saves: number;
-  views: string;
+  viewsNum: number;
   accountUsername: string;
   profileAvatar: string;
   profileUsername: string;
+  isMainAccount: boolean;
 }
 
 const ProfileReelCard = ({
@@ -70,6 +71,54 @@ const ProfileReelCard = ({
   const [commentCount, setCommentCount] = useState(data.comments);
   const [sendCount, setSendCount] = useState(data.sends);
   const [saveCount, setSaveCount] = useState(data.saves);
+  const [viewCount, setViewCount] = useState(data.viewsNum);
+
+  // Sync local state with incoming data (e.g. after re-load from storage)
+  useEffect(() => {
+    setLikeCount(data.likes);
+    setCommentCount(data.comments);
+    setSendCount(data.sends);
+    setSaveCount(data.saves);
+    setViewCount(data.viewsNum);
+  }, [data.likes, data.comments, data.sends, data.saves, data.viewsNum]);
+
+  // Persist edits back to localStorage + Supabase so insights & profile thumbnail stay in sync
+  const persistInsights = useCallback((updates: { likes?: number; comments?: number; shares?: number; saves?: number; views?: number }) => {
+    if (!data.isMainAccount) return;
+    try {
+      const fresh = loadReelsData();
+      const reel = fresh[data.index];
+      if (!reel) return;
+      reel.insights = {
+        ...reel.insights,
+        ...(updates.likes != null ? { likes: updates.likes } : {}),
+        ...(updates.comments != null ? { comments: updates.comments } : {}),
+        ...(updates.shares != null ? { shares: updates.shares } : {}),
+        ...(updates.saves != null ? { saves: updates.saves } : {}),
+        ...(updates.views != null ? { views: updates.views } : {}),
+      };
+      fresh[data.index] = reel;
+      saveReelsData(fresh);
+    } catch (e) { console.warn("[ReelDetail] localStorage persist failed", e); }
+    // Mirror to Supabase so other devices/screens reading from DB stay in sync
+    (async () => {
+      try {
+        const { data: row } = await (supabase as any)
+          .from("reels_data")
+          .select("data")
+          .eq("account", data.accountUsername)
+          .eq("post_index", data.index)
+          .maybeSingle();
+        const merged = { ...(row?.data || {}), ...updates };
+        await (supabase as any)
+          .from("reels_data")
+          .upsert(
+            { account: data.accountUsername, post_index: data.index, data: merged, updated_at: new Date().toISOString() },
+            { onConflict: "account,post_index" }
+          );
+      } catch (e) { console.warn("[ReelDetail] Supabase persist failed", e); }
+    })();
+  }, [data.index, data.accountUsername, data.isMainAccount]);
 
   // Auto-play/pause based on isActive
   useEffect(() => {
@@ -117,10 +166,11 @@ const ProfileReelCard = ({
   const saveEdit = () => {
     if (!editField) return;
     const v = Math.max(0, parseInt(editValue) || 0);
-    if (editField === "likes") setLikeCount(v);
-    else if (editField === "comments") setCommentCount(v);
-    else if (editField === "sends") setSendCount(v);
-    else if (editField === "saves") setSaveCount(v);
+    if (editField === "likes") { setLikeCount(v); persistInsights({ likes: v }); }
+    else if (editField === "comments") { setCommentCount(v); persistInsights({ comments: v }); }
+    else if (editField === "sends") { setSendCount(v); persistInsights({ shares: v }); }
+    else if (editField === "saves") { setSaveCount(v); persistInsights({ saves: v }); }
+    else if (editField === "views") { setViewCount(v); persistInsights({ views: v }); }
     setEditField(null);
   };
 
@@ -161,7 +211,7 @@ const ProfileReelCard = ({
         <div className="absolute right-5 bottom-[130px] flex flex-col items-center gap-5 z-10">
           {/* Heart */}
           <button
-            onClick={(e) => { e.stopPropagation(); setLiked(!liked); setLikeCount(c => liked ? c - 1 : c + 1); }}
+            onClick={(e) => { e.stopPropagation(); const next = liked ? likeCount - 1 : likeCount + 1; setLiked(!liked); setLikeCount(next); persistInsights({ likes: next }); }}
             onPointerDown={() => startPress("likes", String(likeCount))}
             onPointerUp={endPress}
             onPointerLeave={endPress}
@@ -200,7 +250,7 @@ const ProfileReelCard = ({
           </button>
           {/* Bookmark */}
           <button
-            onClick={(e) => { e.stopPropagation(); setSaved(!saved); setSaveCount(c => saved ? c - 1 : c + 1); }}
+            onClick={(e) => { e.stopPropagation(); const next = saved ? saveCount - 1 : saveCount + 1; setSaved(!saved); setSaveCount(next); persistInsights({ saves: next }); }}
             onPointerDown={() => startPress("saves", String(saveCount))}
             onPointerUp={endPress}
             onPointerLeave={endPress}
@@ -259,7 +309,13 @@ const ProfileReelCard = ({
           {/* View Insights + Boost Reel */}
           <div className="border-t-[2px] border-white/25 mt-1" />
           <div className="flex items-center justify-between pt-4 pb-2 px-4">
-            <button onClick={onNavigateInsights} className="flex items-center gap-1.5">
+            <button
+              onClick={onNavigateInsights}
+              onPointerDown={() => startPress("views", String(viewCount))}
+              onPointerUp={endPress}
+              onPointerLeave={endPress}
+              className="flex items-center gap-1.5"
+            >
               <svg width="13" height="11" viewBox="0 0 120 100">
                 <defs>
                   <mask id={`eye-mask-${data.index}`}>
@@ -270,7 +326,7 @@ const ProfileReelCard = ({
                 <path d="M15 45 C30 8, 90 8, 105 45" stroke="white" strokeWidth="10" strokeLinecap="round" fill="none" />
                 <circle cx="60" cy="62" r="30" fill="white" mask={`url(#eye-mask-${data.index})`} />
               </svg>
-              <span className="text-[12px] text-white/90 font-normal">{data.views} · View Insights</span>
+              <span className="text-[12px] text-white/90 font-normal">{fmtK(viewCount)} · View Insights</span>
             </button>
             <button className="flex items-center gap-1.5">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="opacity-85">
@@ -355,10 +411,11 @@ const ReelDetailScreen = () => {
       comments: ins?.comments ?? 10,
       sends: ins?.shares ?? 24,
       saves: ins?.saves ?? 60,
-      views: ins ? fmtK(ins.views) : "7K",
+      viewsNum: ins?.views ?? 7000,
       accountUsername,
       profileAvatar: account.profile.avatar,
       profileUsername: account.profile.username,
+      isMainAccount,
     };
   });
 
