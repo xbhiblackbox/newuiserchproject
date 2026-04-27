@@ -498,71 +498,89 @@ function normalizeHighlight(h: any) {
 }
 
 // ---------- workers (each one self-contained, run in parallel) ----------
-async function fetchProfile(username: string) {
+async function fetchProfile(username: string, ctx?: ReqCtx) {
+  const startedAt = Date.now();
   const raw = await tryEndpoints([
     { path: "/api/instagram/userInfo", method: "POST", body: { username } },
     { path: "/api/instagram/userInfoByUsername", method: "POST", body: { username } },
     { path: "/v1/info", query: { username_or_id_or_url: username } },
     { path: "/userinfo", query: { username } },
     { path: "/api/v1/users/web_profile_info", query: { username } },
-  ]);
-  return normalizeProfile(raw);
+  ], ctx);
+  const profile = normalizeProfile(raw);
+  if (ctx) slog("info", ctx.traceId, "fetch_profile_done", {
+    ms: Date.now() - startedAt, ok: !!profile.username,
+  });
+  return profile;
 }
 
 async function fetchPaginated(
   variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>,
+  ctx?: ReqCtx,
   maxPages = 3,
   cap = 120,
 ) {
-  const first = await tryEndpoints(variants);
+  const first = await tryEndpoints(variants, ctx);
   const allRaw: any[] = [pickItems(first.data)];
   let cur = readPageInfo(first.data);
   let lastVariant = first.variant;
   let pages = 1;
   while (cur.hasNext && cur.cursor && pages < maxPages) {
     try {
-      const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
+      const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor), ctx);
       allRaw.push(pickItems(next.data));
       cur = readPageInfo(next.data);
       lastVariant = next.variant;
       pages++;
     } catch (e) {
-      console.warn(`page ${pages + 1} err`, (e as Error).message);
+      if (ctx) slog("warn", ctx.traceId, "page_fetch_failed", { page: pages + 1, err: (e as Error).message });
       break;
     }
   }
   return dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, cap);
 }
 
-async function fetchPosts(username: string) {
-  return fetchPaginated([
+async function fetchPosts(username: string, ctx?: ReqCtx) {
+  const startedAt = Date.now();
+  const items = await fetchPaginated([
     { path: "/api/instagram/posts", method: "POST", body: { username } },
     { path: "/api/instagram/userPosts", method: "POST", body: { username } },
     { path: "/v1/posts", query: { username_or_id_or_url: username } },
     { path: "/posts", query: { username } },
-  ]);
+  ], ctx);
+  if (ctx) slog("info", ctx.traceId, "fetch_posts_done", {
+    ms: Date.now() - startedAt, count: items.length,
+  });
+  return items;
 }
 
-async function fetchHighlights(username: string) {
+async function fetchHighlights(username: string, ctx?: ReqCtx) {
+  const startedAt = Date.now();
   const resp = await tryEndpoints([
     { path: "/api/instagram/highlights", method: "POST", body: { username } },
     { path: "/api/instagram/userHighlights", method: "POST", body: { username } },
     { path: "/v1/highlights", query: { username_or_id_or_url: username } },
-  ]);
+  ], ctx);
   const raw = unwrap(resp.data);
   const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   const items = r0?.items ?? r0?.tray ?? r0 ?? raw?.items ?? [];
-  return (Array.isArray(items) ? items : []).map(normalizeHighlight);
+  const out = (Array.isArray(items) ? items : []).map(normalizeHighlight);
+  if (ctx) slog("info", ctx.traceId, "fetch_highlights_done", {
+    ms: Date.now() - startedAt, count: out.length,
+  });
+  return out;
 }
 
 // Build the full result for a username — runs profile/posts/highlights IN PARALLEL.
-async function buildResult(username: string, type: string): Promise<any> {
+async function buildResult(username: string, type: string, ctx?: ReqCtx): Promise<any> {
   const wants = (t: string) => type === "all" || type === t;
+  const buildStart = Date.now();
+  if (ctx) slog("info", ctx.traceId, "build_start", { username, type });
 
   const [profileRes, postsRes, highlightsRes] = await Promise.allSettled([
-    wants("profile") ? fetchProfile(username) : Promise.resolve(null),
-    (wants("posts") || wants("reels")) ? fetchPosts(username) : Promise.resolve(null),
-    wants("highlights") ? fetchHighlights(username) : Promise.resolve(null),
+    wants("profile") ? fetchProfile(username, ctx) : Promise.resolve(null),
+    (wants("posts") || wants("reels")) ? fetchPosts(username, ctx) : Promise.resolve(null),
+    wants("highlights") ? fetchHighlights(username, ctx) : Promise.resolve(null),
   ]);
 
   const result: any = { username };
@@ -573,15 +591,17 @@ async function buildResult(username: string, type: string): Promise<any> {
       result.profileOk = !!result.profile.username;
     } else {
       result.profileOk = false;
-      if (profileRes.status === "rejected") console.error("profile err", profileRes.reason);
+      if (profileRes.status === "rejected" && ctx) {
+        slog("error", ctx.traceId, "profile_failed", { err: String(profileRes.reason?.message ?? profileRes.reason) });
+      }
     }
   }
 
   let postsArr: any[] = [];
   if (postsRes.status === "fulfilled" && Array.isArray(postsRes.value)) {
     postsArr = postsRes.value;
-  } else if (postsRes.status === "rejected") {
-    console.error("posts err", postsRes.reason);
+  } else if (postsRes.status === "rejected" && ctx) {
+    slog("error", ctx.traceId, "posts_failed", { err: String(postsRes.reason?.message ?? postsRes.reason) });
   }
 
   if (wants("posts")) {
@@ -605,7 +625,9 @@ async function buildResult(username: string, type: string): Promise<any> {
     } else {
       result.highlights = [];
       result.highlightsOk = false;
-      if (highlightsRes.status === "rejected") console.error("highlights err", highlightsRes.reason);
+      if (highlightsRes.status === "rejected" && ctx) {
+        slog("error", ctx.traceId, "highlights_failed", { err: String(highlightsRes.reason?.message ?? highlightsRes.reason) });
+      }
     }
   }
 
@@ -618,14 +640,17 @@ async function buildResult(username: string, type: string): Promise<any> {
       .slice(0, MAX_DETAIL_FETCH);
 
     if (targets.length) {
+      const enrichStart = Date.now();
       const detailResults = await Promise.allSettled(
-        targets.map(({ r }: any) => fetchMediaDetail(str(r.code || r.id)))
+        targets.map(({ r }: any) => fetchMediaDetail(str(r.code || r.id), ctx))
       );
+      let recovered = 0;
       detailResults.forEach((res, i) => {
         if (res.status !== "fulfilled" || !res.value) return;
         const fields = extractDetailFields(res.value);
         const { idx } = targets[i];
         const cur = result.reels[idx];
+        if (!cur.videoUrl && fields.videoUrl) recovered++;
         result.reels[idx] = {
           ...cur,
           videoUrl: cur.videoUrl || fields.videoUrl || "",
@@ -633,8 +658,19 @@ async function buildResult(username: string, type: string): Promise<any> {
           thumbnail: cur.thumbnail || fields.thumbnail || "",
         };
       });
+      if (ctx) slog("info", ctx.traceId, "enrich_done", {
+        ms: Date.now() - enrichStart, attempted: targets.length, recovered,
+      });
     }
   }
+
+  if (ctx) slog("info", ctx.traceId, "build_done", {
+    ms: Date.now() - buildStart,
+    profileOk: result.profileOk,
+    postsCount: result.posts?.length,
+    reelsCount: result.reels?.length,
+    highlightsCount: result.highlights?.length,
+  });
 
   return result;
 }
