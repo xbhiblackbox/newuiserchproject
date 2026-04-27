@@ -1248,6 +1248,7 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     const totalMs = Date.now() - reqStart;
+    metricRecord(`user:${username}`, totalMs, true);
     slog("error", traceId, "fatal", {
       totalMs, err: (e as Error).message,
       rapidCalls: ctx.rapidCalls.length,
