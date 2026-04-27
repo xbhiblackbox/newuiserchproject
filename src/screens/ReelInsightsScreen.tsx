@@ -96,6 +96,26 @@ const computeXDates = (startDate: string): [string, string, string] => {
   }) as [string, string, string];
 };
 
+const defaultCountries = [
+  { name: "India", pct: 54.1 },
+  { name: "Iran", pct: 19.9 },
+  { name: "Uzbekistan", pct: 5.7 },
+  { name: "Türkiye", pct: 2.6 },
+  { name: "Kazakhstan", pct: 1.6 },
+];
+
+const defaultAgeGroups = [
+  { range: "13-17", pct: 32.3 },
+  { range: "18-24", pct: 35.9 },
+  { range: "25-34", pct: 20.2 },
+  { range: "35-44", pct: 7.1 },
+  { range: "45-54", pct: 2.3 },
+  { range: "55-64", pct: 0.8 },
+  { range: "65+", pct: 1.4 },
+];
+
+const hasAudienceRows = <T,>(items: T[] | undefined): items is T[] => Array.isArray(items) && items.length > 0;
+
 const ReelInsightsScreen = () => {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -202,12 +222,8 @@ const ReelInsightsScreen = () => {
   });
   const [timeRangeMode, setTimeRangeMode] = useState<"custom" | "12h" | "24h">("custom");
   const [showGraph, setShowGraph] = useState(post?.showGraph !== false);
-  const [editCountries, setEditCountries] = useState(ins?.countries || [
-    { name: "India", pct: 54.1 }, { name: "Iran", pct: 19.9 }, { name: "Uzbekistan", pct: 5.7 }, { name: "Türkiye", pct: 2.6 }, { name: "Kazakhstan", pct: 1.6 },
-  ]);
-  const [editAgeGroups, setEditAgeGroups] = useState(ins?.ageGroups || [
-    { range: "13-17", pct: 32.3 }, { range: "18-24", pct: 35.9 }, { range: "25-34", pct: 20.2 }, { range: "35-44", pct: 7.1 }, { range: "45-54", pct: 2.3 }, { range: "55-64", pct: 0.8 }, { range: "65+", pct: 1.4 },
-  ]);
+  const [editCountries, setEditCountries] = useState(hasAudienceRows(ins?.countries) ? ins.countries : defaultCountries);
+  const [editAgeGroups, setEditAgeGroups] = useState(hasAudienceRows(ins?.ageGroups) ? ins.ageGroups : defaultAgeGroups);
   const [editSources, setEditSources] = useState(ins?.sources || [
     { name: "Feed", pct: 63.4 }, { name: "Reels tab", pct: 11.1 }, { name: "Stories", pct: 10.6 }, { name: "Explore", pct: 7.4 },
   ]);
