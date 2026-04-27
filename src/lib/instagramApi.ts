@@ -95,6 +95,10 @@ export const clearInstagramCache = (username?: string) => {
 // the same time, only 1 network request is made and all of them share the result.
 const inflight = new Map<string, Promise<InstaScrapeResult>>();
 
+// Generate short, unique trace ids for end-to-end request correlation.
+const newClientTraceId = (): string =>
+  Date.now().toString(36).slice(-6) + Math.random().toString(36).slice(2, 8);
+
 export async function fetchInstagramData(
   username: string,
   type: InstaScrapeType = "all",
@@ -105,6 +109,9 @@ export async function fetchInstagramData(
   const existing = inflight.get(key);
   if (existing) return existing;
 
+  const traceId = newClientTraceId();
+  const startedAt = Date.now();
+
   const p = (async () => {
     try {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/instagram-scraper`, {
@@ -113,14 +120,26 @@ export async function fetchInstagramData(
           "Content-Type": "application/json",
           Authorization: `Bearer ${SUPABASE_KEY}`,
           apikey: SUPABASE_KEY,
+          "x-trace-id": traceId,
         },
         body: JSON.stringify({ username: u, type, force: !!opts.force }),
         signal: AbortSignal.timeout(45000),
       });
+      const ms = Date.now() - startedAt;
+      const serverTrace = res.headers.get("x-trace-id") || traceId;
+      const cache = res.headers.get("x-cache") || "?";
+      const cacheAge = res.headers.get("x-cache-age");
+      const serverMs = res.headers.get("x-duration-ms");
       if (!res.ok) {
         const t = await res.text();
+        console.warn(
+          `[ig-scraper] ${u} ${type} FAIL ${res.status} ms=${ms} trace=${serverTrace} :: ${t.slice(0, 200)}`,
+        );
         throw new Error(`Scraper ${res.status}: ${t}`);
       }
+      console.log(
+        `[ig-scraper] ${u} ${type} ${cache}${cacheAge ? `(${cacheAge}s)` : ""} clientMs=${ms} serverMs=${serverMs ?? "?"} trace=${serverTrace}`,
+      );
       return (await res.json()) as InstaScrapeResult;
     } finally {
       // Clear after settle so next non-overlapping call can fire fresh

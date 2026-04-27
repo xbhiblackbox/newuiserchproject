@@ -1,11 +1,62 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "x-trace-id, x-cache, x-cache-age, x-duration-ms",
 };
 
 const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
 const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.com";
+
+// ---- structured logging ----
+// Every log line is a single-line JSON object, easy to grep / filter in
+// supabase function logs UI. Trace IDs are propagated through every call so
+// you can follow one user's request end-to-end.
+const newTraceId = (): string => {
+  // 12-char base36 id — short, unique enough for log correlation
+  return (
+    Date.now().toString(36).slice(-6) +
+    Math.random().toString(36).slice(2, 8)
+  );
+};
+
+type LogLevel = "info" | "warn" | "error" | "debug";
+const slog = (
+  level: LogLevel,
+  traceId: string,
+  event: string,
+  fields: Record<string, unknown> = {},
+) => {
+  const line = JSON.stringify({
+    t: new Date().toISOString(),
+    level,
+    trace: traceId,
+    event,
+    ...fields,
+  });
+  if (level === "error") console.error(line);
+  else if (level === "warn") console.warn(line);
+  else console.log(line);
+};
+
+// Per-request RapidAPI timing collector. Stored on a context object that
+// flows through buildResult so we can emit one aggregated summary per request.
+interface ReqCtx {
+  traceId: string;
+  username: string;
+  type: string;
+  startedAt: number;
+  rapidCalls: Array<{ path: string; ms: number; status: "ok" | "err"; err?: string }>;
+}
+const newCtx = (traceId: string, username: string, type: string): ReqCtx => ({
+  traceId,
+  username,
+  type,
+  startedAt: Date.now(),
+  rapidCalls: [],
+});
+
+
 
 // ---- in-memory cache & request coalescing (per edge instance) ----
 // Survives between invocations on the same warm instance, dramatically reducing
@@ -53,15 +104,21 @@ const cacheSet = (k: string, payload: unknown) => {
 
 // Fire-and-forget background refresh. EdgeRuntime.waitUntil keeps the isolate
 // alive past the response so the refresh actually completes.
-function scheduleRevalidation(cacheKey: string, username: string, type: string) {
+function scheduleRevalidation(cacheKey: string, username: string, type: string, parentTrace?: string) {
   if (REVALIDATING.has(cacheKey) || INFLIGHT.has(cacheKey)) return;
   REVALIDATING.add(cacheKey);
+  const traceId = `${parentTrace ?? newTraceId()}-bg`;
+  const ctx = newCtx(traceId, username, type);
+  slog("info", traceId, "revalidate_start", { cacheKey, parentTrace });
   const task = (async () => {
     try {
-      const r = await buildResult(username, type);
+      const r = await buildResult(username, type, ctx);
       cacheSet(cacheKey, r);
+      slog("info", traceId, "revalidate_done", {
+        ms: Date.now() - ctx.startedAt, rapidCalls: ctx.rapidCalls.length,
+      });
     } catch (e) {
-      console.warn("bg revalidate failed", cacheKey, (e as Error).message);
+      slog("warn", traceId, "revalidate_failed", { err: (e as Error).message });
     } finally {
       REVALIDATING.delete(cacheKey);
     }
@@ -87,32 +144,48 @@ const num = (v: unknown): number => {
 };
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
-async function callRapid(path: string, init: RequestInit) {
+async function callRapid(path: string, init: RequestInit, ctx?: ReqCtx) {
   const url = `https://${RAPIDAPI_HOST}${path}`;
-  const r = await fetch(url, {
-    ...init,
-    headers: {
-      ...(init.headers ?? {}),
-      "x-rapidapi-key": RAPIDAPI_KEY,
-      "x-rapidapi-host": RAPIDAPI_HOST,
-    },
-    signal: AbortSignal.timeout(40000),
-  });
-  const text = await r.text();
-  if (!r.ok) {
-    console.error(`RapidAPI ${r.status} ${path} :: ${text.slice(0, 300)}`);
-    throw new Error(`RapidAPI ${r.status}`);
-  }
+  const startedAt = Date.now();
+  let status: "ok" | "err" = "ok";
+  let errMsg: string | undefined;
   try {
-    return JSON.parse(text);
-  } catch {
-    return {};
+    const r = await fetch(url, {
+      ...init,
+      headers: {
+        ...(init.headers ?? {}),
+        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-host": RAPIDAPI_HOST,
+      },
+      signal: AbortSignal.timeout(40000),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      status = "err";
+      errMsg = `http_${r.status}`;
+      if (ctx) slog("warn", ctx.traceId, "rapid_call", {
+        path, method: init.method ?? "GET", ms: Date.now() - startedAt,
+        status: r.status, body: text.slice(0, 200),
+      });
+      throw new Error(`RapidAPI ${r.status}`);
+    }
+    if (ctx) slog("debug", ctx.traceId, "rapid_call", {
+      path, method: init.method ?? "GET", ms: Date.now() - startedAt, status: 200,
+    });
+    try { return JSON.parse(text); } catch { return {}; }
+  } catch (e) {
+    status = "err";
+    errMsg = errMsg ?? (e as Error).message;
+    throw e;
+  } finally {
+    if (ctx) ctx.rapidCalls.push({ path, ms: Date.now() - startedAt, status, err: errMsg });
   }
 }
 
 // Try multiple endpoint shapes (different RapidAPI providers use different paths/params)
 async function tryEndpoints(
-  variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>
+  variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>,
+  ctx?: ReqCtx,
 ): Promise<{ data: any; variant: { path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> } }> {
   let lastErr: any;
   for (const v of variants) {
@@ -124,7 +197,7 @@ async function tryEndpoints(
         init.body = JSON.stringify(v.body);
         init.headers = { "Content-Type": "application/json" };
       }
-      return { data: await callRapid(u.pathname + u.search, init), variant: v };
+      return { data: await callRapid(u.pathname + u.search, init, ctx), variant: v };
     } catch (e) {
       lastErr = e;
     }
@@ -312,7 +385,7 @@ function pickItems(rawIn: any): any[] {
 }
 
 // Fetch a single media's full details (used to recover video_url for reels)
-async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
+async function fetchMediaDetail(codeOrId: string, ctx?: ReqCtx): Promise<any | null> {
   if (!codeOrId) return null;
   try {
     // /api/instagram/links is the confirmed working endpoint on instagram120
@@ -321,10 +394,10 @@ async function fetchMediaDetail(codeOrId: string): Promise<any | null> {
       { path: "/api/instagram/links", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
       { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/reel/${codeOrId}/` } },
       { path: "/api/instagram/get", method: "POST", body: { url: `https://www.instagram.com/p/${codeOrId}/` } },
-    ]);
+    ], ctx);
     return data;
   } catch (e) {
-    console.warn("media detail fetch failed", codeOrId, (e as Error).message);
+    if (ctx) slog("warn", ctx.traceId, "media_detail_failed", { code: codeOrId, err: (e as Error).message });
     return null;
   }
 }
@@ -431,71 +504,89 @@ function normalizeHighlight(h: any) {
 }
 
 // ---------- workers (each one self-contained, run in parallel) ----------
-async function fetchProfile(username: string) {
+async function fetchProfile(username: string, ctx?: ReqCtx) {
+  const startedAt = Date.now();
   const raw = await tryEndpoints([
     { path: "/api/instagram/userInfo", method: "POST", body: { username } },
     { path: "/api/instagram/userInfoByUsername", method: "POST", body: { username } },
     { path: "/v1/info", query: { username_or_id_or_url: username } },
     { path: "/userinfo", query: { username } },
     { path: "/api/v1/users/web_profile_info", query: { username } },
-  ]);
-  return normalizeProfile(raw);
+  ], ctx);
+  const profile = normalizeProfile(raw);
+  if (ctx) slog("info", ctx.traceId, "fetch_profile_done", {
+    ms: Date.now() - startedAt, ok: !!profile.username,
+  });
+  return profile;
 }
 
 async function fetchPaginated(
   variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>,
+  ctx?: ReqCtx,
   maxPages = 3,
   cap = 120,
 ) {
-  const first = await tryEndpoints(variants);
+  const first = await tryEndpoints(variants, ctx);
   const allRaw: any[] = [pickItems(first.data)];
   let cur = readPageInfo(first.data);
   let lastVariant = first.variant;
   let pages = 1;
   while (cur.hasNext && cur.cursor && pages < maxPages) {
     try {
-      const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
+      const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor), ctx);
       allRaw.push(pickItems(next.data));
       cur = readPageInfo(next.data);
       lastVariant = next.variant;
       pages++;
     } catch (e) {
-      console.warn(`page ${pages + 1} err`, (e as Error).message);
+      if (ctx) slog("warn", ctx.traceId, "page_fetch_failed", { page: pages + 1, err: (e as Error).message });
       break;
     }
   }
   return dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, cap);
 }
 
-async function fetchPosts(username: string) {
-  return fetchPaginated([
+async function fetchPosts(username: string, ctx?: ReqCtx) {
+  const startedAt = Date.now();
+  const items = await fetchPaginated([
     { path: "/api/instagram/posts", method: "POST", body: { username } },
     { path: "/api/instagram/userPosts", method: "POST", body: { username } },
     { path: "/v1/posts", query: { username_or_id_or_url: username } },
     { path: "/posts", query: { username } },
-  ]);
+  ], ctx);
+  if (ctx) slog("info", ctx.traceId, "fetch_posts_done", {
+    ms: Date.now() - startedAt, count: items.length,
+  });
+  return items;
 }
 
-async function fetchHighlights(username: string) {
+async function fetchHighlights(username: string, ctx?: ReqCtx) {
+  const startedAt = Date.now();
   const resp = await tryEndpoints([
     { path: "/api/instagram/highlights", method: "POST", body: { username } },
     { path: "/api/instagram/userHighlights", method: "POST", body: { username } },
     { path: "/v1/highlights", query: { username_or_id_or_url: username } },
-  ]);
+  ], ctx);
   const raw = unwrap(resp.data);
   const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   const items = r0?.items ?? r0?.tray ?? r0 ?? raw?.items ?? [];
-  return (Array.isArray(items) ? items : []).map(normalizeHighlight);
+  const out = (Array.isArray(items) ? items : []).map(normalizeHighlight);
+  if (ctx) slog("info", ctx.traceId, "fetch_highlights_done", {
+    ms: Date.now() - startedAt, count: out.length,
+  });
+  return out;
 }
 
 // Build the full result for a username — runs profile/posts/highlights IN PARALLEL.
-async function buildResult(username: string, type: string): Promise<any> {
+async function buildResult(username: string, type: string, ctx?: ReqCtx): Promise<any> {
   const wants = (t: string) => type === "all" || type === t;
+  const buildStart = Date.now();
+  if (ctx) slog("info", ctx.traceId, "build_start", { username, type });
 
   const [profileRes, postsRes, highlightsRes] = await Promise.allSettled([
-    wants("profile") ? fetchProfile(username) : Promise.resolve(null),
-    (wants("posts") || wants("reels")) ? fetchPosts(username) : Promise.resolve(null),
-    wants("highlights") ? fetchHighlights(username) : Promise.resolve(null),
+    wants("profile") ? fetchProfile(username, ctx) : Promise.resolve(null),
+    (wants("posts") || wants("reels")) ? fetchPosts(username, ctx) : Promise.resolve(null),
+    wants("highlights") ? fetchHighlights(username, ctx) : Promise.resolve(null),
   ]);
 
   const result: any = { username };
@@ -506,15 +597,17 @@ async function buildResult(username: string, type: string): Promise<any> {
       result.profileOk = !!result.profile.username;
     } else {
       result.profileOk = false;
-      if (profileRes.status === "rejected") console.error("profile err", profileRes.reason);
+      if (profileRes.status === "rejected" && ctx) {
+        slog("error", ctx.traceId, "profile_failed", { err: String(profileRes.reason?.message ?? profileRes.reason) });
+      }
     }
   }
 
   let postsArr: any[] = [];
   if (postsRes.status === "fulfilled" && Array.isArray(postsRes.value)) {
     postsArr = postsRes.value;
-  } else if (postsRes.status === "rejected") {
-    console.error("posts err", postsRes.reason);
+  } else if (postsRes.status === "rejected" && ctx) {
+    slog("error", ctx.traceId, "posts_failed", { err: String(postsRes.reason?.message ?? postsRes.reason) });
   }
 
   if (wants("posts")) {
@@ -538,7 +631,9 @@ async function buildResult(username: string, type: string): Promise<any> {
     } else {
       result.highlights = [];
       result.highlightsOk = false;
-      if (highlightsRes.status === "rejected") console.error("highlights err", highlightsRes.reason);
+      if (highlightsRes.status === "rejected" && ctx) {
+        slog("error", ctx.traceId, "highlights_failed", { err: String(highlightsRes.reason?.message ?? highlightsRes.reason) });
+      }
     }
   }
 
@@ -551,14 +646,17 @@ async function buildResult(username: string, type: string): Promise<any> {
       .slice(0, MAX_DETAIL_FETCH);
 
     if (targets.length) {
+      const enrichStart = Date.now();
       const detailResults = await Promise.allSettled(
-        targets.map(({ r }: any) => fetchMediaDetail(str(r.code || r.id)))
+        targets.map(({ r }: any) => fetchMediaDetail(str(r.code || r.id), ctx))
       );
+      let recovered = 0;
       detailResults.forEach((res, i) => {
         if (res.status !== "fulfilled" || !res.value) return;
         const fields = extractDetailFields(res.value);
         const { idx } = targets[i];
         const cur = result.reels[idx];
+        if (!cur.videoUrl && fields.videoUrl) recovered++;
         result.reels[idx] = {
           ...cur,
           videoUrl: cur.videoUrl || fields.videoUrl || "",
@@ -566,8 +664,19 @@ async function buildResult(username: string, type: string): Promise<any> {
           thumbnail: cur.thumbnail || fields.thumbnail || "",
         };
       });
+      if (ctx) slog("info", ctx.traceId, "enrich_done", {
+        ms: Date.now() - enrichStart, attempted: targets.length, recovered,
+      });
     }
   }
+
+  if (ctx) slog("info", ctx.traceId, "build_done", {
+    ms: Date.now() - buildStart,
+    profileOk: result.profileOk,
+    postsCount: result.posts?.length,
+    reelsCount: result.reels?.length,
+    highlightsCount: result.highlights?.length,
+  });
 
   return result;
 }
@@ -578,29 +687,50 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!RAPIDAPI_KEY) return json({ error: "RAPIDAPI_KEY missing" }, 500);
 
+  // Use client-supplied trace id if present (so client logs and server logs
+  // share the same id), otherwise mint a fresh one.
+  const traceId = req.headers.get("x-trace-id") || newTraceId();
+  const reqStart = Date.now();
+
   let body: any;
-  try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+  try { body = await req.json(); } catch {
+    slog("warn", traceId, "bad_json", {});
+    return json({ error: "Invalid JSON" }, 400, { "X-Trace-Id": traceId });
+  }
 
   const username = str(body.username).trim().replace(/^@/, "").toLowerCase();
   const type = str(body.type || "all");
-  if (!username) return json({ error: "username required" }, 400);
+  if (!username) {
+    slog("warn", traceId, "missing_username", {});
+    return json({ error: "username required" }, 400, { "X-Trace-Id": traceId });
+  }
 
-  if (type === "debug") return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY });
+  if (type === "debug") return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY }, 200, { "X-Trace-Id": traceId });
 
   const cacheKey = `${username}::${type}`;
   const force = !!body.force;
 
+  slog("info", traceId, "request", {
+    username, type, force,
+    ua: req.headers.get("user-agent")?.slice(0, 80) ?? null,
+  });
+
   // 1) Stale-While-Revalidate: serve from cache instantly when available.
-  //    - Fresh hit → just serve.
-  //    - Stale hit → serve immediately AND kick off a background refresh so
-  //      the next user gets fresh data without waiting on a cold scrape.
   if (!force) {
     const cached = cacheGet(cacheKey);
     if (cached) {
-      if (cached.isStale) scheduleRevalidation(cacheKey, username, type);
+      const cacheState = cached.isStale ? "STALE" : "HIT";
+      if (cached.isStale) scheduleRevalidation(cacheKey, username, type, traceId);
+      const totalMs = Date.now() - reqStart;
+      slog("info", traceId, "response", {
+        cache: cacheState, ageSec: Math.round(cached.ageMs / 1000),
+        totalMs, rapidCalls: 0,
+      });
       return json(cached.payload, 200, {
-        "X-Cache": cached.isStale ? "STALE" : "HIT",
+        "X-Cache": cacheState,
         "X-Cache-Age": String(Math.round(cached.ageMs / 1000)),
+        "X-Duration-Ms": String(totalMs),
+        "X-Trace-Id": traceId,
         "Cache-Control": "public, max-age=300",
       });
     }
@@ -608,10 +738,13 @@ Deno.serve(async (req) => {
 
   // 2) Coalesce concurrent identical requests — only 1 RapidAPI call for N parallel callers
   let inflight = INFLIGHT.get(cacheKey);
+  let isCoalesced = true;
+  const ctx = newCtx(traceId, username, type);
   if (!inflight) {
+    isCoalesced = false;
     inflight = (async () => {
       try {
-        const r = await buildResult(username, type);
+        const r = await buildResult(username, type, ctx);
         cacheSet(cacheKey, r);
         return r;
       } finally {
@@ -619,14 +752,37 @@ Deno.serve(async (req) => {
       }
     })();
     INFLIGHT.set(cacheKey, inflight);
+  } else {
+    slog("info", traceId, "coalesced", { cacheKey });
   }
 
   try {
     const payload = await inflight;
-    return json(payload, 200, { "X-Cache": force ? "BYPASS" : "MISS", "Cache-Control": "public, max-age=300" });
+    const totalMs = Date.now() - reqStart;
+    const cacheState = force ? "BYPASS" : (isCoalesced ? "COALESCED" : "MISS");
+    // RapidAPI timing summary (only when we actually scraped, not coalesced).
+    const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
+    const rapidErrors = ctx.rapidCalls.filter(c => c.status === "err").length;
+    slog("info", traceId, "response", {
+      cache: cacheState, totalMs, coalesced: isCoalesced,
+      rapidCalls: ctx.rapidCalls.length,
+      rapidTotalMs, rapidErrors,
+      slowestPath: ctx.rapidCalls.slice().sort((a, b) => b.ms - a.ms)[0]?.path ?? null,
+    });
+    return json(payload, 200, {
+      "X-Cache": cacheState,
+      "X-Duration-Ms": String(totalMs),
+      "X-Trace-Id": traceId,
+      "Cache-Control": "public, max-age=300",
+    });
   } catch (e) {
-    console.error("buildResult fatal", e);
-    return json({ error: "Scrape failed", message: (e as Error).message }, 502);
+    const totalMs = Date.now() - reqStart;
+    slog("error", traceId, "fatal", {
+      totalMs, err: (e as Error).message,
+      rapidCalls: ctx.rapidCalls.length,
+      rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+    });
+    return json({ error: "Scrape failed", message: (e as Error).message, traceId }, 502, { "X-Trace-Id": traceId });
   }
 });
 
