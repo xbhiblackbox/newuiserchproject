@@ -333,6 +333,7 @@ const ReelInsightsScreen = () => {
         if (d.typicalViewRate != null) setEditTypicalViewRate(d.typicalViewRate as number);
         if (d.monetisationStatus && typeof d.monetisationStatus === 'string') setMonetisationStatus(d.monetisationStatus);
         if (d.retentionCurve) setEditRetentionCurve(d.retentionCurve as { t: string; pct: number }[]);
+        if (d.engagementCurve) setEditEngagementCurve(d.engagementCurve as { t: string; pct: number }[]);
         if (d.typicalRetentionCurve) setTypicalRetentionCurve(d.typicalRetentionCurve as { t: string; pct: number }[]);
         if (d.customGraphData) setCustomGraphData(d.customGraphData as { day: string; thisReel: number; typical: number }[]);
         if (d.yCenter != null) setEditYCenter(d.yCenter as number);
@@ -480,6 +481,7 @@ const ReelInsightsScreen = () => {
       skipRate: editSkipRate,
       typicalSkipRate: editTypicalSkipRate,
       retentionCurve: editRetentionCurve,
+      engagementCurve: editEngagementCurve,
       watchTime: editWatchTime,
       avgWatchTime: editAvgWatchTime,
       sources: editSources,
@@ -513,7 +515,7 @@ const ReelInsightsScreen = () => {
     freshData[postIndex] = reel;
     saveReelsData(freshData);
     console.log("[InsightsPersist] Saved edits for reel", postIndex);
-  }, [isMainAccount, postIndex, editViews, editLikes, editComments, editShares, editSaves, editReposts, editFollowerPct, editGenderMale, editViewRate, editStartDate, editDuration, editXDate1, editXDate2, editXDate3, customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editSkipRate, editTypicalSkipRate, editRetentionCurve, editWatchTime, editAvgWatchTime, showGraph, editSources, editCountries, editAgeGroups, editAccountsReached, editFollows, postImage, postCaption, postVideoUrl]);
+  }, [isMainAccount, postIndex, editViews, editLikes, editComments, editShares, editSaves, editReposts, editFollowerPct, editGenderMale, editViewRate, editStartDate, editDuration, editXDate1, editXDate2, editXDate3, customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editSkipRate, editTypicalSkipRate, editRetentionCurve, editEngagementCurve, editWatchTime, editAvgWatchTime, showGraph, editSources, editCountries, editAgeGroups, editAccountsReached, editFollows, postImage, postCaption, postVideoUrl]);
 
   // Auto-persist edits to localStorage (skip initial mount)
   const hasMounted = useRef(false);
