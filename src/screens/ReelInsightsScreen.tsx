@@ -947,15 +947,46 @@ const ReelInsightsScreen = () => {
               <Info size={14} className="text-muted-foreground" />
             </div>
             <div className="relative select-none">
-              <div className={cn("h-[180px]", isEditMode && "cursor-pointer active:opacity-80")} onClick={() => isEditMode && setRetentionEditorOpen(true)}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={editRetentionCurve} margin={{ top: 5, right: 5, left: -5, bottom: 0 }}>
-                    <CartesianGrid horizontal={true} vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.3} />
-                    <XAxis dataKey="t" fontSize={10} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                    <YAxis fontSize={10} tickLine={false} axisLine={false} width={46} domain={[0, 100]} ticks={[0, 25, 50]} tickFormatter={(v: number) => v === 0 ? '0' : `${v}%`} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                    <Line type="linear" dataKey="pct" stroke="#E040FB" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
+              <div
+                className={cn("h-[180px]", isEditMode && "cursor-pointer active:opacity-80")}
+                onClick={() => { if (isEditMode) { setRetentionEditorMode("engagement"); setRetentionEditorOpen(true); } }}
+              >
+                {(() => {
+                  const topVal = Math.max(1, editEngagementYTop);
+                  const midVal = Math.min(Math.max(0, editEngagementYCenter), topVal);
+                  const remapPct = (v: number) => {
+                    const clamped = Math.max(0, Math.min(topVal, v));
+                    if (clamped <= midVal) return midVal === 0 ? 0 : clamped / midVal;
+                    return 1 + (clamped - midVal) / (topVal - midVal || 1);
+                  };
+                  const engagementGraphData = editRetentionCurve.map((d) => ({ ...d, pct: remapPct(d.pct) }));
+                  return (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={engagementGraphData} margin={{ top: 5, right: 5, left: -5, bottom: 0 }}>
+                        <XAxis dataKey="t" fontSize={10} tickLine={false} axisLine={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <YAxis fontSize={10} tickLine={false} axisLine={false} width={46} domain={[0, 2]} ticks={[0, 1, 2]} tickFormatter={(v: number) => v === 0 ? '0' : `${v === 1 ? midVal : topVal}%`} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                        <ReferenceLine y={0} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                        <ReferenceLine y={1} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                        <ReferenceLine y={2} stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                        <Line type="linear" dataKey="pct" stroke="#E040FB" strokeWidth={3} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  );
+                })()}
+                {isEditMode && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditModal({ label: "Engagement graph top %", value: String(editEngagementYTop), onSave: (v) => setEditEngagementYTop(Math.max(1, v)) }); }}
+                      className="absolute left-0 top-[2px] w-[46px] h-[26px] bg-[hsl(var(--ig-blue))]/15 rounded"
+                      aria-label="Edit engagement top percentage"
+                    />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setEditModal({ label: "Engagement graph middle %", value: String(editEngagementYCenter), onSave: (v) => setEditEngagementYCenter(Math.max(0, v)) }); }}
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-[46px] h-[26px] bg-[hsl(var(--ig-blue))]/15 rounded"
+                      aria-label="Edit engagement middle percentage"
+                    />
+                  </>
+                )}
               </div>
             </div>
           </div>
