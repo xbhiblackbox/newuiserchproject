@@ -520,17 +520,56 @@ async function fetchProfile(username: string, ctx?: ReqCtx) {
   return profile;
 }
 
+// Encode/decode opaque cursor tokens passed back to clients. The token wraps
+// the provider cursor + which endpoint variant is paginating, so clients don't
+// need to know any provider details.
+type Variant = { path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> };
+type CursorToken = { c: string; v: Variant };
+
+function encodeCursor(tok: CursorToken): string {
+  try {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(tok))));
+  } catch { return ""; }
+}
+function decodeCursor(s: string): CursorToken | null {
+  if (!s) return null;
+  try {
+    const tok = JSON.parse(decodeURIComponent(escape(atob(s))));
+    if (tok && typeof tok.c === "string" && tok.v && typeof tok.v.path === "string") return tok;
+  } catch {}
+  return null;
+}
+
+interface PaginatedResult {
+  items: any[];
+  nextCursor: string;
+  hasMore: boolean;
+}
+
 async function fetchPaginated(
-  variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>,
+  variants: Variant[],
   ctx?: ReqCtx,
-  maxPages = 3,
-  cap = 120,
-) {
-  const first = await tryEndpoints(variants, ctx);
-  const allRaw: any[] = [pickItems(first.data)];
-  let cur = readPageInfo(first.data);
-  let lastVariant = first.variant;
-  let pages = 1;
+  opts: { maxPages?: number; cap?: number; startCursor?: CursorToken | null } = {},
+): Promise<PaginatedResult> {
+  const maxPages = opts.maxPages ?? 1;          // default: just one page (fast)
+  const cap = opts.cap ?? 120;
+  const allRaw: any[] = [];
+  let cur: { hasNext: boolean; cursor: string };
+  let lastVariant: Variant;
+  let pages = 0;
+
+  if (opts.startCursor) {
+    // Resume pagination from a previously returned cursor.
+    cur = { hasNext: true, cursor: opts.startCursor.c };
+    lastVariant = opts.startCursor.v;
+  } else {
+    const first = await tryEndpoints(variants, ctx);
+    allRaw.push(pickItems(first.data));
+    cur = readPageInfo(first.data);
+    lastVariant = first.variant;
+    pages = 1;
+  }
+
   while (cur.hasNext && cur.cursor && pages < maxPages) {
     try {
       const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor), ctx);
@@ -543,21 +582,30 @@ async function fetchPaginated(
       break;
     }
   }
-  return dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, cap);
+
+  const items = dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, cap);
+  const hasMore = !!(cur.hasNext && cur.cursor);
+  const nextCursor = hasMore ? encodeCursor({ c: cur.cursor, v: lastVariant }) : "";
+  return { items, nextCursor, hasMore };
 }
 
-async function fetchPosts(username: string, ctx?: ReqCtx) {
+async function fetchPosts(
+  username: string,
+  ctx?: ReqCtx,
+  opts: { maxPages?: number; startCursor?: CursorToken | null } = {},
+): Promise<PaginatedResult> {
   const startedAt = Date.now();
-  const items = await fetchPaginated([
+  const result = await fetchPaginated([
     { path: "/api/instagram/posts", method: "POST", body: { username } },
     { path: "/api/instagram/userPosts", method: "POST", body: { username } },
     { path: "/v1/posts", query: { username_or_id_or_url: username } },
     { path: "/posts", query: { username } },
-  ], ctx);
+  ], ctx, opts);
   if (ctx) slog("info", ctx.traceId, "fetch_posts_done", {
-    ms: Date.now() - startedAt, count: items.length,
+    ms: Date.now() - startedAt, count: result.items.length,
+    hasMore: result.hasMore, paginated: !!opts.startCursor,
   });
-  return items;
+  return result;
 }
 
 async function fetchHighlights(username: string, ctx?: ReqCtx) {
