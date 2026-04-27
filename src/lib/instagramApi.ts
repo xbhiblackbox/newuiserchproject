@@ -168,9 +168,22 @@ export async function fetchInstagramData(
         `[ig-scraper] ${u} ${type} ${tag} ${cache}${cacheAge ? `(${cacheAge}s)` : ""} clientMs=${ms} serverMs=${serverMs ?? "?"} trace=${serverTrace}${cacheStats ? ` stats=${cacheStats}` : ""}`,
       );
       if (cacheHeat) console.debug(`[ig-scraper] heatmap ${cacheHeat}`);
-      // Strip server-side `_debug` payload before handing off to consumers / cache,
-      // so it never leaks into UI state or localStorage (keeps cache small and clean).
-      const raw = (await res.json()) as InstaScrapeResult & { _debug?: unknown };
+      // Strip server-side `_debug` payload before handing off to consumers / cache.
+      let raw: InstaScrapeResult & { _debug?: unknown };
+      try {
+        raw = (await res.json()) as InstaScrapeResult & { _debug?: unknown };
+      } catch (e: any) {
+        const err = new Error(`Parse failed: ${e?.message || "invalid JSON"}`) as Error & {
+          __trace?: { traceId: string; serverTraceId: string; status: number; url: string };
+        };
+        err.__trace = {
+          traceId,
+          serverTraceId: serverTrace,
+          status: res.status,
+          url: `${SUPABASE_URL}/functions/v1/instagram-scraper`,
+        };
+        throw err;
+      }
       if (raw && "_debug" in raw) {
         if (raw._debug) console.debug(`[ig-scraper] _debug`, raw._debug);
         delete raw._debug;
