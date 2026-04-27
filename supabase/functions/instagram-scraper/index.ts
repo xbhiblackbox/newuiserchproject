@@ -107,12 +107,16 @@ const cacheSet = (k: string, payload: unknown) => {
 function scheduleRevalidation(cacheKey: string, username: string, type: string, parentTrace?: string) {
   if (REVALIDATING.has(cacheKey) || INFLIGHT.has(cacheKey)) return;
   REVALIDATING.add(cacheKey);
+  // Pull the page count out of the cache key (e.g. "user::all::p3") so the
+  // background refresh fetches the same shape we originally cached.
+  const pagesMatch = cacheKey.match(/::p(\d+)$/);
+  const pages = pagesMatch ? Number(pagesMatch[1]) : 1;
   const traceId = `${parentTrace ?? newTraceId()}-bg`;
   const ctx = newCtx(traceId, username, type);
-  slog("info", traceId, "revalidate_start", { cacheKey, parentTrace });
+  slog("info", traceId, "revalidate_start", { cacheKey, pages, parentTrace });
   const task = (async () => {
     try {
-      const r = await buildResult(username, type, ctx);
+      const r = await buildResult(username, type, ctx, { pages });
       cacheSet(cacheKey, r);
       slog("info", traceId, "revalidate_done", {
         ms: Date.now() - ctx.startedAt, rapidCalls: ctx.rapidCalls.length,
