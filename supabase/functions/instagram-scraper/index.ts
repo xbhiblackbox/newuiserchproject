@@ -1317,6 +1317,16 @@ Deno.serve(async (req) => {
       const msg = (e as Error).message;
       metricRecord(`user:${username}`, totalMs, true);
       slog("warn", traceId, "paginate_failed", { totalMs, err: msg });
+      if (!isReplay) recordTrace({
+        traceId, recordedAt: Date.now(),
+        username, type, pages, cursor, force,
+        cache: "ERROR", totalMs,
+        rapidCalls: ctx.rapidCalls.length,
+        rapidTotalMs: ctx.rapidCalls.reduce((s, c) => s + c.ms, 0),
+        rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+        slowest: slowestRapidCalls(ctx, 5),
+        err: msg,
+      });
       const status = msg === "Invalid cursor" ? 400 : 502;
       return json({ error: msg, traceId }, status, { "X-Trace-Id": traceId });
     }
