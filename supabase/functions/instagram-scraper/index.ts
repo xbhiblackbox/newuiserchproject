@@ -1123,6 +1123,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   // GET /...?debug=heatmap → cache HIT/MISS/STALE counts per username.
   // GET /...?debug=metrics → p50/p95/p99 latency + error rate per user/RapidAPI path.
+  // GET /...?debug=traces  → recent recorded traces (inputs + outcome).
+  // GET /...?debug=replay&trace=<id>[&force=1] → re-run the recorded trace and diff against original.
   if (req.method === "GET") {
     const u = new URL(req.url);
     const debug = u.searchParams.get("debug");
@@ -1139,6 +1141,96 @@ Deno.serve(async (req) => {
         users: metricsSnapshot("user:"),
         rapid: metricsSnapshot("rapid:"),
         ...(prefix ? { filtered: metricsSnapshot(prefix) } : {}),
+      });
+    }
+    if (debug === "traces") {
+      const limit = Math.max(1, Math.min(200, Number(u.searchParams.get("limit") ?? "50")));
+      return json({ count: TRACES.size, traces: tracesSnapshot(limit) });
+    }
+    if (debug === "replay") {
+      const wantedTrace = u.searchParams.get("trace") ?? "";
+      const orig = TRACES.get(wantedTrace);
+      if (!orig) {
+        return json({ error: "trace not found", traceId: wantedTrace, hint: "use ?debug=traces to list available trace ids" }, 404);
+      }
+      // Optional ?force=1 forces a fresh scrape (bypasses cache) so the replay
+      // exercises the same upstream path as the original even if it's now warm.
+      const replayForce = u.searchParams.get("force") === "1" ? true : orig.force;
+      const replayTraceId = `${orig.traceId}-replay-${Date.now().toString(36).slice(-4)}`;
+      slog("info", replayTraceId, "replay_start", {
+        origTrace: orig.traceId,
+        username: orig.username, type: orig.type, pages: orig.pages,
+        cursor: orig.cursor ? `${orig.cursor.slice(0, 16)}…` : "",
+        force: replayForce,
+      });
+      // Self-fetch back into the POST handler. Tag it as a replay so we can
+      // skip recording the replay itself into the TRACES map.
+      const selfBody: Record<string, unknown> = {
+        username: orig.username,
+        type: orig.type,
+        force: replayForce,
+        pages: orig.pages,
+      };
+      if (orig.cursor) selfBody.cursor = orig.cursor;
+      const replayStart = Date.now();
+      let replayRec: TraceRecord;
+      let replayPayload: unknown = null;
+      try {
+        const r = await fetch(req.url.split("?")[0], {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // Forward auth so the self-call passes the same gateway checks.
+            ...(req.headers.get("authorization") ? { "Authorization": req.headers.get("authorization")! } : {}),
+            ...(req.headers.get("apikey") ? { "apikey": req.headers.get("apikey")! } : {}),
+            "x-trace-id": replayTraceId,
+            "x-replay-of": orig.traceId,
+          },
+          body: JSON.stringify(selfBody),
+        });
+        const totalMs = Date.now() - replayStart;
+        replayPayload = await r.json().catch(() => null);
+        const dbg = (replayPayload as Record<string, unknown> | null)?._debug as Record<string, unknown> | undefined;
+        replayRec = {
+          traceId: replayTraceId,
+          recordedAt: Date.now(),
+          username: orig.username,
+          type: orig.type,
+          pages: orig.pages,
+          cursor: orig.cursor,
+          force: replayForce,
+          cache: r.headers.get("x-cache") ?? "?",
+          totalMs,
+          rapidCalls: Number(dbg?.rapidCalls ?? 0),
+          rapidTotalMs: Number(dbg?.rapidTotalMs ?? 0),
+          rapidErrors: Number(dbg?.rapidErrors ?? 0),
+          slowest: (dbg?.slowest as TraceRecord["slowest"]) ?? [],
+        };
+      } catch (e) {
+        replayRec = {
+          traceId: replayTraceId,
+          recordedAt: Date.now(),
+          username: orig.username,
+          type: orig.type,
+          pages: orig.pages,
+          cursor: orig.cursor,
+          force: replayForce,
+          cache: "ERROR",
+          totalMs: Date.now() - replayStart,
+          rapidCalls: 0, rapidTotalMs: 0, rapidErrors: 0,
+          slowest: [],
+          err: (e as Error).message,
+        };
+      }
+      const diff = diffTrace(orig, replayRec);
+      slog("info", replayTraceId, "replay_done", { origTrace: orig.traceId, ...diff });
+      return json({
+        original: orig,
+        replay: replayRec,
+        diff,
+        replayPayloadPreview: replayPayload && typeof replayPayload === "object"
+          ? Object.keys(replayPayload as Record<string, unknown>).slice(0, 20)
+          : null,
       });
     }
     return json({ error: "POST only" }, 405);
