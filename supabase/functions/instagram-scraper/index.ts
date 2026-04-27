@@ -104,15 +104,21 @@ const cacheSet = (k: string, payload: unknown) => {
 
 // Fire-and-forget background refresh. EdgeRuntime.waitUntil keeps the isolate
 // alive past the response so the refresh actually completes.
-function scheduleRevalidation(cacheKey: string, username: string, type: string) {
+function scheduleRevalidation(cacheKey: string, username: string, type: string, parentTrace?: string) {
   if (REVALIDATING.has(cacheKey) || INFLIGHT.has(cacheKey)) return;
   REVALIDATING.add(cacheKey);
+  const traceId = `${parentTrace ?? newTraceId()}-bg`;
+  const ctx = newCtx(traceId, username, type);
+  slog("info", traceId, "revalidate_start", { cacheKey, parentTrace });
   const task = (async () => {
     try {
-      const r = await buildResult(username, type);
+      const r = await buildResult(username, type, ctx);
       cacheSet(cacheKey, r);
+      slog("info", traceId, "revalidate_done", {
+        ms: Date.now() - ctx.startedAt, rapidCalls: ctx.rapidCalls.length,
+      });
     } catch (e) {
-      console.warn("bg revalidate failed", cacheKey, (e as Error).message);
+      slog("warn", traceId, "revalidate_failed", { err: (e as Error).message });
     } finally {
       REVALIDATING.delete(cacheKey);
     }
