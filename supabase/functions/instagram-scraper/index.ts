@@ -1009,6 +1009,8 @@ Deno.serve(async (req) => {
   // Cache key includes pages so a 1-page request and a 3-page request stay
   // separate (different result sizes).
   const cacheKey = `${username}::${type}::p${pages}`;
+  // Detect (and warn on) two different inputs producing the same cacheKey.
+  checkKeyCollision(cacheKey, username, type, pages, traceId);
 
   // 1) Stale-While-Revalidate: serve from cache instantly when available.
   if (!force) {
