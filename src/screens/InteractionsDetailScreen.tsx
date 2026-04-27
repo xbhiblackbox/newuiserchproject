@@ -1,9 +1,10 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { ArrowLeft, ChevronDown, Check, Film, Camera, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import reelsIcon from "@/assets/reels-icon.png";
+import { getInsightTopReels } from "@/lib/insightTopReels";
 
 interface InteractionsData {
   interactions: number;
@@ -51,6 +52,7 @@ const InteractionsDetailScreen = () => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [contentTab, setContentTab] = useState("All");
+  const topReels = useMemo(() => isEditing ? data.topReels : getInsightTopReels("likes", 4).map(item => ({ image: item.image, count: item.value, date: item.date })), [data.topReels, isEditing]);
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -300,7 +302,7 @@ const InteractionsDetailScreen = () => {
           <p className="text-[12px] text-muted-foreground mb-3">Based on likes</p>
 
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-            {data.topReels.map((reel, i) => (
+            {topReels.map((reel, i) => (
               <div key={i} className="flex-shrink-0" style={{ width: 'calc((100% - 24px) / 4)' }}>
                 <div 
                   onClick={() => isEditing && handleImageUpload(i)}
