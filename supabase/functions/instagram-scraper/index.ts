@@ -138,32 +138,48 @@ const num = (v: unknown): number => {
 };
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
-async function callRapid(path: string, init: RequestInit) {
+async function callRapid(path: string, init: RequestInit, ctx?: ReqCtx) {
   const url = `https://${RAPIDAPI_HOST}${path}`;
-  const r = await fetch(url, {
-    ...init,
-    headers: {
-      ...(init.headers ?? {}),
-      "x-rapidapi-key": RAPIDAPI_KEY,
-      "x-rapidapi-host": RAPIDAPI_HOST,
-    },
-    signal: AbortSignal.timeout(40000),
-  });
-  const text = await r.text();
-  if (!r.ok) {
-    console.error(`RapidAPI ${r.status} ${path} :: ${text.slice(0, 300)}`);
-    throw new Error(`RapidAPI ${r.status}`);
-  }
+  const startedAt = Date.now();
+  let status: "ok" | "err" = "ok";
+  let errMsg: string | undefined;
   try {
-    return JSON.parse(text);
-  } catch {
-    return {};
+    const r = await fetch(url, {
+      ...init,
+      headers: {
+        ...(init.headers ?? {}),
+        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-host": RAPIDAPI_HOST,
+      },
+      signal: AbortSignal.timeout(40000),
+    });
+    const text = await r.text();
+    if (!r.ok) {
+      status = "err";
+      errMsg = `http_${r.status}`;
+      if (ctx) slog("warn", ctx.traceId, "rapid_call", {
+        path, method: init.method ?? "GET", ms: Date.now() - startedAt,
+        status: r.status, body: text.slice(0, 200),
+      });
+      throw new Error(`RapidAPI ${r.status}`);
+    }
+    if (ctx) slog("debug", ctx.traceId, "rapid_call", {
+      path, method: init.method ?? "GET", ms: Date.now() - startedAt, status: 200,
+    });
+    try { return JSON.parse(text); } catch { return {}; }
+  } catch (e) {
+    status = "err";
+    errMsg = errMsg ?? (e as Error).message;
+    throw e;
+  } finally {
+    if (ctx) ctx.rapidCalls.push({ path, ms: Date.now() - startedAt, status, err: errMsg });
   }
 }
 
 // Try multiple endpoint shapes (different RapidAPI providers use different paths/params)
 async function tryEndpoints(
-  variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>
+  variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>,
+  ctx?: ReqCtx,
 ): Promise<{ data: any; variant: { path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> } }> {
   let lastErr: any;
   for (const v of variants) {
@@ -175,7 +191,7 @@ async function tryEndpoints(
         init.body = JSON.stringify(v.body);
         init.headers = { "Content-Type": "application/json" };
       }
-      return { data: await callRapid(u.pathname + u.search, init), variant: v };
+      return { data: await callRapid(u.pathname + u.search, init, ctx), variant: v };
     } catch (e) {
       lastErr = e;
     }
