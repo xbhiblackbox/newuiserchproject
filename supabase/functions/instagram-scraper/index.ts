@@ -102,6 +102,81 @@ const cacheSet = (k: string, payload: unknown) => {
   });
 };
 
+// ---- cache heatmap ----
+// Per-instance counters of HIT / STALE / MISS / BYPASS / COALESCED / PAGINATE
+// per username. Used to (a) emit a compact "top usernames" header on every
+// response for quick debugging, and (b) power the GET /debug endpoint.
+type HeatState = "HIT" | "STALE" | "MISS" | "BYPASS" | "COALESCED" | "PAGINATE";
+interface HeatRec {
+  HIT: number; STALE: number; MISS: number;
+  BYPASS: number; COALESCED: number; PAGINATE: number;
+  total: number; lastAt: number;
+}
+const HEATMAP = new Map<string, HeatRec>();
+const HEATMAP_MAX = 200;
+
+const heatTrack = (username: string, state: HeatState) => {
+  let r = HEATMAP.get(username);
+  if (!r) {
+    if (HEATMAP.size >= HEATMAP_MAX) {
+      // Evict the entry with the oldest lastAt (LRU-ish) to keep memory bounded.
+      let oldKey: string | null = null; let oldAt = Infinity;
+      for (const [k, v] of HEATMAP) {
+        if (v.lastAt < oldAt) { oldAt = v.lastAt; oldKey = k; }
+      }
+      if (oldKey) HEATMAP.delete(oldKey);
+    }
+    r = { HIT: 0, STALE: 0, MISS: 0, BYPASS: 0, COALESCED: 0, PAGINATE: 0, total: 0, lastAt: 0 };
+    HEATMAP.set(username, r);
+  }
+  r[state]++;
+  r.total++;
+  r.lastAt = Date.now();
+};
+
+// Top-N usernames per state, compact header-friendly format: "user:count,user:count"
+const heatTopFor = (state: HeatState, n = 5): string => {
+  const arr: Array<[string, number]> = [];
+  for (const [u, r] of HEATMAP) if (r[state] > 0) arr.push([u, r[state]]);
+  arr.sort((a, b) => b[1] - a[1]);
+  return arr.slice(0, n).map(([u, c]) => `${u}:${c}`).join(",");
+};
+
+// Compact aggregate of total counts across all usernames, for the X-Cache-Stats header.
+const heatStatsHeader = (): string => {
+  let HIT = 0, STALE = 0, MISS = 0, BYPASS = 0, COALESCED = 0, PAGINATE = 0;
+  for (const r of HEATMAP.values()) {
+    HIT += r.HIT; STALE += r.STALE; MISS += r.MISS;
+    BYPASS += r.BYPASS; COALESCED += r.COALESCED; PAGINATE += r.PAGINATE;
+  }
+  return `h=${HIT};s=${STALE};m=${MISS};b=${BYPASS};c=${COALESCED};p=${PAGINATE};u=${HEATMAP.size};cache=${RESP_CACHE.size}`;
+};
+
+// Header value combining the top entries per state. Truncated for safety
+// (HTTP header values realistically should stay under ~4KB).
+const heatHeaderValue = (): string => {
+  const parts = [
+    `HIT=${heatTopFor("HIT")}`,
+    `STALE=${heatTopFor("STALE")}`,
+    `MISS=${heatTopFor("MISS")}`,
+  ];
+  const out = parts.filter(p => !p.endsWith("=")).join("|");
+  return out.slice(0, 1024);
+};
+
+// Full heatmap snapshot, used by the JSON /debug endpoint.
+const heatSnapshot = () => {
+  const rows = Array.from(HEATMAP.entries())
+    .map(([username, r]) => ({ username, ...r }))
+    .sort((a, b) => b.total - a.total);
+  return {
+    cacheSize: RESP_CACHE.size,
+    cacheMax: RESP_CACHE_MAX,
+    heatmapSize: HEATMAP.size,
+    rows,
+  };
+};
+
 // Fire-and-forget background refresh. EdgeRuntime.waitUntil keeps the isolate
 // alive past the response so the refresh actually completes.
 function scheduleRevalidation(cacheKey: string, username: string, type: string, parentTrace?: string) {
