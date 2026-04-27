@@ -14,6 +14,9 @@ interface RetentionEditorModalProps {
     initialData: RetentionPoint[];
     initialTypical: RetentionPoint[];
     inline?: boolean;
+    threeLineScale?: boolean;
+    yCenter?: number;
+    yTop?: number;
 }
 
 const CW = 320, CH = 200;
@@ -22,7 +25,7 @@ const DW = CW - PL - PR;
 const DH = CH - PT - PB;
 
 const RetentionEditorModal = ({
-    open, onClose, onSave, initialData, initialTypical, inline = false
+    open, onClose, onSave, initialData, initialTypical, inline = false, threeLineScale = false, yCenter = 50, yTop = 100
 }: RetentionEditorModalProps) => {
     const toDrawPoints = (data: RetentionPoint[]) =>
         data.map((p, i) => ({ x: i / (data.length - 1), y: p.pct }));
@@ -38,8 +41,22 @@ const RetentionEditorModal = ({
     const isDrawingFreehand = useRef(false);
     const freehandPoints = useRef<{ x: number; y: number }[]>([]);
 
-    const valToY = (v: number) => PT + DH - (v / 100) * DH;
-    const yToVal = (py: number) => Math.max(0, Math.min(100, ((PT + DH - py) / DH) * 100));
+    const safeTop = Math.max(1, yTop);
+    const safeCenter = Math.min(Math.max(0, yCenter), safeTop);
+    const valueToScale = (v: number) => {
+        const clamped = Math.max(0, Math.min(safeTop, v));
+        if (!threeLineScale) return clamped / 100;
+        if (clamped <= safeCenter) return safeCenter === 0 ? 0 : (clamped / safeCenter) / 2;
+        return 0.5 + ((clamped - safeCenter) / (safeTop - safeCenter || 1)) / 2;
+    };
+    const scaleToValue = (scale: number) => {
+        const clamped = Math.max(0, Math.min(1, scale));
+        if (!threeLineScale) return clamped * 100;
+        if (clamped <= 0.5) return safeCenter === 0 ? 0 : (clamped / 0.5) * safeCenter;
+        return safeCenter + ((clamped - 0.5) / 0.5) * (safeTop - safeCenter);
+    };
+    const valToY = (v: number) => PT + DH - valueToScale(v) * DH;
+    const yToVal = (py: number) => scaleToValue((PT + DH - py) / DH);
     const fracToX = (f: number) => PL + f * DW;
     const xToFrac = (px: number) => Math.max(0, Math.min(1, (px - PL) / DW));
 
@@ -240,7 +257,7 @@ const RetentionEditorModal = ({
                     onTouchEnd={handlePointerUp}
                 >
                     {/* Grid lines */}
-                    {[0, 25, 50, 75, 100].map(tick => (
+                    {(threeLineScale ? [0, safeCenter, safeTop] : [0, 25, 50, 75, 100]).map(tick => (
                         <g key={tick}>
                             <line x1={PL} y1={valToY(tick)} x2={CW - PR} y2={valToY(tick)}
                                 stroke="hsl(var(--border))" strokeOpacity={0.3} strokeWidth={0.5} />
