@@ -99,6 +99,7 @@ const ProfileReelCard = ({
       };
       fresh[data.index] = reel;
       saveReelsData(fresh);
+      try { window.dispatchEvent(new CustomEvent("reel-insights-updated", { detail: { index: data.index, updates } })); } catch {}
     } catch (e) { console.warn("[ReelDetail] localStorage persist failed", e); }
     // Mirror to Supabase so other devices/screens reading from DB stay in sync
     (async () => {

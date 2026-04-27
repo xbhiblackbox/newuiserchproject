@@ -142,9 +142,21 @@ const ProfileScreen = () => {
       if (!isJust4abhii) return;
       setReelsData(loadReelsData());
     };
+    const syncOnFocus = () => {
+      if (!isJust4abhii) return;
+      setReelsData(loadReelsData());
+    };
 
     window.addEventListener("ig-account-cloned", syncClonedInstagram as EventListener);
-    return () => window.removeEventListener("ig-account-cloned", syncClonedInstagram as EventListener);
+    window.addEventListener("reel-insights-updated", syncClonedInstagram as EventListener);
+    window.addEventListener("focus", syncOnFocus);
+    document.addEventListener("visibilitychange", syncOnFocus);
+    return () => {
+      window.removeEventListener("ig-account-cloned", syncClonedInstagram as EventListener);
+      window.removeEventListener("reel-insights-updated", syncClonedInstagram as EventListener);
+      window.removeEventListener("focus", syncOnFocus);
+      document.removeEventListener("visibilitychange", syncOnFocus);
+    };
   }, [isJust4abhii]);
 
   const getThumb = (post: { thumbnail: string; videoUrl?: string }) => {
