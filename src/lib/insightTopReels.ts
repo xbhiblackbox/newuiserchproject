@@ -74,15 +74,19 @@ const buildFromMockAccount = (username: string, metric: TopReelMetric, limit: nu
   const reels = acc.posts.filter((p) => !!p.videoUrl);
   const source = reels.length > 0 ? reels : acc.posts;
 
+  // Deterministic synthetic engagement so the same account renders the same numbers.
+  const seedFollowers = Number(acc.profile.followers) || 1000;
+  const baseViews = Math.max(500, Math.round(seedFollowers * 0.4));
+
   return source
     .map((post, index) => {
-      const likes = Number(post.likes) || 0;
-      // Synthesize views from likes (typical engagement ratio)
-      const views = Math.max(likes * 10, 100);
+      const decay = 1 / (1 + index * 0.35);
+      const views = Math.round(baseViews * decay);
+      const likes = Math.round(views * 0.08);
       const follows = Math.max(1, Math.round(views / 12000));
       const rawMetric = metric === "likes" ? likes : metric === "views" ? views : follows;
       return {
-        image: thumbnailFromUrl(post.videoUrl, post.image),
+        image: thumbnailFromUrl(post.videoUrl, post.thumbnail),
         value: formatCompactMetric(rawMetric),
         date: fallbackDates[index % fallbackDates.length],
         sortValue: rawMetric,
