@@ -1410,6 +1410,13 @@ Deno.serve(async (req) => {
     metricRecord(`user:${username}`, totalMs, false);
     const reqMetrics = metricsForRequest(username, ctx);
     slog("info", traceId, "metrics", { username, ...reqMetrics });
+    if (!isReplay) recordTrace({
+      traceId, recordedAt: Date.now(),
+      username, type, pages, cursor, force,
+      cache: cacheState, totalMs,
+      rapidCalls: ctx.rapidCalls.length, rapidTotalMs, rapidErrors,
+      slowest,
+    });
     // Attach _debug only when we actually made calls (skip pure coalesced
     // responses where ctx is empty — they share the upstream payload).
     const debugPayload = ctx.rapidCalls.length > 0
