@@ -165,13 +165,13 @@ const ProfileScreen = () => {
   const reelPosts = useMemo(() => {
     if (isJust4abhii) {
       return reelsData
-        .filter((reel) => !!reel.videoUrl)
+        .filter((reel): reel is NonNullable<typeof reel> => !!reel && !!reel.videoUrl)
         .map((reel) => ({
           image: getThumb(reel),
           videoUrl: reel.videoUrl,
           isReel: true,
-          views: reel.insights.views,
-          likes: reel.insights.likes,
+          views: reel.insights?.views ?? 0,
+          likes: reel.insights?.likes ?? 0,
         }));
     }
 
