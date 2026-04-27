@@ -2,7 +2,7 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Expose-Headers": "x-trace-id, x-cache, x-cache-age, x-duration-ms",
+  "Access-Control-Expose-Headers": "x-trace-id, x-cache, x-cache-age, x-duration-ms, x-cache-heatmap, x-cache-stats",
 };
 
 const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
@@ -100,6 +100,81 @@ const cacheSet = (k: string, payload: unknown) => {
     payload,
     hits: prev?.hits ?? 0,
   });
+};
+
+// ---- cache heatmap ----
+// Per-instance counters of HIT / STALE / MISS / BYPASS / COALESCED / PAGINATE
+// per username. Used to (a) emit a compact "top usernames" header on every
+// response for quick debugging, and (b) power the GET /debug endpoint.
+type HeatState = "HIT" | "STALE" | "MISS" | "BYPASS" | "COALESCED" | "PAGINATE";
+interface HeatRec {
+  HIT: number; STALE: number; MISS: number;
+  BYPASS: number; COALESCED: number; PAGINATE: number;
+  total: number; lastAt: number;
+}
+const HEATMAP = new Map<string, HeatRec>();
+const HEATMAP_MAX = 200;
+
+const heatTrack = (username: string, state: HeatState) => {
+  let r = HEATMAP.get(username);
+  if (!r) {
+    if (HEATMAP.size >= HEATMAP_MAX) {
+      // Evict the entry with the oldest lastAt (LRU-ish) to keep memory bounded.
+      let oldKey: string | null = null; let oldAt = Infinity;
+      for (const [k, v] of HEATMAP) {
+        if (v.lastAt < oldAt) { oldAt = v.lastAt; oldKey = k; }
+      }
+      if (oldKey) HEATMAP.delete(oldKey);
+    }
+    r = { HIT: 0, STALE: 0, MISS: 0, BYPASS: 0, COALESCED: 0, PAGINATE: 0, total: 0, lastAt: 0 };
+    HEATMAP.set(username, r);
+  }
+  r[state]++;
+  r.total++;
+  r.lastAt = Date.now();
+};
+
+// Top-N usernames per state, compact header-friendly format: "user:count,user:count"
+const heatTopFor = (state: HeatState, n = 5): string => {
+  const arr: Array<[string, number]> = [];
+  for (const [u, r] of HEATMAP) if (r[state] > 0) arr.push([u, r[state]]);
+  arr.sort((a, b) => b[1] - a[1]);
+  return arr.slice(0, n).map(([u, c]) => `${u}:${c}`).join(",");
+};
+
+// Compact aggregate of total counts across all usernames, for the X-Cache-Stats header.
+const heatStatsHeader = (): string => {
+  let HIT = 0, STALE = 0, MISS = 0, BYPASS = 0, COALESCED = 0, PAGINATE = 0;
+  for (const r of HEATMAP.values()) {
+    HIT += r.HIT; STALE += r.STALE; MISS += r.MISS;
+    BYPASS += r.BYPASS; COALESCED += r.COALESCED; PAGINATE += r.PAGINATE;
+  }
+  return `h=${HIT};s=${STALE};m=${MISS};b=${BYPASS};c=${COALESCED};p=${PAGINATE};u=${HEATMAP.size};cache=${RESP_CACHE.size}`;
+};
+
+// Header value combining the top entries per state. Truncated for safety
+// (HTTP header values realistically should stay under ~4KB).
+const heatHeaderValue = (): string => {
+  const parts = [
+    `HIT=${heatTopFor("HIT")}`,
+    `STALE=${heatTopFor("STALE")}`,
+    `MISS=${heatTopFor("MISS")}`,
+  ];
+  const out = parts.filter(p => !p.endsWith("=")).join("|");
+  return out.slice(0, 1024);
+};
+
+// Full heatmap snapshot, used by the JSON /debug endpoint.
+const heatSnapshot = () => {
+  const rows = Array.from(HEATMAP.entries())
+    .map(([username, r]) => ({ username, ...r }))
+    .sort((a, b) => b.total - a.total);
+  return {
+    cacheSize: RESP_CACHE.size,
+    cacheMax: RESP_CACHE_MAX,
+    heatmapSize: HEATMAP.size,
+    rows,
+  };
 };
 
 // Fire-and-forget background refresh. EdgeRuntime.waitUntil keeps the isolate
@@ -801,6 +876,17 @@ async function paginatePostsResult(
 // ---------- main ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // GET /...?debug=heatmap → JSON snapshot of cache stats for ad-hoc inspection.
+  if (req.method === "GET") {
+    const u = new URL(req.url);
+    if (u.searchParams.get("debug") === "heatmap") {
+      return json(heatSnapshot(), 200, {
+        "X-Cache-Heatmap": heatHeaderValue(),
+        "X-Cache-Stats": heatStatsHeader(),
+      });
+    }
+    return json({ error: "POST only" }, 405);
+  }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!RAPIDAPI_KEY) return json({ error: "RAPIDAPI_KEY missing" }, 500);
 
@@ -850,10 +936,13 @@ Deno.serve(async (req) => {
         cache: "PAGINATE", totalMs, rapidCalls: ctx.rapidCalls.length, rapidTotalMs,
         hasMore: payload.postsHasMore ?? payload.reelsHasMore ?? false,
       });
+      heatTrack(username, "PAGINATE");
       return json(payload, 200, {
         "X-Cache": "PAGINATE",
         "X-Duration-Ms": String(totalMs),
         "X-Trace-Id": traceId,
+        "X-Cache-Heatmap": heatHeaderValue(),
+        "X-Cache-Stats": heatStatsHeader(),
         // Don't cache load-more responses at the CDN — each cursor is unique.
         "Cache-Control": "no-store",
       });
@@ -882,11 +971,14 @@ Deno.serve(async (req) => {
         cache: cacheState, ageSec: Math.round(cached.ageMs / 1000),
         totalMs, rapidCalls: 0,
       });
+      heatTrack(username, cacheState);
       return json(cached.payload, 200, {
         "X-Cache": cacheState,
         "X-Cache-Age": String(Math.round(cached.ageMs / 1000)),
         "X-Duration-Ms": String(totalMs),
         "X-Trace-Id": traceId,
+        "X-Cache-Heatmap": heatHeaderValue(),
+        "X-Cache-Stats": heatStatsHeader(),
         "Cache-Control": "public, max-age=300",
       });
     }
@@ -925,10 +1017,13 @@ Deno.serve(async (req) => {
       rapidTotalMs, rapidErrors,
       slowestPath: ctx.rapidCalls.slice().sort((a, b) => b.ms - a.ms)[0]?.path ?? null,
     });
+    heatTrack(username, cacheState);
     return json(payload, 200, {
       "X-Cache": cacheState,
       "X-Duration-Ms": String(totalMs),
       "X-Trace-Id": traceId,
+      "X-Cache-Heatmap": heatHeaderValue(),
+      "X-Cache-Stats": heatStatsHeader(),
       "Cache-Control": "public, max-age=300",
     });
   } catch (e) {
