@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import reelsIcon from "@/assets/reels-icon.png";
 import { getInsightTopReels } from "@/lib/insightTopReels";
+import { useActiveUsernameVersion } from "@/hooks/useActiveUsernameVersion";
 
 interface ViewsData {
   views: number;
@@ -86,7 +87,8 @@ const ViewsDetailScreen = () => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [contentTab, setContentTab] = useState("All");
-  const topContent = useMemo(() => isEditing ? data.topContent : getInsightTopReels("views", 4).map(item => ({ image: item.image, views: item.value, date: item.date })), [data.topContent, isEditing]);
+  const usernameVersion = useActiveUsernameVersion();
+  const topContent = useMemo(() => isEditing ? data.topContent : getInsightTopReels("views", 4).map(item => ({ image: item.image, views: item.value, date: item.date })), [data.topContent, isEditing, usernameVersion]);
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 

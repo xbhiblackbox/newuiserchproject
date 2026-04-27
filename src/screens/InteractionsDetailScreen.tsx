@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import reelsIcon from "@/assets/reels-icon.png";
 import { getInsightTopReels } from "@/lib/insightTopReels";
+import { useActiveUsernameVersion } from "@/hooks/useActiveUsernameVersion";
 
 interface InteractionsData {
   interactions: number;
@@ -52,7 +53,8 @@ const InteractionsDetailScreen = () => {
   });
   const [isEditing, setIsEditing] = useState(false);
   const [contentTab, setContentTab] = useState("All");
-  const topReels = useMemo(() => isEditing ? data.topReels : getInsightTopReels("likes", 4).map(item => ({ image: item.image, count: item.value, date: item.date })), [data.topReels, isEditing]);
+  const usernameVersion = useActiveUsernameVersion();
+  const topReels = useMemo(() => isEditing ? data.topReels : getInsightTopReels("likes", 4).map(item => ({ image: item.image, count: item.value, date: item.date })), [data.topReels, isEditing, usernameVersion]);
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
