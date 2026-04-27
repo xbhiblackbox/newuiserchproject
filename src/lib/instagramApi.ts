@@ -186,6 +186,23 @@ const writeCache = (k: string, data: InstaScrapeResult) => {
   } catch {}
 };
 
+// Helpers for merging "load more" batches into existing reels/posts arrays
+// without introducing duplicates. Order is preserved (newer batch first).
+const mergeUnique = <T extends { id?: string; code?: string }>(
+  existing: T[] | undefined,
+  incoming: T[] | undefined,
+): T[] => {
+  const out: T[] = [...(existing ?? [])];
+  const seen = new Set(out.map((x) => x.id || x.code).filter(Boolean));
+  (incoming ?? []).forEach((x) => {
+    const key = x.id || x.code;
+    if (key && seen.has(key)) return;
+    if (key) seen.add(key);
+    out.push(x);
+  });
+  return out;
+};
+
 export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "all") {
   const [username, setUsername] = useState<string | null>(
     () => usernameArg ?? getConnectedUsername()
@@ -193,6 +210,7 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
   const [data, setData] = useState<InstaScrapeResult | null>(null);
   const [cachedAt, setCachedAt] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const reqRef = useRef(0);
 
@@ -240,7 +258,6 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
         setCachedAt(Date.now());
       } catch (e: any) {
         if (reqRef.current !== reqId) return;
-        // Don't surface errors when we already have stale data on screen.
         if (!isBackground) setError(e?.message || "Failed to load");
       } finally {
         if (reqRef.current === reqId && !isBackground) setLoading(false);
@@ -249,13 +266,57 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
     [username, type]
   );
 
+  // Load the next page of posts/reels using the cursor returned in `data`.
+  // Appends to the existing arrays and updates the cached entry.
+  const loadMore = useCallback(async () => {
+    if (!username || !data || loadingMore) return;
+    const cursor =
+      data.reelsNextCursor || data.postsNextCursor || "";
+    const hasMore = !!(data.reelsHasMore ?? data.postsHasMore ?? false);
+    if (!cursor || !hasMore) return;
+
+    setLoadingMore(true);
+    try {
+      const next = await fetchInstagramData(username, type, { cursor });
+      const merged: InstaScrapeResult = {
+        ...data,
+        reels: mergeUnique(data.reels, next.reels),
+        posts: mergeUnique(data.posts, next.posts),
+        reelsNextCursor: next.reelsNextCursor ?? "",
+        reelsHasMore: !!next.reelsHasMore,
+        postsNextCursor: next.postsNextCursor ?? "",
+        postsHasMore: !!next.postsHasMore,
+      };
+      const key = `${CACHE_PREFIX}:${username}:${type}`;
+      writeCache(key, merged);
+      setData(merged);
+      setCachedAt(Date.now());
+    } catch (e: any) {
+      console.warn("[ig-scraper] loadMore failed", e?.message);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [username, type, data, loadingMore]);
+
   useEffect(() => {
     load(false);
   }, [load]);
 
   const refetch = useCallback((force = true) => load(force), [load]);
 
-  return { data, loading, error, refetch, username, cachedAt };
+  const hasMore = !!(data?.reelsHasMore ?? data?.postsHasMore ?? false);
+
+  return {
+    data,
+    loading,
+    loadingMore,
+    error,
+    refetch,
+    loadMore,
+    hasMore,
+    username,
+    cachedAt,
+  };
 }
 
 export const proxyIgImage = (url?: string | null): string => {
