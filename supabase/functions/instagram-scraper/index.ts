@@ -107,12 +107,16 @@ const cacheSet = (k: string, payload: unknown) => {
 function scheduleRevalidation(cacheKey: string, username: string, type: string, parentTrace?: string) {
   if (REVALIDATING.has(cacheKey) || INFLIGHT.has(cacheKey)) return;
   REVALIDATING.add(cacheKey);
+  // Pull the page count out of the cache key (e.g. "user::all::p3") so the
+  // background refresh fetches the same shape we originally cached.
+  const pagesMatch = cacheKey.match(/::p(\d+)$/);
+  const pages = pagesMatch ? Number(pagesMatch[1]) : 1;
   const traceId = `${parentTrace ?? newTraceId()}-bg`;
   const ctx = newCtx(traceId, username, type);
-  slog("info", traceId, "revalidate_start", { cacheKey, parentTrace });
+  slog("info", traceId, "revalidate_start", { cacheKey, pages, parentTrace });
   const task = (async () => {
     try {
-      const r = await buildResult(username, type, ctx);
+      const r = await buildResult(username, type, ctx, { pages });
       cacheSet(cacheKey, r);
       slog("info", traceId, "revalidate_done", {
         ms: Date.now() - ctx.startedAt, rapidCalls: ctx.rapidCalls.length,
@@ -520,17 +524,56 @@ async function fetchProfile(username: string, ctx?: ReqCtx) {
   return profile;
 }
 
+// Encode/decode opaque cursor tokens passed back to clients. The token wraps
+// the provider cursor + which endpoint variant is paginating, so clients don't
+// need to know any provider details.
+type Variant = { path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> };
+type CursorToken = { c: string; v: Variant };
+
+function encodeCursor(tok: CursorToken): string {
+  try {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(tok))));
+  } catch { return ""; }
+}
+function decodeCursor(s: string): CursorToken | null {
+  if (!s) return null;
+  try {
+    const tok = JSON.parse(decodeURIComponent(escape(atob(s))));
+    if (tok && typeof tok.c === "string" && tok.v && typeof tok.v.path === "string") return tok;
+  } catch {}
+  return null;
+}
+
+interface PaginatedResult {
+  items: any[];
+  nextCursor: string;
+  hasMore: boolean;
+}
+
 async function fetchPaginated(
-  variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>,
+  variants: Variant[],
   ctx?: ReqCtx,
-  maxPages = 3,
-  cap = 120,
-) {
-  const first = await tryEndpoints(variants, ctx);
-  const allRaw: any[] = [pickItems(first.data)];
-  let cur = readPageInfo(first.data);
-  let lastVariant = first.variant;
-  let pages = 1;
+  opts: { maxPages?: number; cap?: number; startCursor?: CursorToken | null } = {},
+): Promise<PaginatedResult> {
+  const maxPages = opts.maxPages ?? 1;          // default: just one page (fast)
+  const cap = opts.cap ?? 120;
+  const allRaw: any[] = [];
+  let cur: { hasNext: boolean; cursor: string };
+  let lastVariant: Variant;
+  let pages = 0;
+
+  if (opts.startCursor) {
+    // Resume pagination from a previously returned cursor.
+    cur = { hasNext: true, cursor: opts.startCursor.c };
+    lastVariant = opts.startCursor.v;
+  } else {
+    const first = await tryEndpoints(variants, ctx);
+    allRaw.push(pickItems(first.data));
+    cur = readPageInfo(first.data);
+    lastVariant = first.variant;
+    pages = 1;
+  }
+
   while (cur.hasNext && cur.cursor && pages < maxPages) {
     try {
       const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor), ctx);
@@ -543,21 +586,30 @@ async function fetchPaginated(
       break;
     }
   }
-  return dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, cap);
+
+  const items = dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, cap);
+  const hasMore = !!(cur.hasNext && cur.cursor);
+  const nextCursor = hasMore ? encodeCursor({ c: cur.cursor, v: lastVariant }) : "";
+  return { items, nextCursor, hasMore };
 }
 
-async function fetchPosts(username: string, ctx?: ReqCtx) {
+async function fetchPosts(
+  username: string,
+  ctx?: ReqCtx,
+  opts: { maxPages?: number; startCursor?: CursorToken | null } = {},
+): Promise<PaginatedResult> {
   const startedAt = Date.now();
-  const items = await fetchPaginated([
+  const result = await fetchPaginated([
     { path: "/api/instagram/posts", method: "POST", body: { username } },
     { path: "/api/instagram/userPosts", method: "POST", body: { username } },
     { path: "/v1/posts", query: { username_or_id_or_url: username } },
     { path: "/posts", query: { username } },
-  ], ctx);
+  ], ctx, opts);
   if (ctx) slog("info", ctx.traceId, "fetch_posts_done", {
-    ms: Date.now() - startedAt, count: items.length,
+    ms: Date.now() - startedAt, count: result.items.length,
+    hasMore: result.hasMore, paginated: !!opts.startCursor,
   });
-  return items;
+  return result;
 }
 
 async function fetchHighlights(username: string, ctx?: ReqCtx) {
@@ -578,14 +630,22 @@ async function fetchHighlights(username: string, ctx?: ReqCtx) {
 }
 
 // Build the full result for a username — runs profile/posts/highlights IN PARALLEL.
-async function buildResult(username: string, type: string, ctx?: ReqCtx): Promise<any> {
+// `pages` controls how many pages of posts to fetch on the initial request
+// (defaults to 1 for fast cold-start; clients call paginatePosts() to load more).
+async function buildResult(
+  username: string,
+  type: string,
+  ctx?: ReqCtx,
+  opts: { pages?: number } = {},
+): Promise<any> {
   const wants = (t: string) => type === "all" || type === t;
   const buildStart = Date.now();
-  if (ctx) slog("info", ctx.traceId, "build_start", { username, type });
+  const pages = Math.max(1, Math.min(5, opts.pages ?? 1));
+  if (ctx) slog("info", ctx.traceId, "build_start", { username, type, pages });
 
   const [profileRes, postsRes, highlightsRes] = await Promise.allSettled([
     wants("profile") ? fetchProfile(username, ctx) : Promise.resolve(null),
-    (wants("posts") || wants("reels")) ? fetchPosts(username, ctx) : Promise.resolve(null),
+    (wants("posts") || wants("reels")) ? fetchPosts(username, ctx, { maxPages: pages }) : Promise.resolve(null),
     wants("highlights") ? fetchHighlights(username, ctx) : Promise.resolve(null),
   ]);
 
@@ -604,8 +664,13 @@ async function buildResult(username: string, type: string, ctx?: ReqCtx): Promis
   }
 
   let postsArr: any[] = [];
-  if (postsRes.status === "fulfilled" && Array.isArray(postsRes.value)) {
-    postsArr = postsRes.value;
+  let postsNextCursor = "";
+  let postsHasMore = false;
+  if (postsRes.status === "fulfilled" && postsRes.value && Array.isArray((postsRes.value as PaginatedResult).items)) {
+    const pr = postsRes.value as PaginatedResult;
+    postsArr = pr.items;
+    postsNextCursor = pr.nextCursor;
+    postsHasMore = pr.hasMore;
   } else if (postsRes.status === "rejected" && ctx) {
     slog("error", ctx.traceId, "posts_failed", { err: String(postsRes.reason?.message ?? postsRes.reason) });
   }
@@ -613,6 +678,8 @@ async function buildResult(username: string, type: string, ctx?: ReqCtx): Promis
   if (wants("posts")) {
     result.posts = postsArr;
     result.postsOk = postsRes.status === "fulfilled";
+    result.postsNextCursor = postsNextCursor;
+    result.postsHasMore = postsHasMore;
   }
 
   if (wants("reels")) {
@@ -622,6 +689,9 @@ async function buildResult(username: string, type: string, ctx?: ReqCtx): Promis
     );
     result.reels = videoPosts.slice(0, 120);
     result.reelsOk = postsRes.status === "fulfilled";
+    // Reels share the same underlying cursor since they're derived from posts.
+    result.reelsNextCursor = postsNextCursor;
+    result.reelsHasMore = postsHasMore;
   }
 
   if (wants("highlights")) {
@@ -676,6 +746,53 @@ async function buildResult(username: string, type: string, ctx?: ReqCtx): Promis
     postsCount: result.posts?.length,
     reelsCount: result.reels?.length,
     highlightsCount: result.highlights?.length,
+    hasMore: postsHasMore,
+  });
+
+  return result;
+}
+
+// "Load more" path — paginate from a previously returned cursor.
+// Cheap, focused, and bypasses the SWR cache because each cursor is unique.
+async function paginatePostsResult(
+  username: string,
+  type: string,
+  cursor: string,
+  pages: number,
+  ctx?: ReqCtx,
+): Promise<any> {
+  const tok = decodeCursor(cursor);
+  if (!tok) {
+    if (ctx) slog("warn", ctx.traceId, "bad_cursor", { cursor: cursor.slice(0, 32) });
+    throw new Error("Invalid cursor");
+  }
+  const buildStart = Date.now();
+  if (ctx) slog("info", ctx.traceId, "paginate_start", { username, type, pages });
+
+  const pr = await fetchPosts(username, ctx, {
+    maxPages: Math.max(1, Math.min(3, pages || 1)),
+    startCursor: tok,
+  });
+
+  const result: any = { username, paginated: true };
+  if (type === "all" || type === "posts") {
+    result.posts = pr.items;
+    result.postsNextCursor = pr.nextCursor;
+    result.postsHasMore = pr.hasMore;
+  }
+  if (type === "all" || type === "reels") {
+    const videoPosts = pr.items.filter(
+      (p: any) => p?.isVideo || p?.videoUrl || p?.productType === "clips"
+    );
+    result.reels = videoPosts;
+    result.reelsNextCursor = pr.nextCursor;
+    result.reelsHasMore = pr.hasMore;
+  }
+
+  if (ctx) slog("info", ctx.traceId, "paginate_done", {
+    ms: Date.now() - buildStart,
+    postsCount: result.posts?.length, reelsCount: result.reels?.length,
+    hasMore: pr.hasMore,
   });
 
   return result;
@@ -707,13 +824,52 @@ Deno.serve(async (req) => {
 
   if (type === "debug") return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY }, 200, { "X-Trace-Id": traceId });
 
-  const cacheKey = `${username}::${type}`;
   const force = !!body.force;
+  // pages: how many pages of posts to fetch on initial scrape (1..5). Defaults
+  // to 1 so cold-start requests are as fast and cheap as possible.
+  const pages = Math.max(1, Math.min(5, num(body.pages) || 1));
+  // cursor: opaque token from a previous response. When set, we run the
+  // "load more" path which bypasses cache and only fetches the next batch.
+  const cursor = str(body.cursor || "").trim();
 
   slog("info", traceId, "request", {
-    username, type, force,
+    username, type, force, pages, hasCursor: !!cursor,
     ua: req.headers.get("user-agent")?.slice(0, 80) ?? null,
   });
+
+  // ---- LOAD-MORE PATH ----
+  // Cursor requests are stateless and not cached: each cursor is unique and
+  // the response is small, so caching would just bloat memory.
+  if (cursor) {
+    const ctx = newCtx(traceId, username, type);
+    try {
+      const payload = await paginatePostsResult(username, type, cursor, pages, ctx);
+      const totalMs = Date.now() - reqStart;
+      const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
+      slog("info", traceId, "response", {
+        cache: "PAGINATE", totalMs, rapidCalls: ctx.rapidCalls.length, rapidTotalMs,
+        hasMore: payload.postsHasMore ?? payload.reelsHasMore ?? false,
+      });
+      return json(payload, 200, {
+        "X-Cache": "PAGINATE",
+        "X-Duration-Ms": String(totalMs),
+        "X-Trace-Id": traceId,
+        // Don't cache load-more responses at the CDN — each cursor is unique.
+        "Cache-Control": "no-store",
+      });
+    } catch (e) {
+      const totalMs = Date.now() - reqStart;
+      const msg = (e as Error).message;
+      slog("warn", traceId, "paginate_failed", { totalMs, err: msg });
+      const status = msg === "Invalid cursor" ? 400 : 502;
+      return json({ error: msg, traceId }, status, { "X-Trace-Id": traceId });
+    }
+  }
+
+  // ---- INITIAL FETCH PATH ----
+  // Cache key includes pages so a 1-page request and a 3-page request stay
+  // separate (different result sizes).
+  const cacheKey = `${username}::${type}::p${pages}`;
 
   // 1) Stale-While-Revalidate: serve from cache instantly when available.
   if (!force) {
@@ -744,7 +900,7 @@ Deno.serve(async (req) => {
     isCoalesced = false;
     inflight = (async () => {
       try {
-        const r = await buildResult(username, type, ctx);
+        const r = await buildResult(username, type, ctx, { pages });
         cacheSet(cacheKey, r);
         return r;
       } finally {
