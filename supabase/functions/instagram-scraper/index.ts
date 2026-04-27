@@ -1017,10 +1017,13 @@ Deno.serve(async (req) => {
       rapidTotalMs, rapidErrors,
       slowestPath: ctx.rapidCalls.slice().sort((a, b) => b.ms - a.ms)[0]?.path ?? null,
     });
+    heatTrack(username, cacheState);
     return json(payload, 200, {
       "X-Cache": cacheState,
       "X-Duration-Ms": String(totalMs),
       "X-Trace-Id": traceId,
+      "X-Cache-Heatmap": heatHeaderValue(),
+      "X-Cache-Stats": heatStatsHeader(),
       "Cache-Control": "public, max-age=300",
     });
   } catch (e) {
