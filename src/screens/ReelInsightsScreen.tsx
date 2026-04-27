@@ -199,6 +199,8 @@ const ReelInsightsScreen = () => {
   const [retentionEditorOpen, setRetentionEditorOpen] = useState(false);
   const [editYCenter, setEditYCenter] = useState(post?.yCenter ?? 500);
   const [editYTop, setEditYTop] = useState(post?.yTop ?? 1000);
+  const [editEngagementYCenter, setEditEngagementYCenter] = useState((post as any)?.engagementYCenter ?? 35);
+  const [editEngagementYTop, setEditEngagementYTop] = useState((post as any)?.engagementYTop ?? 70);
 
 
   // Prefer saved viewsOverTime labels (e.g. "0", "12h", "24h") over computed dates
@@ -253,6 +255,7 @@ const ReelInsightsScreen = () => {
       typicalRetentionCurve,
       customGraphData,
       yCenter: editYCenter, yTop: editYTop,
+      engagementYCenter: editEngagementYCenter, engagementYTop: editEngagementYTop,
       editTypicalTop,
       xDate1: editXDate1, xDate2: editXDate2, xDate3: editXDate3,
       timeRangeMode,
@@ -282,7 +285,7 @@ const ReelInsightsScreen = () => {
     editStartDate, editDisplayDate, editDuration,
     editWatchTime, editAvgWatchTime,
     editSkipRate, editTypicalSkipRate, editRetentionCurve, typicalRetentionCurve,
-    customGraphData, editYCenter, editYTop, editTypicalTop,
+    customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editTypicalTop,
     editXDate1, editXDate2, editXDate3, timeRangeMode, showGraph,
     editSources, editCountries, editAgeGroups, editAccountsReached, editFollows,
     accountUsername, postIndex,
@@ -323,6 +326,8 @@ const ReelInsightsScreen = () => {
         if (d.customGraphData) setCustomGraphData(d.customGraphData as { day: string; thisReel: number; typical: number }[]);
         if (d.yCenter != null) setEditYCenter(d.yCenter as number);
         if (d.yTop != null) setEditYTop(d.yTop as number);
+        if (d.engagementYCenter != null) setEditEngagementYCenter(d.engagementYCenter as number);
+        if (d.engagementYTop != null) setEditEngagementYTop(d.engagementYTop as number);
         if (d.editTypicalTop != null) setEditTypicalTop(d.editTypicalTop as number);
         if (d.xDate1) setEditXDate1(d.xDate1 as string);
         if (d.xDate2) setEditXDate2(d.xDate2 as string);
