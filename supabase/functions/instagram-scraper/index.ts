@@ -1094,14 +1094,21 @@ Deno.serve(async (req) => {
     // RapidAPI timing summary (only when we actually scraped, not coalesced).
     const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
     const rapidErrors = ctx.rapidCalls.filter(c => c.status === "err").length;
+    const slowest = slowestRapidCalls(ctx, 5);
     slog("info", traceId, "response", {
       cache: cacheState, totalMs, coalesced: isCoalesced,
       rapidCalls: ctx.rapidCalls.length,
       rapidTotalMs, rapidErrors,
-      slowestPath: ctx.rapidCalls.slice().sort((a, b) => b.ms - a.ms)[0]?.path ?? null,
+      slowestPath: slowest[0]?.path ?? null,
+      slowest,
     });
     heatTrack(username, cacheState);
-    return json(payload, 200, {
+    // Attach _debug only when we actually made calls (skip pure coalesced
+    // responses where ctx is empty — they share the upstream payload).
+    const debugPayload = ctx.rapidCalls.length > 0
+      ? { ...(payload as Record<string, unknown>), _debug: buildDebugSummary(ctx, totalMs) }
+      : payload;
+    return json(debugPayload, 200, {
       "X-Cache": cacheState,
       "X-Duration-Ms": String(totalMs),
       "X-Trace-Id": traceId,
