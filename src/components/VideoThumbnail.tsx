@@ -3,9 +3,19 @@ import { useState, useRef, useEffect } from "react";
 interface VideoThumbnailProps {
   videoUrl: string;
   fallbackThumbnail?: string;
+  /** Optional alternate thumbnail URLs to try in order if the primary fails (e.g. raw IG CDN URL when the proxy fails). */
+  altThumbnails?: string[];
   className?: string;
   alt?: string;
 }
+
+/** Try the primary thumb, then each alt, then the video poster, then a neutral placeholder. */
+const useThumbCandidates = (primary: string | undefined, alts: string[] | undefined) => {
+  const list = [primary, ...(alts || [])].filter((u): u is string => !!u);
+  const [idx, setIdx] = useState(0);
+  const fail = () => setIdx((i) => i + 1);
+  return { current: list[idx], exhausted: idx >= list.length, fail };
+};
 
 const getStreamableId = (url: string): string | null => {
   const match = url.match(/streamable\.com\/(?:e\/|o\/)?([a-zA-Z0-9]+)/);
