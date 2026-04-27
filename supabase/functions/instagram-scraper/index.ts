@@ -1139,7 +1139,10 @@ Deno.serve(async (req) => {
         slowest,
       });
       heatTrack(username, "PAGINATE");
-      const debugPayload = { ...payload, _debug: buildDebugSummary(ctx, totalMs) };
+      metricRecord(`user:${username}`, totalMs, false);
+      const reqMetrics = metricsForRequest(username, ctx);
+      slog("info", traceId, "metrics", { username, ...reqMetrics });
+      const debugPayload = { ...payload, _debug: { ...buildDebugSummary(ctx, totalMs), metrics: reqMetrics } };
       return json(debugPayload, 200, {
         "X-Cache": "PAGINATE",
         "X-Duration-Ms": String(totalMs),
