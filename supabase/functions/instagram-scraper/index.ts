@@ -626,14 +626,22 @@ async function fetchHighlights(username: string, ctx?: ReqCtx) {
 }
 
 // Build the full result for a username — runs profile/posts/highlights IN PARALLEL.
-async function buildResult(username: string, type: string, ctx?: ReqCtx): Promise<any> {
+// `pages` controls how many pages of posts to fetch on the initial request
+// (defaults to 1 for fast cold-start; clients call paginatePosts() to load more).
+async function buildResult(
+  username: string,
+  type: string,
+  ctx?: ReqCtx,
+  opts: { pages?: number } = {},
+): Promise<any> {
   const wants = (t: string) => type === "all" || type === t;
   const buildStart = Date.now();
-  if (ctx) slog("info", ctx.traceId, "build_start", { username, type });
+  const pages = Math.max(1, Math.min(5, opts.pages ?? 1));
+  if (ctx) slog("info", ctx.traceId, "build_start", { username, type, pages });
 
   const [profileRes, postsRes, highlightsRes] = await Promise.allSettled([
     wants("profile") ? fetchProfile(username, ctx) : Promise.resolve(null),
-    (wants("posts") || wants("reels")) ? fetchPosts(username, ctx) : Promise.resolve(null),
+    (wants("posts") || wants("reels")) ? fetchPosts(username, ctx, { maxPages: pages }) : Promise.resolve(null),
     wants("highlights") ? fetchHighlights(username, ctx) : Promise.resolve(null),
   ]);
 
@@ -652,8 +660,13 @@ async function buildResult(username: string, type: string, ctx?: ReqCtx): Promis
   }
 
   let postsArr: any[] = [];
-  if (postsRes.status === "fulfilled" && Array.isArray(postsRes.value)) {
-    postsArr = postsRes.value;
+  let postsNextCursor = "";
+  let postsHasMore = false;
+  if (postsRes.status === "fulfilled" && postsRes.value && Array.isArray((postsRes.value as PaginatedResult).items)) {
+    const pr = postsRes.value as PaginatedResult;
+    postsArr = pr.items;
+    postsNextCursor = pr.nextCursor;
+    postsHasMore = pr.hasMore;
   } else if (postsRes.status === "rejected" && ctx) {
     slog("error", ctx.traceId, "posts_failed", { err: String(postsRes.reason?.message ?? postsRes.reason) });
   }
@@ -661,6 +674,8 @@ async function buildResult(username: string, type: string, ctx?: ReqCtx): Promis
   if (wants("posts")) {
     result.posts = postsArr;
     result.postsOk = postsRes.status === "fulfilled";
+    result.postsNextCursor = postsNextCursor;
+    result.postsHasMore = postsHasMore;
   }
 
   if (wants("reels")) {
@@ -670,6 +685,9 @@ async function buildResult(username: string, type: string, ctx?: ReqCtx): Promis
     );
     result.reels = videoPosts.slice(0, 120);
     result.reelsOk = postsRes.status === "fulfilled";
+    // Reels share the same underlying cursor since they're derived from posts.
+    result.reelsNextCursor = postsNextCursor;
+    result.reelsHasMore = postsHasMore;
   }
 
   if (wants("highlights")) {
@@ -724,6 +742,53 @@ async function buildResult(username: string, type: string, ctx?: ReqCtx): Promis
     postsCount: result.posts?.length,
     reelsCount: result.reels?.length,
     highlightsCount: result.highlights?.length,
+    hasMore: postsHasMore,
+  });
+
+  return result;
+}
+
+// "Load more" path — paginate from a previously returned cursor.
+// Cheap, focused, and bypasses the SWR cache because each cursor is unique.
+async function paginatePostsResult(
+  username: string,
+  type: string,
+  cursor: string,
+  pages: number,
+  ctx?: ReqCtx,
+): Promise<any> {
+  const tok = decodeCursor(cursor);
+  if (!tok) {
+    if (ctx) slog("warn", ctx.traceId, "bad_cursor", { cursor: cursor.slice(0, 32) });
+    throw new Error("Invalid cursor");
+  }
+  const buildStart = Date.now();
+  if (ctx) slog("info", ctx.traceId, "paginate_start", { username, type, pages });
+
+  const pr = await fetchPosts(username, ctx, {
+    maxPages: Math.max(1, Math.min(3, pages || 1)),
+    startCursor: tok,
+  });
+
+  const result: any = { username, paginated: true };
+  if (type === "all" || type === "posts") {
+    result.posts = pr.items;
+    result.postsNextCursor = pr.nextCursor;
+    result.postsHasMore = pr.hasMore;
+  }
+  if (type === "all" || type === "reels") {
+    const videoPosts = pr.items.filter(
+      (p: any) => p?.isVideo || p?.videoUrl || p?.productType === "clips"
+    );
+    result.reels = videoPosts;
+    result.reelsNextCursor = pr.nextCursor;
+    result.reelsHasMore = pr.hasMore;
+  }
+
+  if (ctx) slog("info", ctx.traceId, "paginate_done", {
+    ms: Date.now() - buildStart,
+    postsCount: result.posts?.length, reelsCount: result.reels?.length,
+    hasMore: pr.hasMore,
   });
 
   return result;
