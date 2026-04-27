@@ -56,6 +56,34 @@ const newCtx = (traceId: string, username: string, type: string): ReqCtx => ({
   rapidCalls: [],
 });
 
+// Sort RapidAPI calls slowest-first and keep the top N for compact reporting.
+// Used both inline in structured logs and attached to the JSON response under
+// `_debug.rapidCalls` for client-side debugging without re-querying logs.
+const slowestRapidCalls = (
+  ctx: ReqCtx,
+  limit = 5,
+): Array<{ path: string; ms: number; status: "ok" | "err"; err?: string }> => {
+  return ctx.rapidCalls
+    .slice()
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, limit)
+    .map(c => ({ path: c.path, ms: c.ms, status: c.status, ...(c.err ? { err: c.err.slice(0, 120) } : {}) }));
+};
+
+// Build a debug summary that we attach to the JSON payload. Kept small to
+// avoid bloating responses.
+const buildDebugSummary = (ctx: ReqCtx, totalMs: number) => {
+  const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
+  return {
+    traceId: ctx.traceId,
+    totalMs,
+    rapidCalls: ctx.rapidCalls.length,
+    rapidTotalMs,
+    rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+    slowest: slowestRapidCalls(ctx, 5),
+  };
+};
+
 
 
 // ---- in-memory cache & request coalescing (per edge instance) ----
