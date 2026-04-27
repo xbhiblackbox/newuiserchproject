@@ -4,7 +4,7 @@ import { Heart, MessageCircle, Bookmark, MoreVertical, ArrowLeft } from "lucide-
 import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import RepostIcon from "@/components/icons/RepostIcon";
 import { mockAccounts, currentUser } from "@/data/mockData";
-import { loadReelsData } from "@/data/reelInsightsData";
+import { loadReelsData, saveReelsData } from "@/data/reelInsightsData";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
