@@ -1,5 +1,5 @@
 import { mockAccounts, currentUser, saveProfileOverrides, type PostItem } from "@/data/mockData";
-import { fetchInstagramData, proxyIgImage, type InstaScrapeResult } from "@/lib/instagramApi";
+import { fetchInstagramData, proxyIgImage, setConnectedUsername, type InstaScrapeResult } from "@/lib/instagramApi";
 import { saveReelsData, type ExtendedPostItem } from "@/data/reelInsightsData";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -106,15 +106,38 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   // Mirror onto currentUser (live reference in many screens)
   Object.assign(currentUser, profilePatch);
 
-  // Wipe stale Supabase reels_data rows for this slot so previous-account
-  // overrides (thumbnails/videos/captions) don't leak into the new account.
+  setConnectedUsername(p.username);
+
+  // Replace saved reel overrides for this slot so previous-account
+  // thumbnails/videos/captions don't leak into the newly cloned username.
   try {
-    await (supabase as any)
-      .from("reels_data")
-      .delete()
-      .eq("account", "just4abhii");
+    const rows = reelItems.map((reel, post_index) => ({
+      account: "just4abhii",
+      post_index,
+      data: {
+        sourceUsername: p.username,
+        thumbnail: reel.thumbnail,
+        videoUrl: reel.videoUrl || "",
+        caption: reel.caption || "",
+        duration: reel.duration || "",
+        musicTitle: reel.musicTitle || "",
+        musicIcon: reel.musicIcon || "",
+        views: reel.insights.views,
+        likes: reel.insights.likes,
+        comments: reel.insights.comments,
+        shares: reel.insights.shares,
+        saves: reel.insights.saves,
+      },
+      updated_at: new Date().toISOString(),
+    }));
+
+    if (rows.length) {
+      await (supabase as any)
+        .from("reels_data")
+        .upsert(rows, { onConflict: "account,post_index" });
+    }
   } catch (e) {
-    console.warn("[Clone] Failed to clear stale reels_data:", e);
+    console.warn("[Clone] Failed to replace stale reels_data:", e);
   }
 
   // Always save reels (even if empty) so localStorage reflects the new account
