@@ -73,6 +73,56 @@ const SOFT_TTL_MS = 5 * 60 * 1000;   // serve fresh without refresh
 const HARD_TTL_MS = 60 * 60 * 1000;  // can serve stale up to this long
 const RESP_CACHE_MAX = 500;
 
+// ---- cache-key collision detection ----
+// Tracks which (username, type, pages) inputs originally produced each cacheKey.
+// If a different input later maps to the same key, that means our key formula
+// is lossy and two distinct logical requests would share a cached payload.
+// Bounded LRU-ish to keep memory in check.
+interface KeyOrigin { username: string; type: string; pages: number; firstSeenAt: number; lastSeenAt: number }
+const KEY_ORIGINS = new Map<string, KeyOrigin>();
+const KEY_ORIGINS_MAX = 1000;
+
+const checkKeyCollision = (
+  cacheKey: string,
+  username: string,
+  type: string,
+  pages: number,
+  traceId: string,
+) => {
+  const existing = KEY_ORIGINS.get(cacheKey);
+  if (existing) {
+    if (existing.username !== username || existing.type !== type || existing.pages !== pages) {
+      // Two different inputs collapsed to the same cacheKey — this is a bug
+      // in the key formula. Log both inputs so it's easy to reproduce.
+      slog("warn", traceId, "cache_key_collision", {
+        cacheKey,
+        existing: {
+          username: existing.username,
+          type: existing.type,
+          pages: existing.pages,
+          firstSeenAt: new Date(existing.firstSeenAt).toISOString(),
+        },
+        incoming: { username, type, pages },
+      });
+    }
+    existing.lastSeenAt = Date.now();
+    return;
+  }
+  if (KEY_ORIGINS.size >= KEY_ORIGINS_MAX) {
+    // Evict the entry with the oldest lastSeenAt to bound memory.
+    let oldKey: string | null = null; let oldAt = Infinity;
+    for (const [k, v] of KEY_ORIGINS) {
+      if (v.lastSeenAt < oldAt) { oldAt = v.lastSeenAt; oldKey = k; }
+    }
+    if (oldKey) KEY_ORIGINS.delete(oldKey);
+  }
+  KEY_ORIGINS.set(cacheKey, {
+    username, type, pages,
+    firstSeenAt: Date.now(),
+    lastSeenAt: Date.now(),
+  });
+};
+
 interface CacheLookup { payload: unknown; isStale: boolean; ageMs: number }
 
 const cacheGet = (k: string): CacheLookup | null => {
