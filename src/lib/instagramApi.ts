@@ -55,7 +55,7 @@ const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 const USERNAME_KEY = "ig_connected_username";
 const CACHE_PREFIX = "ig_cache_v6";
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min — server caches too, so client can be aggressive
 
 export const getConnectedUsername = (): string | null => {
   try {
@@ -90,27 +90,46 @@ export const clearInstagramCache = (username?: string) => {
   } catch {}
 };
 
+// In-flight request coalescing: if 100 components ask for the same username at
+// the same time, only 1 network request is made and all of them share the result.
+const inflight = new Map<string, Promise<InstaScrapeResult>>();
+
 export async function fetchInstagramData(
   username: string,
-  type: InstaScrapeType = "all"
+  type: InstaScrapeType = "all",
+  opts: { force?: boolean } = {}
 ): Promise<InstaScrapeResult> {
-  const u = username.trim().replace(/^@/, "");
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/instagram-scraper`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      apikey: SUPABASE_KEY,
-    },
-    body: JSON.stringify({ username: u, type }),
-    signal: AbortSignal.timeout(45000),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`Scraper ${res.status}: ${t}`);
-  }
-  return res.json();
+  const u = username.trim().replace(/^@/, "").toLowerCase();
+  const key = `${u}::${type}::${opts.force ? "f" : ""}`;
+  const existing = inflight.get(key);
+  if (existing) return existing;
+
+  const p = (async () => {
+    try {
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/instagram-scraper`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+        },
+        body: JSON.stringify({ username: u, type, force: !!opts.force }),
+        signal: AbortSignal.timeout(45000),
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(`Scraper ${res.status}: ${t}`);
+      }
+      return (await res.json()) as InstaScrapeResult;
+    } finally {
+      // Clear after settle so next non-overlapping call can fire fresh
+      inflight.delete(key);
+    }
+  })();
+  inflight.set(key, p);
+  return p;
 }
+
 
 interface CacheEntry {
   cachedAt: number;
