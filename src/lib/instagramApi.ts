@@ -47,6 +47,13 @@ export interface InstaScrapeResult {
   reelsOk?: boolean;
   postsOk?: boolean;
   highlightsOk?: boolean;
+  // Pagination tokens — empty string = no more pages.
+  postsNextCursor?: string;
+  postsHasMore?: boolean;
+  reelsNextCursor?: string;
+  reelsHasMore?: boolean;
+  // True when the response is a "load more" batch (only contains the new page).
+  paginated?: boolean;
 }
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
