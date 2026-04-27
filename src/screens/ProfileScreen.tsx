@@ -153,16 +153,8 @@ const ProfileScreen = () => {
 
   // Build user posts from either reelsData (for just4abhii) or account posts
   const userPosts = useMemo(() => {
-    return account.posts.map((post, i) => ({
-      image: getThumb(post),
-      videoUrl: post.videoUrl,
-      isReel: !!post.videoUrl,
-      views: [93, 37, 764, 1200, 458, 89, 234, 567, 123][i] || Math.floor(Math.random() * 500 + 50),
-      likes: Math.floor(Math.random() * 500 + 100),
-    }));
-  }, [account.posts]);
-
-  const reelPosts = useMemo(() => {
+    // For the connected/owned account, use the user's actual reels as their posts
+    // (they don't have separate mock posts — sab content unke reels hi hain).
     if (isJust4abhii) {
       return reelsData
         .filter((reel): reel is NonNullable<typeof reel> => !!reel && !!reel.videoUrl)
@@ -174,9 +166,19 @@ const ProfileScreen = () => {
           likes: reel.insights?.likes ?? 0,
         }));
     }
+    return account.posts.map((post, i) => ({
+      image: getThumb(post),
+      videoUrl: post.videoUrl,
+      isReel: !!post.videoUrl,
+      views: [93, 37, 764, 1200, 458, 89, 234, 567, 123][i] || Math.floor(Math.random() * 500 + 50),
+      likes: Math.floor(Math.random() * 500 + 100),
+    }));
+  }, [account.posts, isJust4abhii, reelsData]);
 
+  const reelPosts = useMemo(() => {
+    // userPosts already returns reels for just4abhii; for other accounts filter by isReel.
     return userPosts.filter((post) => post.isReel);
-  }, [isJust4abhii, reelsData, userPosts]);
+  }, [userPosts]);
 
   // Long press handlers
   const startPress = useCallback((index: number) => {
