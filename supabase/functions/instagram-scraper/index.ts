@@ -687,29 +687,50 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
   if (!RAPIDAPI_KEY) return json({ error: "RAPIDAPI_KEY missing" }, 500);
 
+  // Use client-supplied trace id if present (so client logs and server logs
+  // share the same id), otherwise mint a fresh one.
+  const traceId = req.headers.get("x-trace-id") || newTraceId();
+  const reqStart = Date.now();
+
   let body: any;
-  try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+  try { body = await req.json(); } catch {
+    slog("warn", traceId, "bad_json", {});
+    return json({ error: "Invalid JSON" }, 400, { "X-Trace-Id": traceId });
+  }
 
   const username = str(body.username).trim().replace(/^@/, "").toLowerCase();
   const type = str(body.type || "all");
-  if (!username) return json({ error: "username required" }, 400);
+  if (!username) {
+    slog("warn", traceId, "missing_username", {});
+    return json({ error: "username required" }, 400, { "X-Trace-Id": traceId });
+  }
 
-  if (type === "debug") return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY });
+  if (type === "debug") return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY }, 200, { "X-Trace-Id": traceId });
 
   const cacheKey = `${username}::${type}`;
   const force = !!body.force;
 
+  slog("info", traceId, "request", {
+    username, type, force,
+    ua: req.headers.get("user-agent")?.slice(0, 80) ?? null,
+  });
+
   // 1) Stale-While-Revalidate: serve from cache instantly when available.
-  //    - Fresh hit → just serve.
-  //    - Stale hit → serve immediately AND kick off a background refresh so
-  //      the next user gets fresh data without waiting on a cold scrape.
   if (!force) {
     const cached = cacheGet(cacheKey);
     if (cached) {
-      if (cached.isStale) scheduleRevalidation(cacheKey, username, type);
+      const cacheState = cached.isStale ? "STALE" : "HIT";
+      if (cached.isStale) scheduleRevalidation(cacheKey, username, type, traceId);
+      const totalMs = Date.now() - reqStart;
+      slog("info", traceId, "response", {
+        cache: cacheState, ageSec: Math.round(cached.ageMs / 1000),
+        totalMs, rapidCalls: 0,
+      });
       return json(cached.payload, 200, {
-        "X-Cache": cached.isStale ? "STALE" : "HIT",
+        "X-Cache": cacheState,
         "X-Cache-Age": String(Math.round(cached.ageMs / 1000)),
+        "X-Duration-Ms": String(totalMs),
+        "X-Trace-Id": traceId,
         "Cache-Control": "public, max-age=300",
       });
     }
@@ -717,10 +738,13 @@ Deno.serve(async (req) => {
 
   // 2) Coalesce concurrent identical requests — only 1 RapidAPI call for N parallel callers
   let inflight = INFLIGHT.get(cacheKey);
+  let isCoalesced = true;
+  const ctx = newCtx(traceId, username, type);
   if (!inflight) {
+    isCoalesced = false;
     inflight = (async () => {
       try {
-        const r = await buildResult(username, type);
+        const r = await buildResult(username, type, ctx);
         cacheSet(cacheKey, r);
         return r;
       } finally {
@@ -728,14 +752,37 @@ Deno.serve(async (req) => {
       }
     })();
     INFLIGHT.set(cacheKey, inflight);
+  } else {
+    slog("info", traceId, "coalesced", { cacheKey });
   }
 
   try {
     const payload = await inflight;
-    return json(payload, 200, { "X-Cache": force ? "BYPASS" : "MISS", "Cache-Control": "public, max-age=300" });
+    const totalMs = Date.now() - reqStart;
+    const cacheState = force ? "BYPASS" : (isCoalesced ? "COALESCED" : "MISS");
+    // RapidAPI timing summary (only when we actually scraped, not coalesced).
+    const rapidTotalMs = ctx.rapidCalls.reduce((s, c) => s + c.ms, 0);
+    const rapidErrors = ctx.rapidCalls.filter(c => c.status === "err").length;
+    slog("info", traceId, "response", {
+      cache: cacheState, totalMs, coalesced: isCoalesced,
+      rapidCalls: ctx.rapidCalls.length,
+      rapidTotalMs, rapidErrors,
+      slowestPath: ctx.rapidCalls.slice().sort((a, b) => b.ms - a.ms)[0]?.path ?? null,
+    });
+    return json(payload, 200, {
+      "X-Cache": cacheState,
+      "X-Duration-Ms": String(totalMs),
+      "X-Trace-Id": traceId,
+      "Cache-Control": "public, max-age=300",
+    });
   } catch (e) {
-    console.error("buildResult fatal", e);
-    return json({ error: "Scrape failed", message: (e as Error).message }, 502);
+    const totalMs = Date.now() - reqStart;
+    slog("error", traceId, "fatal", {
+      totalMs, err: (e as Error).message,
+      rapidCalls: ctx.rapidCalls.length,
+      rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+    });
+    return json({ error: "Scrape failed", message: (e as Error).message, traceId }, 502, { "X-Trace-Id": traceId });
   }
 });
 
