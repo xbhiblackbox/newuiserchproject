@@ -145,6 +145,8 @@ export async function fetchInstagramData(
       const cache = res.headers.get("x-cache") || "?";
       const cacheAge = res.headers.get("x-cache-age");
       const serverMs = res.headers.get("x-duration-ms");
+      const cacheStats = res.headers.get("x-cache-stats");
+      const cacheHeat = res.headers.get("x-cache-heatmap");
       if (!res.ok) {
         const t = await res.text();
         console.warn(
@@ -154,8 +156,9 @@ export async function fetchInstagramData(
       }
       const tag = opts.cursor ? "more" : `p${opts.pages ?? 1}`;
       console.log(
-        `[ig-scraper] ${u} ${type} ${tag} ${cache}${cacheAge ? `(${cacheAge}s)` : ""} clientMs=${ms} serverMs=${serverMs ?? "?"} trace=${serverTrace}`,
+        `[ig-scraper] ${u} ${type} ${tag} ${cache}${cacheAge ? `(${cacheAge}s)` : ""} clientMs=${ms} serverMs=${serverMs ?? "?"} trace=${serverTrace}${cacheStats ? ` stats=${cacheStats}` : ""}`,
       );
+      if (cacheHeat) console.debug(`[ig-scraper] heatmap ${cacheHeat}`);
       return (await res.json()) as InstaScrapeResult;
     } finally {
       inflight.delete(key);
