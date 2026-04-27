@@ -1,6 +1,9 @@
 import { mockAccounts, currentUser, saveProfileOverrides, type PostItem } from "@/data/mockData";
 import { fetchInstagramData, proxyIgImage, type InstaScrapeResult } from "@/lib/instagramApi";
 import { saveReelsData, type ExtendedPostItem } from "@/data/reelInsightsData";
+import { supabase } from "@/integrations/supabase/client";
+
+const MAX_REELS = 15;
 
 /**
  * Clone a real Instagram account's data into the local mock store
@@ -17,15 +20,17 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   const posts = data.posts ?? [];
   const highlights = data.highlights ?? [];
 
-  // Build post grid: keep original posts first, then any reels not already in posts (dedupe by id/code)
+  // Merge posts + reels, dedupe by id/code, then sort latest-first by takenAt and cap to MAX_REELS
   const seen = new Set<string>();
-  const combined: typeof posts = [];
+  const merged: typeof posts = [];
   for (const item of [...posts, ...reels]) {
     const key = String((item as any).id || (item as any).code || "");
     if (key && seen.has(key)) continue;
     if (key) seen.add(key);
-    combined.push(item);
+    merged.push(item);
   }
+  merged.sort((a, b) => (Number((b as any).takenAt) || 0) - (Number((a as any).takenAt) || 0));
+  const combined = merged.slice(0, MAX_REELS);
   const postItems: PostItem[] = combined.map((m) => ({
     thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
     videoUrl: m.videoUrl || undefined,
@@ -62,12 +67,8 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
     },
   }));
 
-  // Pad if fewer than expected — keep existing thumbnails
-  const existingPosts = mockAccounts["just4abhii"]?.posts ?? [];
-  while (postItems.length < Math.min(21, existingPosts.length)) {
-    postItems.push(existingPosts[postItems.length]);
-  }
-
+  // Apply to the canonical "just4abhii" slot which the UI uses everywhere.
+  // We REPLACE posts entirely (no padding from previous account) to avoid leakage.
   const profilePatch = {
     username: p.username,
     fullName: p.fullName || p.username,
@@ -80,26 +81,35 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
     website: p.externalUrl || "",
   };
 
-  // Apply to the canonical "just4abhii" slot which the UI uses everywhere
   const slot = mockAccounts["just4abhii"];
   if (slot) {
     Object.assign(slot.profile, profilePatch);
-    slot.posts = postItems.length ? postItems : slot.posts;
+    slot.posts = postItems;
     slot.highlights = highlights.length
       ? highlights.slice(0, 8).map((h) => ({
           name: h.name || "Highlight",
           image: proxyIgImage(h.image) || h.image,
         }))
-      : slot.highlights;
+      : [];
     if (p.category) slot.category = p.category;
   }
 
   // Mirror onto currentUser (live reference in many screens)
   Object.assign(currentUser, profilePatch);
 
-  if (reelItems.length) {
-    saveReelsData(reelItems);
+  // Wipe stale Supabase reels_data rows for this slot so previous-account
+  // overrides (thumbnails/videos/captions) don't leak into the new account.
+  try {
+    await (supabase as any)
+      .from("reels_data")
+      .delete()
+      .eq("account", "just4abhii");
+  } catch (e) {
+    console.warn("[Clone] Failed to clear stale reels_data:", e);
   }
+
+  // Always save reels (even if empty) so localStorage reflects the new account
+  saveReelsData(reelItems);
 
   saveProfileOverrides();
 
