@@ -314,9 +314,9 @@ const ReelInsightsScreen = () => {
         if (d.timeRangeMode) setTimeRangeMode(d.timeRangeMode as 'custom' | '12h' | '24h');
         if (d.showGraph != null) setShowGraph(d.showGraph as boolean);
         if (d.graphYMax != null) setEditGraphYMax(d.graphYMax as number);
-        if (d.sources) setEditSources((d.sources as { name: string; pct: number }[]).slice(0, 4));
-        if (d.countries) setEditCountries(d.countries as { name: string; pct: number }[]);
-        if (d.ageGroups) setEditAgeGroups(d.ageGroups as { range: string; pct: number }[]);
+        if (Array.isArray(d.sources) && (d.sources as unknown[]).length > 0) setEditSources((d.sources as { name: string; pct: number }[]).slice(0, 4));
+        if (Array.isArray(d.countries) && (d.countries as unknown[]).length > 0) setEditCountries(d.countries as { name: string; pct: number }[]);
+        if (Array.isArray(d.ageGroups) && (d.ageGroups as unknown[]).length > 0) setEditAgeGroups(d.ageGroups as { range: string; pct: number }[]);
         if (d.accountsReached != null) setEditAccountsReached(d.accountsReached as number);
         if (d.follows != null) setEditFollows(d.follows as number);
         if (d.thumbnail) setPostImage(d.thumbnail as string);
