@@ -1065,13 +1065,24 @@ async function paginatePostsResult(
 // ---------- main ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  // GET /...?debug=heatmap → JSON snapshot of cache stats for ad-hoc inspection.
+  // GET /...?debug=heatmap → cache HIT/MISS/STALE counts per username.
+  // GET /...?debug=metrics → p50/p95/p99 latency + error rate per user/RapidAPI path.
   if (req.method === "GET") {
     const u = new URL(req.url);
-    if (u.searchParams.get("debug") === "heatmap") {
+    const debug = u.searchParams.get("debug");
+    if (debug === "heatmap") {
       return json(heatSnapshot(), 200, {
         "X-Cache-Heatmap": heatHeaderValue(),
         "X-Cache-Stats": heatStatsHeader(),
+      });
+    }
+    if (debug === "metrics") {
+      // Optional ?prefix=user: or ?prefix=rapid: to filter the slice.
+      const prefix = u.searchParams.get("prefix") ?? undefined;
+      return json({
+        users: metricsSnapshot("user:"),
+        rapid: metricsSnapshot("rapid:"),
+        ...(prefix ? { filtered: metricsSnapshot(prefix) } : {}),
       });
     }
     return json({ error: "POST only" }, 405);
