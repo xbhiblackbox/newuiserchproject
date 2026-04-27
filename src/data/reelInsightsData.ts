@@ -22,6 +22,7 @@ export interface ReelInsights {
   skipRate: number;
   typicalSkipRate: number;
   retentionCurve?: { t: string; pct: number }[];
+  engagementCurve?: { t: string; pct: number }[];
   typicalRetentionCurve?: { t: string; pct: number }[];
 }
 
@@ -35,6 +36,8 @@ export interface ExtendedPostItem {
   graphStartDate?: string;
   yCenter?: number;
   yTop?: number;
+  engagementYCenter?: number;
+  engagementYTop?: number;
   showGraph?: boolean;
   insights: ReelInsights;
 }
