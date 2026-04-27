@@ -111,6 +111,11 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   // Replace saved reel overrides for this slot so previous-account
   // thumbnails/videos/captions don't leak into the newly cloned username.
   try {
+    await (supabase as any)
+      .from("reels_data")
+      .delete()
+      .eq("account", "just4abhii");
+
     const rows = reelItems.map((reel, post_index) => ({
       account: "just4abhii",
       post_index,
