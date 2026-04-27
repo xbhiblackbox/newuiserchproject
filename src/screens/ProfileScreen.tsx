@@ -90,6 +90,15 @@ const ProfileScreen = () => {
   const profile = account.profile;
   const highlights = account.highlights;
 
+  // Persist active username so Insights screens (Views/Interactions/Followers)
+  // know which account's reels to display in their "Top" thumbnails.
+  useEffect(() => {
+    try {
+      localStorage.setItem("ig_active_profile_username", activeUsername);
+      window.dispatchEvent(new CustomEvent("active-username-changed", { detail: { username: activeUsername } }));
+    } catch {}
+  }, [activeUsername]);
+
   // The "owned" account = original just4abhii, or whatever it was renamed to.
   // After rename, mockAccounts entry has a fresh profile object (not === currentUser),
   // so also match by username string against the live currentUser.username.
