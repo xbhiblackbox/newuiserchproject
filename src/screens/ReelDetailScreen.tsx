@@ -36,10 +36,11 @@ interface ProfileReelData {
   comments: number;
   sends: number;
   saves: number;
-  views: string;
+  viewsNum: number;
   accountUsername: string;
   profileAvatar: string;
   profileUsername: string;
+  isMainAccount: boolean;
 }
 
 const ProfileReelCard = ({
