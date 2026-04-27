@@ -1,6 +1,6 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id, x-replay-of",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Expose-Headers": "x-trace-id, x-cache, x-cache-age, x-duration-ms, x-cache-heatmap, x-cache-stats",
 };
@@ -84,6 +84,62 @@ const buildDebugSummary = (ctx: ReqCtx, totalMs: number) => {
   };
 };
 
+// ---- trace recorder ----
+// Captures the inputs + outcome of each non-replay request, keyed by trace id,
+// so we can re-run that exact request later via ?debug=replay&trace=<id> and
+// diff cache state, latency, and RapidAPI calls against the original.
+interface TraceRecord {
+  traceId: string;
+  recordedAt: number;
+  // inputs (enough to reconstruct an equivalent POST body)
+  username: string;
+  type: string;
+  pages: number;
+  cursor: string;
+  force: boolean;
+  // outcome
+  cache: string;             // HIT | STALE | MISS | BYPASS | COALESCED | PAGINATE | ERROR
+  totalMs: number;
+  rapidCalls: number;
+  rapidTotalMs: number;
+  rapidErrors: number;
+  slowest: Array<{ path: string; ms: number; status: "ok" | "err"; err?: string }>;
+  err?: string;
+}
+const TRACES = new Map<string, TraceRecord>();
+const TRACES_MAX = 500;
+
+const recordTrace = (rec: TraceRecord) => {
+  if (TRACES.size >= TRACES_MAX) {
+    // Evict oldest by recordedAt to bound memory.
+    let oldKey: string | null = null; let oldAt = Infinity;
+    for (const [k, v] of TRACES) {
+      if (v.recordedAt < oldAt) { oldAt = v.recordedAt; oldKey = k; }
+    }
+    if (oldKey) TRACES.delete(oldKey);
+  }
+  TRACES.set(rec.traceId, rec);
+};
+
+const tracesSnapshot = (limit = 50) => {
+  return Array.from(TRACES.values())
+    .sort((a, b) => b.recordedAt - a.recordedAt)
+    .slice(0, limit);
+};
+
+// Compute a compact diff between original trace and the replay outcome.
+// Useful to spot cache state changes (MISS → HIT) and latency drift.
+const diffTrace = (orig: TraceRecord, rep: TraceRecord) => ({
+  cache: { from: orig.cache, to: rep.cache, changed: orig.cache !== rep.cache },
+  totalMs: { from: orig.totalMs, to: rep.totalMs, deltaMs: rep.totalMs - orig.totalMs },
+  rapidCalls: { from: orig.rapidCalls, to: rep.rapidCalls, delta: rep.rapidCalls - orig.rapidCalls },
+  rapidTotalMs: { from: orig.rapidTotalMs, to: rep.rapidTotalMs, deltaMs: rep.rapidTotalMs - orig.rapidTotalMs },
+  rapidErrors: { from: orig.rapidErrors, to: rep.rapidErrors, delta: rep.rapidErrors - orig.rapidErrors },
+  slowestPath: {
+    from: orig.slowest[0]?.path ?? null,
+    to: rep.slowest[0]?.path ?? null,
+  },
+});
 
 
 // ---- in-memory cache & request coalescing (per edge instance) ----
@@ -1067,6 +1123,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   // GET /...?debug=heatmap → cache HIT/MISS/STALE counts per username.
   // GET /...?debug=metrics → p50/p95/p99 latency + error rate per user/RapidAPI path.
+  // GET /...?debug=traces  → recent recorded traces (inputs + outcome).
+  // GET /...?debug=replay&trace=<id>[&force=1] → re-run the recorded trace and diff against original.
   if (req.method === "GET") {
     const u = new URL(req.url);
     const debug = u.searchParams.get("debug");
@@ -1085,6 +1143,96 @@ Deno.serve(async (req) => {
         ...(prefix ? { filtered: metricsSnapshot(prefix) } : {}),
       });
     }
+    if (debug === "traces") {
+      const limit = Math.max(1, Math.min(200, Number(u.searchParams.get("limit") ?? "50")));
+      return json({ count: TRACES.size, traces: tracesSnapshot(limit) });
+    }
+    if (debug === "replay") {
+      const wantedTrace = u.searchParams.get("trace") ?? "";
+      const orig = TRACES.get(wantedTrace);
+      if (!orig) {
+        return json({ error: "trace not found", traceId: wantedTrace, hint: "use ?debug=traces to list available trace ids" }, 404);
+      }
+      // Optional ?force=1 forces a fresh scrape (bypasses cache) so the replay
+      // exercises the same upstream path as the original even if it's now warm.
+      const replayForce = u.searchParams.get("force") === "1" ? true : orig.force;
+      const replayTraceId = `${orig.traceId}-replay-${Date.now().toString(36).slice(-4)}`;
+      slog("info", replayTraceId, "replay_start", {
+        origTrace: orig.traceId,
+        username: orig.username, type: orig.type, pages: orig.pages,
+        cursor: orig.cursor ? `${orig.cursor.slice(0, 16)}…` : "",
+        force: replayForce,
+      });
+      // Self-fetch back into the POST handler. Tag it as a replay so we can
+      // skip recording the replay itself into the TRACES map.
+      const selfBody: Record<string, unknown> = {
+        username: orig.username,
+        type: orig.type,
+        force: replayForce,
+        pages: orig.pages,
+      };
+      if (orig.cursor) selfBody.cursor = orig.cursor;
+      const replayStart = Date.now();
+      let replayRec: TraceRecord;
+      let replayPayload: unknown = null;
+      try {
+        const r = await fetch(req.url.split("?")[0], {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            // Forward auth so the self-call passes the same gateway checks.
+            ...(req.headers.get("authorization") ? { "Authorization": req.headers.get("authorization")! } : {}),
+            ...(req.headers.get("apikey") ? { "apikey": req.headers.get("apikey")! } : {}),
+            "x-trace-id": replayTraceId,
+            "x-replay-of": orig.traceId,
+          },
+          body: JSON.stringify(selfBody),
+        });
+        const totalMs = Date.now() - replayStart;
+        replayPayload = await r.json().catch(() => null);
+        const dbg = (replayPayload as Record<string, unknown> | null)?._debug as Record<string, unknown> | undefined;
+        replayRec = {
+          traceId: replayTraceId,
+          recordedAt: Date.now(),
+          username: orig.username,
+          type: orig.type,
+          pages: orig.pages,
+          cursor: orig.cursor,
+          force: replayForce,
+          cache: r.headers.get("x-cache") ?? "?",
+          totalMs,
+          rapidCalls: Number(dbg?.rapidCalls ?? 0),
+          rapidTotalMs: Number(dbg?.rapidTotalMs ?? 0),
+          rapidErrors: Number(dbg?.rapidErrors ?? 0),
+          slowest: (dbg?.slowest as TraceRecord["slowest"]) ?? [],
+        };
+      } catch (e) {
+        replayRec = {
+          traceId: replayTraceId,
+          recordedAt: Date.now(),
+          username: orig.username,
+          type: orig.type,
+          pages: orig.pages,
+          cursor: orig.cursor,
+          force: replayForce,
+          cache: "ERROR",
+          totalMs: Date.now() - replayStart,
+          rapidCalls: 0, rapidTotalMs: 0, rapidErrors: 0,
+          slowest: [],
+          err: (e as Error).message,
+        };
+      }
+      const diff = diffTrace(orig, replayRec);
+      slog("info", replayTraceId, "replay_done", { origTrace: orig.traceId, ...diff });
+      return json({
+        original: orig,
+        replay: replayRec,
+        diff,
+        replayPayloadPreview: replayPayload && typeof replayPayload === "object"
+          ? Object.keys(replayPayload as Record<string, unknown>).slice(0, 20)
+          : null,
+      });
+    }
     return json({ error: "POST only" }, 405);
   }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
@@ -1093,6 +1241,10 @@ Deno.serve(async (req) => {
   // Use client-supplied trace id if present (so client logs and server logs
   // share the same id), otherwise mint a fresh one.
   const traceId = req.headers.get("x-trace-id") || newTraceId();
+  // Replay self-calls set this header so we can skip re-recording them into
+  // the TRACES map (which would create infinite-replay-of-replays chains).
+  const replayOf = req.headers.get("x-replay-of") || "";
+  const isReplay = !!replayOf;
   const reqStart = Date.now();
 
   let body: any;
@@ -1142,6 +1294,14 @@ Deno.serve(async (req) => {
       metricRecord(`user:${username}`, totalMs, false);
       const reqMetrics = metricsForRequest(username, ctx);
       slog("info", traceId, "metrics", { username, ...reqMetrics });
+      if (!isReplay) recordTrace({
+        traceId, recordedAt: Date.now(),
+        username, type, pages, cursor, force,
+        cache: "PAGINATE", totalMs,
+        rapidCalls: ctx.rapidCalls.length, rapidTotalMs,
+        rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+        slowest,
+      });
       const debugPayload = { ...payload, _debug: { ...buildDebugSummary(ctx, totalMs), metrics: reqMetrics } };
       return json(debugPayload, 200, {
         "X-Cache": "PAGINATE",
@@ -1157,6 +1317,16 @@ Deno.serve(async (req) => {
       const msg = (e as Error).message;
       metricRecord(`user:${username}`, totalMs, true);
       slog("warn", traceId, "paginate_failed", { totalMs, err: msg });
+      if (!isReplay) recordTrace({
+        traceId, recordedAt: Date.now(),
+        username, type, pages, cursor, force,
+        cache: "ERROR", totalMs,
+        rapidCalls: ctx.rapidCalls.length,
+        rapidTotalMs: ctx.rapidCalls.reduce((s, c) => s + c.ms, 0),
+        rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+        slowest: slowestRapidCalls(ctx, 5),
+        err: msg,
+      });
       const status = msg === "Invalid cursor" ? 400 : 502;
       return json({ error: msg, traceId }, status, { "X-Trace-Id": traceId });
     }
@@ -1182,6 +1352,13 @@ Deno.serve(async (req) => {
       });
       heatTrack(username, cacheState);
       metricRecord(`user:${username}`, totalMs, false);
+      if (!isReplay) recordTrace({
+        traceId, recordedAt: Date.now(),
+        username, type, pages, cursor, force,
+        cache: cacheState, totalMs,
+        rapidCalls: 0, rapidTotalMs: 0, rapidErrors: 0,
+        slowest: [],
+      });
       return json(cached.payload, 200, {
         "X-Cache": cacheState,
         "X-Cache-Age": String(Math.round(cached.ageMs / 1000)),
@@ -1233,6 +1410,13 @@ Deno.serve(async (req) => {
     metricRecord(`user:${username}`, totalMs, false);
     const reqMetrics = metricsForRequest(username, ctx);
     slog("info", traceId, "metrics", { username, ...reqMetrics });
+    if (!isReplay) recordTrace({
+      traceId, recordedAt: Date.now(),
+      username, type, pages, cursor, force,
+      cache: cacheState, totalMs,
+      rapidCalls: ctx.rapidCalls.length, rapidTotalMs, rapidErrors,
+      slowest,
+    });
     // Attach _debug only when we actually made calls (skip pure coalesced
     // responses where ctx is empty — they share the upstream payload).
     const debugPayload = ctx.rapidCalls.length > 0
@@ -1248,13 +1432,24 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     const totalMs = Date.now() - reqStart;
+    const errMsg = (e as Error).message;
     metricRecord(`user:${username}`, totalMs, true);
     slog("error", traceId, "fatal", {
-      totalMs, err: (e as Error).message,
+      totalMs, err: errMsg,
       rapidCalls: ctx.rapidCalls.length,
       rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
     });
-    return json({ error: "Scrape failed", message: (e as Error).message, traceId }, 502, { "X-Trace-Id": traceId });
+    if (!isReplay) recordTrace({
+      traceId, recordedAt: Date.now(),
+      username, type, pages, cursor, force,
+      cache: "ERROR", totalMs,
+      rapidCalls: ctx.rapidCalls.length,
+      rapidTotalMs: ctx.rapidCalls.reduce((s, c) => s + c.ms, 0),
+      rapidErrors: ctx.rapidCalls.filter(c => c.status === "err").length,
+      slowest: slowestRapidCalls(ctx, 5),
+      err: errMsg,
+    });
+    return json({ error: "Scrape failed", message: errMsg, traceId }, 502, { "X-Trace-Id": traceId });
   }
 });
 
