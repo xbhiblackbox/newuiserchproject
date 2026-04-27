@@ -10,26 +10,68 @@ const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.
 // ---- in-memory cache & request coalescing (per edge instance) ----
 // Survives between invocations on the same warm instance, dramatically reducing
 // RapidAPI calls when many users hit the same usernames concurrently.
-interface CacheRec { exp: number; payload: unknown }
+// Stale-While-Revalidate cache:
+//   - Within SOFT TTL (5 min): return cached, no refresh
+//   - Between SOFT and HARD TTL (60 min): return cached INSTANTLY, refresh in background
+//   - After HARD TTL: cache miss, must scrape
+interface CacheRec { storedAt: number; hardExp: number; payload: unknown; hits: number }
 const RESP_CACHE = new Map<string, CacheRec>();
 const INFLIGHT = new Map<string, Promise<unknown>>();
-const RESP_TTL_MS = 10 * 60 * 1000; // 10 min
+const REVALIDATING = new Set<string>(); // dedupe background refreshes
+const SOFT_TTL_MS = 5 * 60 * 1000;   // serve fresh without refresh
+const HARD_TTL_MS = 60 * 60 * 1000;  // can serve stale up to this long
 const RESP_CACHE_MAX = 500;
 
-const cacheGet = (k: string): unknown | null => {
+interface CacheLookup { payload: unknown; isStale: boolean; ageMs: number }
+
+const cacheGet = (k: string): CacheLookup | null => {
   const r = RESP_CACHE.get(k);
   if (!r) return null;
-  if (Date.now() > r.exp) { RESP_CACHE.delete(k); return null; }
-  return r.payload;
+  const age = Date.now() - r.storedAt;
+  if (Date.now() > r.hardExp) { RESP_CACHE.delete(k); return null; }
+  r.hits++;
+  return { payload: r.payload, isStale: age > SOFT_TTL_MS, ageMs: age };
 };
 const cacheSet = (k: string, payload: unknown) => {
   if (RESP_CACHE.size >= RESP_CACHE_MAX) {
-    // simple FIFO eviction
-    const first = RESP_CACHE.keys().next().value;
-    if (first) RESP_CACHE.delete(first);
+    // Evict the least-popular entry instead of FIFO so hot usernames stay warm.
+    let coldKey: string | null = null;
+    let coldHits = Infinity;
+    for (const [key, rec] of RESP_CACHE) {
+      if (rec.hits < coldHits) { coldHits = rec.hits; coldKey = key; }
+    }
+    if (coldKey) RESP_CACHE.delete(coldKey);
   }
-  RESP_CACHE.set(k, { exp: Date.now() + RESP_TTL_MS, payload });
+  const prev = RESP_CACHE.get(k);
+  RESP_CACHE.set(k, {
+    storedAt: Date.now(),
+    hardExp: Date.now() + HARD_TTL_MS,
+    payload,
+    hits: prev?.hits ?? 0,
+  });
 };
+
+// Fire-and-forget background refresh. EdgeRuntime.waitUntil keeps the isolate
+// alive past the response so the refresh actually completes.
+function scheduleRevalidation(cacheKey: string, username: string, type: string) {
+  if (REVALIDATING.has(cacheKey) || INFLIGHT.has(cacheKey)) return;
+  REVALIDATING.add(cacheKey);
+  const task = (async () => {
+    try {
+      const r = await buildResult(username, type);
+      cacheSet(cacheKey, r);
+    } catch (e) {
+      console.warn("bg revalidate failed", cacheKey, (e as Error).message);
+    } finally {
+      REVALIDATING.delete(cacheKey);
+    }
+  })();
+  // @ts-ignore — EdgeRuntime is a Supabase Deno global
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(task);
+  }
+}
 
 const json = (d: unknown, status = 200, extraHeaders: Record<string, string> = {}) =>
   new Response(JSON.stringify(d), {
