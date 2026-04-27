@@ -71,6 +71,54 @@ const ProfileReelCard = ({
   const [commentCount, setCommentCount] = useState(data.comments);
   const [sendCount, setSendCount] = useState(data.sends);
   const [saveCount, setSaveCount] = useState(data.saves);
+  const [viewCount, setViewCount] = useState(data.viewsNum);
+
+  // Sync local state with incoming data (e.g. after re-load from storage)
+  useEffect(() => {
+    setLikeCount(data.likes);
+    setCommentCount(data.comments);
+    setSendCount(data.sends);
+    setSaveCount(data.saves);
+    setViewCount(data.viewsNum);
+  }, [data.likes, data.comments, data.sends, data.saves, data.viewsNum]);
+
+  // Persist edits back to localStorage + Supabase so insights & profile thumbnail stay in sync
+  const persistInsights = useCallback((updates: { likes?: number; comments?: number; shares?: number; saves?: number; views?: number }) => {
+    if (!data.isMainAccount) return;
+    try {
+      const fresh = loadReelsData();
+      const reel = fresh[data.index];
+      if (!reel) return;
+      reel.insights = {
+        ...reel.insights,
+        ...(updates.likes != null ? { likes: updates.likes } : {}),
+        ...(updates.comments != null ? { comments: updates.comments } : {}),
+        ...(updates.shares != null ? { shares: updates.shares } : {}),
+        ...(updates.saves != null ? { saves: updates.saves } : {}),
+        ...(updates.views != null ? { views: updates.views } : {}),
+      };
+      fresh[data.index] = reel;
+      saveReelsData(fresh);
+    } catch (e) { console.warn("[ReelDetail] localStorage persist failed", e); }
+    // Mirror to Supabase so other devices/screens reading from DB stay in sync
+    (async () => {
+      try {
+        const { data: row } = await (supabase as any)
+          .from("reels_data")
+          .select("data")
+          .eq("account", data.accountUsername)
+          .eq("post_index", data.index)
+          .maybeSingle();
+        const merged = { ...(row?.data || {}), ...updates };
+        await (supabase as any)
+          .from("reels_data")
+          .upsert(
+            { account: data.accountUsername, post_index: data.index, data: merged, updated_at: new Date().toISOString() },
+            { onConflict: "account,post_index" }
+          );
+      } catch (e) { console.warn("[ReelDetail] Supabase persist failed", e); }
+    })();
+  }, [data.index, data.accountUsername, data.isMainAccount]);
 
   // Auto-play/pause based on isActive
   useEffect(() => {
