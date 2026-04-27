@@ -936,10 +936,13 @@ Deno.serve(async (req) => {
         cache: "PAGINATE", totalMs, rapidCalls: ctx.rapidCalls.length, rapidTotalMs,
         hasMore: payload.postsHasMore ?? payload.reelsHasMore ?? false,
       });
+      heatTrack(username, "PAGINATE");
       return json(payload, 200, {
         "X-Cache": "PAGINATE",
         "X-Duration-Ms": String(totalMs),
         "X-Trace-Id": traceId,
+        "X-Cache-Heatmap": heatHeaderValue(),
+        "X-Cache-Stats": heatStatsHeader(),
         // Don't cache load-more responses at the CDN — each cursor is unique.
         "Cache-Control": "no-store",
       });
