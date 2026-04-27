@@ -191,7 +191,7 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
       setLoading(true);
       setError(null);
       try {
-        const fresh = await fetchInstagramData(username, type);
+        const fresh = await fetchInstagramData(username, type, { force });
         if (reqRef.current !== reqId) return;
         writeCache(key, fresh);
         setData(fresh);
