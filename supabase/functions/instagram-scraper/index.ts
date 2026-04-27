@@ -388,206 +388,124 @@ function normalizeHighlight(h: any) {
   };
 }
 
-// ---------- main ----------
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "POST only" }, 405);
+// ---------- workers (each one self-contained, run in parallel) ----------
+async function fetchProfile(username: string) {
+  const raw = await tryEndpoints([
+    { path: "/api/instagram/userInfo", method: "POST", body: { username } },
+    { path: "/api/instagram/userInfoByUsername", method: "POST", body: { username } },
+    { path: "/v1/info", query: { username_or_id_or_url: username } },
+    { path: "/userinfo", query: { username } },
+    { path: "/api/v1/users/web_profile_info", query: { username } },
+  ]);
+  return normalizeProfile(raw);
+}
 
-  if (!RAPIDAPI_KEY) return json({ error: "RAPIDAPI_KEY missing" }, 500);
-
-  let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    return json({ error: "Invalid JSON" }, 400);
+async function fetchPaginated(
+  variants: Array<{ path: string; method?: "GET" | "POST"; query?: Record<string, string>; body?: Record<string, string> }>,
+  maxPages = 3,
+  cap = 120,
+) {
+  const first = await tryEndpoints(variants);
+  const allRaw: any[] = [pickItems(first.data)];
+  let cur = readPageInfo(first.data);
+  let lastVariant = first.variant;
+  let pages = 1;
+  while (cur.hasNext && cur.cursor && pages < maxPages) {
+    try {
+      const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
+      allRaw.push(pickItems(next.data));
+      cur = readPageInfo(next.data);
+      lastVariant = next.variant;
+      pages++;
+    } catch (e) {
+      console.warn(`page ${pages + 1} err`, (e as Error).message);
+      break;
+    }
   }
+  return dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, cap);
+}
 
-  const username = str(body.username).trim().replace(/^@/, "");
-  const type = str(body.type || "all");
-  if (!username) return json({ error: "username required" }, 400);
+async function fetchPosts(username: string) {
+  return fetchPaginated([
+    { path: "/api/instagram/posts", method: "POST", body: { username } },
+    { path: "/api/instagram/userPosts", method: "POST", body: { username } },
+    { path: "/v1/posts", query: { username_or_id_or_url: username } },
+    { path: "/posts", query: { username } },
+  ]);
+}
 
-  if (type === "debug") {
-    return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY }, 200);
-  }
+async function fetchHighlights(username: string) {
+  const resp = await tryEndpoints([
+    { path: "/api/instagram/highlights", method: "POST", body: { username } },
+    { path: "/api/instagram/userHighlights", method: "POST", body: { username } },
+    { path: "/v1/highlights", query: { username_or_id_or_url: username } },
+  ]);
+  const raw = unwrap(resp.data);
+  const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
+  const items = r0?.items ?? r0?.tray ?? r0 ?? raw?.items ?? [];
+  return (Array.isArray(items) ? items : []).map(normalizeHighlight);
+}
 
-  const result: any = { username };
+// Build the full result for a username — runs profile/posts/highlights IN PARALLEL.
+async function buildResult(username: string, type: string): Promise<any> {
   const wants = (t: string) => type === "all" || type === t;
 
-  // PROFILE — try all known endpoint shapes
+  const [profileRes, postsRes, highlightsRes] = await Promise.allSettled([
+    wants("profile") ? fetchProfile(username) : Promise.resolve(null),
+    (wants("posts") || wants("reels")) ? fetchPosts(username) : Promise.resolve(null),
+    wants("highlights") ? fetchHighlights(username) : Promise.resolve(null),
+  ]);
+
+  const result: any = { username };
+
   if (wants("profile")) {
-    try {
-      const raw = await tryEndpoints([
-        // instagram120
-        { path: "/api/instagram/userInfo", method: "POST", body: { username } },
-        { path: "/api/instagram/userInfoByUsername", method: "POST", body: { username } },
-        // instagram-scraper-api2
-        { path: "/v1/info", query: { username_or_id_or_url: username } },
-        // generic GET
-        { path: "/userinfo", query: { username } },
-        { path: "/api/v1/users/web_profile_info", query: { username } },
-      ]);
-      result.profile = normalizeProfile(raw);
+    if (profileRes.status === "fulfilled" && profileRes.value) {
+      result.profile = profileRes.value;
       result.profileOk = !!result.profile.username;
-      if (body.debug) result._raw_profile = raw;
-    } catch (e) {
-      console.error("profile err", e);
+    } else {
       result.profileOk = false;
+      if (profileRes.status === "rejected") console.error("profile err", profileRes.reason);
     }
   }
 
-  // REELS
-  if (wants("reels")) {
-    try {
-      const first = await tryEndpoints([
-        { path: "/api/instagram/reels", method: "POST", body: { username } },
-        { path: "/api/instagram/userReels", method: "POST", body: { username } },
-        { path: "/v1/reels", query: { username_or_id_or_url: username } },
-        { path: "/reels", query: { username } },
-      ]);
-      let allRaw: any[] = [pickItems(first.data)];
-      let cur = readPageInfo(first.data);
-      let lastVariant = first.variant;
-      let pages = 1;
-      const MAX_PAGES = 3;
-      while (cur.hasNext && cur.cursor && pages < MAX_PAGES) {
-        try {
-          const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
-          allRaw.push(pickItems(next.data));
-          cur = readPageInfo(next.data);
-          lastVariant = next.variant;
-          pages++;
-        } catch (e) {
-          console.warn(`reels page ${pages + 1} err`, e);
-          break;
-        }
-      }
-      const items = dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, 120);
-      result.reels = items;
-      result.reelsOk = true;
-      if (body.debug) result._raw_reels = first.data;
-    } catch (e) {
-      console.error("reels err", e);
-      result.reels = [];
-      result.reelsOk = false;
-    }
+  let postsArr: any[] = [];
+  if (postsRes.status === "fulfilled" && Array.isArray(postsRes.value)) {
+    postsArr = postsRes.value;
+  } else if (postsRes.status === "rejected") {
+    console.error("posts err", postsRes.reason);
   }
 
-  // POSTS
   if (wants("posts")) {
-    try {
-      const first = await tryEndpoints([
-        { path: "/api/instagram/posts", method: "POST", body: { username } },
-        { path: "/api/instagram/userPosts", method: "POST", body: { username } },
-        { path: "/v1/posts", query: { username_or_id_or_url: username } },
-        { path: "/posts", query: { username } },
-      ]);
-      let allRaw: any[] = [pickItems(first.data)];
-      let cur = readPageInfo(first.data);
-      let lastVariant = first.variant;
-      let pages = 1;
-      const MAX_PAGES = 3;
-      while (cur.hasNext && cur.cursor && pages < MAX_PAGES) {
-        try {
-          const next = await tryEndpoints(paginationVariants(lastVariant, cur.cursor));
-          allRaw.push(pickItems(next.data));
-          cur = readPageInfo(next.data);
-          lastVariant = next.variant;
-          pages++;
-        } catch (e) {
-          console.warn(`posts page ${pages + 1} err`, e);
-          break;
-        }
-      }
-      const items = dedupeMediaItems(allRaw.flat()).map(normalizeMediaItem).filter(Boolean).slice(0, 120);
-      result.posts = items;
-      result.postsOk = true;
-      if (body.debug) result._raw_posts = first.data;
-    } catch (e) {
-      console.error("posts err", e);
-      result.posts = [];
-      result.postsOk = false;
-    }
+    result.posts = postsArr;
+    result.postsOk = postsRes.status === "fulfilled";
   }
 
-  // HIGHLIGHTS
-  if (wants("highlights")) {
-    try {
-      const resp = await tryEndpoints([
-        { path: "/api/instagram/highlights", method: "POST", body: { username } },
-        { path: "/api/instagram/userHighlights", method: "POST", body: { username } },
-        { path: "/v1/highlights", query: { username_or_id_or_url: username } },
-      ]);
-      const raw = unwrap(resp.data);
-      const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
-      const items = (
-        r0?.items ??
-        r0?.tray ??
-        r0 ??
-        raw?.items ??
-        []
-      );
-      result.highlights = (Array.isArray(items) ? items : []).map(normalizeHighlight);
-      result.highlightsOk = true;
-      if (body.debug) result._raw_highlights = resp.data;
-    } catch (e) {
-      console.error("highlights err", e);
-      result.highlights = [];
-      result.highlightsOk = false;
-    }
-  }
-
-  // ---------- FALLBACK: derive reels from video posts when reels endpoint failed ----------
-  // This RapidAPI provider often doesn't expose a dedicated /reels endpoint, but
-  // posts already include all video clips with thumbnail + videoUrl + likes + comments.
-  if (
-    wants("reels") &&
-    (!Array.isArray(result.reels) || result.reels.length === 0) &&
-    Array.isArray(result.posts) &&
-    result.posts.length
-  ) {
-    const videoPosts = result.posts.filter(
+  if (wants("reels")) {
+    // Provider's dedicated /reels endpoint always 404s — derive from video posts.
+    const videoPosts = postsArr.filter(
       (p: any) => p?.isVideo || p?.videoUrl || p?.productType === "clips"
     );
-    if (videoPosts.length) {
-      result.reels = videoPosts.slice(0, 120);
-      result.reelsOk = true;
+    result.reels = videoPosts.slice(0, 120);
+    result.reelsOk = postsRes.status === "fulfilled";
+  }
+
+  if (wants("highlights")) {
+    if (highlightsRes.status === "fulfilled" && highlightsRes.value) {
+      result.highlights = highlightsRes.value;
+      result.highlightsOk = true;
+    } else {
+      result.highlights = [];
+      result.highlightsOk = false;
+      if (highlightsRes.status === "rejected") console.error("highlights err", highlightsRes.reason);
     }
   }
 
-  // ---------- ENRICHMENT ----------
-  // 1) Merge captions from posts into reels (match by id or code).
-  // 2) Fetch missing reel video URLs in parallel (cap to first N to limit RapidAPI load).
+  // Enrichment: detail fetches for missing video URLs (capped to 6, parallel).
   if (Array.isArray(result.reels) && result.reels.length) {
-    const postsArr: any[] = Array.isArray(result.posts) ? result.posts : [];
-    if (postsArr.length) {
-      const byId = new Map<string, any>();
-      const byCode = new Map<string, any>();
-      for (const p of postsArr) {
-        if (p?.id) byId.set(String(p.id), p);
-        if (p?.code) byCode.set(String(p.code), p);
-      }
-      result.reels = result.reels.map((r: any) => {
-        if (r?.caption && r?.thumbnail) return r;
-        const match = (r?.id && byId.get(String(r.id))) || (r?.code && byCode.get(String(r.code)));
-        if (!match) return r;
-        return {
-          ...r,
-          caption: r.caption || match.caption || "",
-          thumbnail: r.thumbnail || match.thumbnail || "",
-          videoUrl: r.videoUrl || match.videoUrl || "",
-          views: r.views || match.views || 0,
-          likes: r.likes || match.likes || 0,
-          comments: r.comments || match.comments || 0,
-          takenAt: r.takenAt || match.takenAt || 0,
-        };
-      });
-    }
-
-    const MAX_DETAIL_FETCH = 8;
+    const MAX_DETAIL_FETCH = 6;
     const targets = result.reels
       .map((r: any, idx: number) => ({ r, idx }))
-      .filter(({ r }: any) => !r?.videoUrl || !r?.caption)
-      .filter(({ r }: any) => r?.code || r?.id)
+      .filter(({ r }: any) => (!r?.videoUrl || !r?.caption) && (r?.code || r?.id))
       .slice(0, MAX_DETAIL_FETCH);
 
     if (targets.length) {
@@ -609,5 +527,54 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json(result, 200);
+  return result;
+}
+
+// ---------- main ----------
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "POST only" }, 405);
+  if (!RAPIDAPI_KEY) return json({ error: "RAPIDAPI_KEY missing" }, 500);
+
+  let body: any;
+  try { body = await req.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
+
+  const username = str(body.username).trim().replace(/^@/, "").toLowerCase();
+  const type = str(body.type || "all");
+  if (!username) return json({ error: "username required" }, 400);
+
+  if (type === "debug") return json({ host: RAPIDAPI_HOST, hasKey: !!RAPIDAPI_KEY });
+
+  const cacheKey = `${username}::${type}`;
+  const force = !!body.force;
+
+  // 1) Serve from in-memory cache (instant, zero RapidAPI cost)
+  if (!force) {
+    const cached = cacheGet(cacheKey);
+    if (cached) return json(cached, 200, { "X-Cache": "HIT", "Cache-Control": "public, max-age=300" });
+  }
+
+  // 2) Coalesce concurrent identical requests — only 1 RapidAPI call for N parallel callers
+  let inflight = INFLIGHT.get(cacheKey);
+  if (!inflight) {
+    inflight = (async () => {
+      try {
+        const r = await buildResult(username, type);
+        cacheSet(cacheKey, r);
+        return r;
+      } finally {
+        INFLIGHT.delete(cacheKey);
+      }
+    })();
+    INFLIGHT.set(cacheKey, inflight);
+  }
+
+  try {
+    const payload = await inflight;
+    return json(payload, 200, { "X-Cache": force ? "BYPASS" : "MISS", "Cache-Control": "public, max-age=300" });
+  } catch (e) {
+    console.error("buildResult fatal", e);
+    return json({ error: "Scrape failed", message: (e as Error).message }, 502);
+  }
 });
+
