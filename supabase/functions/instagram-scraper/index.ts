@@ -7,11 +7,36 @@ const corsHeaders = {
 const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
 const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.com";
 
-const json = (d: unknown, status = 200) =>
+// ---- in-memory cache & request coalescing (per edge instance) ----
+// Survives between invocations on the same warm instance, dramatically reducing
+// RapidAPI calls when many users hit the same usernames concurrently.
+interface CacheRec { exp: number; payload: unknown }
+const RESP_CACHE = new Map<string, CacheRec>();
+const INFLIGHT = new Map<string, Promise<unknown>>();
+const RESP_TTL_MS = 10 * 60 * 1000; // 10 min
+const RESP_CACHE_MAX = 500;
+
+const cacheGet = (k: string): unknown | null => {
+  const r = RESP_CACHE.get(k);
+  if (!r) return null;
+  if (Date.now() > r.exp) { RESP_CACHE.delete(k); return null; }
+  return r.payload;
+};
+const cacheSet = (k: string, payload: unknown) => {
+  if (RESP_CACHE.size >= RESP_CACHE_MAX) {
+    // simple FIFO eviction
+    const first = RESP_CACHE.keys().next().value;
+    if (first) RESP_CACHE.delete(first);
+  }
+  RESP_CACHE.set(k, { exp: Date.now() + RESP_TTL_MS, payload });
+};
+
+const json = (d: unknown, status = 200, extraHeaders: Record<string, string> = {}) =>
   new Response(JSON.stringify(d), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...corsHeaders, "Content-Type": "application/json", ...extraHeaders },
   });
+
 
 const num = (v: unknown): number => {
   if (typeof v === "number") return v;
