@@ -1095,7 +1095,7 @@ const ReelInsightsScreen = () => {
             {/* Country view */}
             {audienceTab === "Country" && (
               <div className="space-y-1">
-                {editCountries.map((c, idx) => (
+                {countries.map((c, idx) => (
                   <div key={c.name}>
                     <div
                       className={cn("text-[13px] text-foreground mb-1", isEditMode && "cursor-pointer")}
@@ -1104,7 +1104,7 @@ const ReelInsightsScreen = () => {
                         value: c.name,
                         isText: true,
                         onSave: ((v: any) => {
-                          const next = [...editCountries];
+                          const next = [...countries];
                           next[idx] = { ...next[idx], name: String(v) };
                           setEditCountries(next);
                         }) as any,
@@ -1125,7 +1125,7 @@ const ReelInsightsScreen = () => {
                           label: `${c.name} %`,
                           value: String(c.pct),
                           onSave: (v) => {
-                            const next = [...editCountries];
+                            const next = [...countries];
                             next[idx] = { ...next[idx], pct: Math.min(100, Math.max(0, v)) };
                             setEditCountries(next);
                           },
