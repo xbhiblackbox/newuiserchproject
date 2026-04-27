@@ -1,11 +1,62 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "x-trace-id, x-cache, x-cache-age, x-duration-ms",
 };
 
 const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
 const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.com";
+
+// ---- structured logging ----
+// Every log line is a single-line JSON object, easy to grep / filter in
+// supabase function logs UI. Trace IDs are propagated through every call so
+// you can follow one user's request end-to-end.
+const newTraceId = (): string => {
+  // 12-char base36 id — short, unique enough for log correlation
+  return (
+    Date.now().toString(36).slice(-6) +
+    Math.random().toString(36).slice(2, 8)
+  );
+};
+
+type LogLevel = "info" | "warn" | "error" | "debug";
+const slog = (
+  level: LogLevel,
+  traceId: string,
+  event: string,
+  fields: Record<string, unknown> = {},
+) => {
+  const line = JSON.stringify({
+    t: new Date().toISOString(),
+    level,
+    trace: traceId,
+    event,
+    ...fields,
+  });
+  if (level === "error") console.error(line);
+  else if (level === "warn") console.warn(line);
+  else console.log(line);
+};
+
+// Per-request RapidAPI timing collector. Stored on a context object that
+// flows through buildResult so we can emit one aggregated summary per request.
+interface ReqCtx {
+  traceId: string;
+  username: string;
+  type: string;
+  startedAt: number;
+  rapidCalls: Array<{ path: string; ms: number; status: "ok" | "err"; err?: string }>;
+}
+const newCtx = (traceId: string, username: string, type: string): ReqCtx => ({
+  traceId,
+  username,
+  type,
+  startedAt: Date.now(),
+  rapidCalls: [],
+});
+
+
 
 // ---- in-memory cache & request coalescing (per edge instance) ----
 // Survives between invocations on the same warm instance, dramatically reducing
