@@ -590,10 +590,20 @@ Deno.serve(async (req) => {
   const cacheKey = `${username}::${type}`;
   const force = !!body.force;
 
-  // 1) Serve from in-memory cache (instant, zero RapidAPI cost)
+  // 1) Stale-While-Revalidate: serve from cache instantly when available.
+  //    - Fresh hit → just serve.
+  //    - Stale hit → serve immediately AND kick off a background refresh so
+  //      the next user gets fresh data without waiting on a cold scrape.
   if (!force) {
     const cached = cacheGet(cacheKey);
-    if (cached) return json(cached, 200, { "X-Cache": "HIT", "Cache-Control": "public, max-age=300" });
+    if (cached) {
+      if (cached.isStale) scheduleRevalidation(cacheKey, username, type);
+      return json(cached.payload, 200, {
+        "X-Cache": cached.isStale ? "STALE" : "HIT",
+        "X-Cache-Age": String(Math.round(cached.ageMs / 1000)),
+        "Cache-Control": "public, max-age=300",
+      });
+    }
   }
 
   // 2) Coalesce concurrent identical requests — only 1 RapidAPI call for N parallel callers
