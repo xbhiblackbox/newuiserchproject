@@ -14,6 +14,7 @@ import GraphEditorModal from "@/components/GraphEditorModal";
 import RetentionEditorModal from "@/components/RetentionEditorModal";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadToCloudinary } from "@/lib/cloudinary";
+import { applyOverrideToReel, getOverride, getReelsAccountKey, mergeAndSaveOverride } from "@/lib/reelsDataStore";
 
 // Seeded pseudo-random number generator
 const seededRandom = (seed: number) => {
@@ -125,8 +126,10 @@ const ReelInsightsScreen = () => {
   const postIndex = parseInt(id || "0");
 
   const isMainAccount = accountUsername === "just4abhii" || account?.profile === currentUser;
+  const reelsAccountKey = getReelsAccountKey(accountUsername, isMainAccount);
   const reelsData = isMainAccount ? loadReelsData() : null;
-  const post = isMainAccount && reelsData ? reelsData[postIndex] : null;
+  const [savedOverride, setSavedOverride] = useState<Record<string, unknown> | null>(null);
+  const post = isMainAccount && reelsData?.[postIndex] ? applyOverrideToReel(reelsData[postIndex], savedOverride) : null;
   console.log("[Insights] isMain:", isMainAccount, "postIndex:", postIndex, "graphStartDate:", post?.graphStartDate, "views:", post?.insights?.views, "caption:", post?.caption?.slice(0, 20));
   const fallbackPost = account?.posts?.[postIndex] || account?.posts?.[0];
   // Thumbnail: prioritize custom thumbnail, then auto-generate from video URL
@@ -283,10 +286,8 @@ const ReelInsightsScreen = () => {
       ...overrides,
     };
     try {
-      await (supabase as any).from('reels_data').upsert(
-        { account: accountUsername, post_index: postIndex, data, updated_at: new Date().toISOString() },
-        { onConflict: 'account,post_index' }
-      );
+      await mergeAndSaveOverride(reelsAccountKey, postIndex, data);
+      setSavedOverride(prev => ({ ...(prev ?? {}), ...data }));
     } catch (e) {
       console.warn('[Supabase] Save failed, using localStorage only:', e);
     }
@@ -299,7 +300,7 @@ const ReelInsightsScreen = () => {
     customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editTypicalTop,
     editXDate1, editXDate2, editXDate3, timeRangeMode, showGraph,
     editSources, editCountries, editAgeGroups, editAccountsReached, editFollows,
-    accountUsername, postIndex,
+    reelsAccountKey, postIndex,
   ]);
 
   // ── Load from Supabase on mount (non-blocking) ─────────────────────────────
