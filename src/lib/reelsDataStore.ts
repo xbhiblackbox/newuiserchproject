@@ -26,7 +26,7 @@ export function applyOverrideToReel(reel: ExtendedPostItem, override?: OverrideD
     },
   };
 
-  for (const key of ["thumbnail", "videoUrl", "caption", "duration", "musicTitle", "musicIcon", "graphStartDate", "yCenter", "yTop", "showGraph"] as const) {
+  for (const key of ["thumbnail", "videoUrl", "caption", "duration", "musicTitle", "musicIcon", "graphStartDate", "displayDate", "yCenter", "yTop", "showGraph", "profileVisits", "audienceText", "typicalViewRate", "monetisationStatus", "editTypicalTop", "timeRangeMode", "retentionImage"] as const) {
     if (override[key] !== undefined && override[key] !== null) (next as any)[key] = override[key];
   }
   if (override.engagementYCenter != null) (next as any).engagementYCenter = override.engagementYCenter;
