@@ -1,6 +1,43 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { ExtendedPostItem } from "@/data/reelInsightsData";
 
 export type OverrideData = Record<string, any>;
+export const OWNED_REELS_ACCOUNT = "just4abhii";
+
+const INSIGHT_KEYS = [
+  "views", "likes", "comments", "shares", "reposts", "saves",
+  "watchTime", "avgWatchTime", "followerViewsPct", "viewRatePast3Sec",
+  "genderMale", "genderFemale", "countries", "ageGroups", "sources",
+  "accountsReached", "follows", "skipRate", "typicalSkipRate",
+  "retentionCurve", "engagementCurve", "typicalRetentionCurve",
+] as const;
+
+export function getReelsAccountKey(account: string, isMainAccount: boolean): string {
+  return isMainAccount ? OWNED_REELS_ACCOUNT : account;
+}
+
+export function applyOverrideToReel(reel: ExtendedPostItem, override?: OverrideData | null): ExtendedPostItem {
+  if (!override) return reel;
+  const next: ExtendedPostItem = { ...reel, insights: { ...reel.insights } };
+
+  for (const key of ["thumbnail", "videoUrl", "caption", "duration", "musicTitle", "musicIcon", "graphStartDate", "yCenter", "yTop", "showGraph"] as const) {
+    if (override[key] !== undefined && override[key] !== null) (next as any)[key] = override[key];
+  }
+  if (override.engagementYCenter != null) (next as any).engagementYCenter = override.engagementYCenter;
+  if (override.engagementYTop != null) (next as any).engagementYTop = override.engagementYTop;
+
+  for (const key of INSIGHT_KEYS) {
+    if (override[key] !== undefined && override[key] !== null) (next.insights as any)[key] = override[key];
+  }
+  if (Array.isArray(override.customGraphData)) next.insights.viewsOverTime = override.customGraphData;
+  if (next.insights.viewsOverTime?.length >= 5) {
+    if (override.xDate1) next.insights.viewsOverTime[0].day = String(override.xDate1);
+    if (override.xDate2) next.insights.viewsOverTime[2].day = String(override.xDate2);
+    if (override.xDate3) next.insights.viewsOverTime[4].day = String(override.xDate3);
+  }
+
+  return next;
+}
 
 export async function getOverride(account: string, postIndex: number): Promise<OverrideData | null> {
   const { data, error } = await supabase
@@ -48,4 +85,13 @@ export async function saveOverride(
     return false;
   }
   return true;
+}
+
+export async function mergeAndSaveOverride(
+  account: string,
+  postIndex: number,
+  data: OverrideData
+): Promise<boolean> {
+  const existing = await getOverride(account, postIndex);
+  return saveOverride(account, postIndex, { ...(existing ?? {}), ...data });
 }
