@@ -4,7 +4,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ImagePlus, X, Video, Loader2 } from "lucide-react";
 import { uploadToCloudinary } from "@/lib/cloudinary";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import GraphEditorModal from "@/components/GraphEditorModal";
 import type { ExtendedPostItem } from "@/data/reelInsightsData";
