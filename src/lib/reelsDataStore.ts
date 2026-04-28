@@ -18,7 +18,13 @@ export function getReelsAccountKey(account: string, isMainAccount: boolean): str
 
 export function applyOverrideToReel(reel: ExtendedPostItem, override?: OverrideData | null): ExtendedPostItem {
   if (!override) return reel;
-  const next: ExtendedPostItem = { ...reel, insights: { ...reel.insights } };
+  const next: ExtendedPostItem = {
+    ...reel,
+    insights: {
+      ...reel.insights,
+      viewsOverTime: reel.insights.viewsOverTime?.map((point) => ({ ...point })) ?? [],
+    },
+  };
 
   for (const key of ["thumbnail", "videoUrl", "caption", "duration", "musicTitle", "musicIcon", "graphStartDate", "yCenter", "yTop", "showGraph"] as const) {
     if (override[key] !== undefined && override[key] !== null) (next as any)[key] = override[key];
