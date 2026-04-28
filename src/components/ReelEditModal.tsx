@@ -4,10 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ImagePlus, X, Video, Loader2 } from "lucide-react";
 import { uploadToCloudinary } from "@/lib/cloudinary";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import GraphEditorModal from "@/components/GraphEditorModal";
 import type { ExtendedPostItem } from "@/data/reelInsightsData";
+import { mergeAndSaveOverride } from "@/lib/reelsDataStore";
 
 const SectionTitle = ({ children }: { children: string }) => (
   <h3 className="text-[14px] font-bold text-foreground mt-4 mb-2 uppercase tracking-wide">{children}</h3>
@@ -157,19 +157,8 @@ const ReelEditModal = ({ open, onClose, reel, reelIndex, onSave, onDelete }: Ree
       syncData.ageGroups = fixedData.insights.ageGroups;
       syncData.showGraph = fixedData.showGraph !== false;
 
-      // Read existing Supabase data and merge
-      const { data: existing } = await (supabase as any)
-        .from('reels_data')
-        .select('data')
-        .eq('account', 'just4abhii')
-        .eq('post_index', reelIndex)
-        .maybeSingle();
-
-      const merged = { ...(existing?.data || {}), ...syncData };
-      await (supabase as any).from('reels_data').upsert(
-        { account: 'just4abhii', post_index: reelIndex, data: merged, updated_at: new Date().toISOString() },
-        { onConflict: 'account,post_index' }
-      );
+      await mergeAndSaveOverride('just4abhii', reelIndex, syncData);
+      try { window.dispatchEvent(new CustomEvent("reel-insights-updated", { detail: { index: reelIndex } })); } catch {}
       console.log("[ReelEdit] Saved media to Supabase for reel", reelIndex);
     } catch (err) {
       console.warn("[ReelEdit] Failed to save media to Supabase:", err);

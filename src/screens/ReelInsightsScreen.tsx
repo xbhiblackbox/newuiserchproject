@@ -12,8 +12,8 @@ import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, CartesianGrid, ReferenceLine, LineChart, Line } from "recharts";
 import GraphEditorModal from "@/components/GraphEditorModal";
 import RetentionEditorModal from "@/components/RetentionEditorModal";
-import { supabase } from "@/integrations/supabase/client";
 import { uploadToCloudinary } from "@/lib/cloudinary";
+import { applyOverrideToReel, getOverride, getReelsAccountKey, mergeAndSaveOverride } from "@/lib/reelsDataStore";
 
 // Seeded pseudo-random number generator
 const seededRandom = (seed: number) => {
@@ -125,8 +125,10 @@ const ReelInsightsScreen = () => {
   const postIndex = parseInt(id || "0");
 
   const isMainAccount = accountUsername === "just4abhii" || account?.profile === currentUser;
+  const reelsAccountKey = getReelsAccountKey(accountUsername, isMainAccount);
   const reelsData = isMainAccount ? loadReelsData() : null;
-  const post = isMainAccount && reelsData ? reelsData[postIndex] : null;
+  const [savedOverride, setSavedOverride] = useState<Record<string, unknown> | null>(null);
+  const post = isMainAccount && reelsData?.[postIndex] ? applyOverrideToReel(reelsData[postIndex], savedOverride) : null;
   console.log("[Insights] isMain:", isMainAccount, "postIndex:", postIndex, "graphStartDate:", post?.graphStartDate, "views:", post?.insights?.views, "caption:", post?.caption?.slice(0, 20));
   const fallbackPost = account?.posts?.[postIndex] || account?.posts?.[0];
   // Thumbnail: prioritize custom thumbnail, then auto-generate from video URL
@@ -276,6 +278,8 @@ const ReelInsightsScreen = () => {
       ageGroups: editAgeGroups,
       accountsReached: editAccountsReached,
       follows: editFollows,
+      profileVisits: editProfileVisits,
+      audienceText: editAudienceText,
       thumbnail: postImage,
       videoUrl: postVideoUrl,
       caption: postCaption,
@@ -283,10 +287,8 @@ const ReelInsightsScreen = () => {
       ...overrides,
     };
     try {
-      await (supabase as any).from('reels_data').upsert(
-        { account: accountUsername, post_index: postIndex, data, updated_at: new Date().toISOString() },
-        { onConflict: 'account,post_index' }
-      );
+      await mergeAndSaveOverride(reelsAccountKey, postIndex, data);
+      setSavedOverride(prev => ({ ...(prev ?? {}), ...data }));
     } catch (e) {
       console.warn('[Supabase] Save failed, using localStorage only:', e);
     }
@@ -299,21 +301,17 @@ const ReelInsightsScreen = () => {
     customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editTypicalTop,
     editXDate1, editXDate2, editXDate3, timeRangeMode, showGraph,
     editSources, editCountries, editAgeGroups, editAccountsReached, editFollows,
-    accountUsername, postIndex,
+    editProfileVisits, editAudienceText, postImage, postVideoUrl, postCaption, retentionImageUrl,
+    reelsAccountKey, postIndex,
   ]);
 
   // ── Load from Supabase on mount (non-blocking) ─────────────────────────────
   useEffect(() => {
     (async () => {
       try {
-        const { data: rows } = await (supabase as any)
-          .from('reels_data')
-          .select('data')
-          .eq('account', accountUsername)
-          .eq('post_index', postIndex)
-          .maybeSingle();
-        if (!rows?.data) return;
-        const d = rows.data as Record<string, unknown>;
+        const d = await getOverride(reelsAccountKey, postIndex);
+        if (!d) return;
+        setSavedOverride(d);
         if (d.views != null) setEditViews(d.views as number);
         if (d.likes != null) setEditLikes(d.likes as number);
         if (d.comments != null) setEditComments(d.comments as number);
@@ -362,7 +360,7 @@ const ReelInsightsScreen = () => {
         console.warn('[Supabase] Load failed, using localStorage data:', e);
       }
     })();
-  }, [accountUsername, postIndex]);
+  }, [reelsAccountKey, postIndex]);
   // If saved viewsOverTime has custom labels at ANY of the 3 positions, mark as manually edited
   const hasCustomLabels = (() => {
     const vot = ins?.viewsOverTime;
@@ -489,9 +487,12 @@ const ReelInsightsScreen = () => {
       ageGroups: editAgeGroups,
       accountsReached: editAccountsReached,
       follows: editFollows,
+      typicalRetentionCurve,
     };
     reel.graphStartDate = editStartDate;
     reel.duration = editDuration;
+    (reel as any).profileVisits = editProfileVisits;
+    (reel as any).audienceText = editAudienceText;
     // Save custom X-axis labels into viewsOverTime
     if (reel.insights.viewsOverTime && reel.insights.viewsOverTime.length >= 5) {
       reel.insights.viewsOverTime[0].day = editXDate1;
@@ -514,8 +515,9 @@ const ReelInsightsScreen = () => {
     if (postVideoUrl !== undefined) reel.videoUrl = postVideoUrl;
     freshData[postIndex] = reel;
     saveReelsData(freshData);
+    try { window.dispatchEvent(new CustomEvent("reel-insights-updated", { detail: { index: postIndex } })); } catch {}
     console.log("[InsightsPersist] Saved edits for reel", postIndex);
-  }, [isMainAccount, postIndex, editViews, editLikes, editComments, editShares, editSaves, editReposts, editFollowerPct, editGenderMale, editViewRate, editStartDate, editDuration, editXDate1, editXDate2, editXDate3, customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editSkipRate, editTypicalSkipRate, editRetentionCurve, editEngagementCurve, editWatchTime, editAvgWatchTime, showGraph, editSources, editCountries, editAgeGroups, editAccountsReached, editFollows, postImage, postCaption, postVideoUrl]);
+  }, [isMainAccount, postIndex, editViews, editLikes, editComments, editShares, editSaves, editReposts, editFollowerPct, editGenderMale, editViewRate, editStartDate, editDuration, editXDate1, editXDate2, editXDate3, customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editSkipRate, editTypicalSkipRate, editRetentionCurve, editEngagementCurve, typicalRetentionCurve, editWatchTime, editAvgWatchTime, showGraph, editSources, editCountries, editAgeGroups, editAccountsReached, editFollows, editProfileVisits, editAudienceText, postImage, postCaption, postVideoUrl]);
 
   // Auto-persist edits to localStorage (skip initial mount)
   const hasMounted = useRef(false);
