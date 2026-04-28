@@ -278,6 +278,8 @@ const ReelInsightsScreen = () => {
       ageGroups: editAgeGroups,
       accountsReached: editAccountsReached,
       follows: editFollows,
+      profileVisits: editProfileVisits,
+      audienceText: editAudienceText,
       thumbnail: postImage,
       videoUrl: postVideoUrl,
       caption: postCaption,
@@ -299,6 +301,7 @@ const ReelInsightsScreen = () => {
     customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editTypicalTop,
     editXDate1, editXDate2, editXDate3, timeRangeMode, showGraph,
     editSources, editCountries, editAgeGroups, editAccountsReached, editFollows,
+    editProfileVisits, editAudienceText, postImage, postVideoUrl, postCaption, retentionImageUrl,
     reelsAccountKey, postIndex,
   ]);
 
@@ -484,9 +487,12 @@ const ReelInsightsScreen = () => {
       ageGroups: editAgeGroups,
       accountsReached: editAccountsReached,
       follows: editFollows,
+      typicalRetentionCurve,
     };
     reel.graphStartDate = editStartDate;
     reel.duration = editDuration;
+    (reel as any).profileVisits = editProfileVisits;
+    (reel as any).audienceText = editAudienceText;
     // Save custom X-axis labels into viewsOverTime
     if (reel.insights.viewsOverTime && reel.insights.viewsOverTime.length >= 5) {
       reel.insights.viewsOverTime[0].day = editXDate1;
@@ -511,7 +517,7 @@ const ReelInsightsScreen = () => {
     saveReelsData(freshData);
     try { window.dispatchEvent(new CustomEvent("reel-insights-updated", { detail: { index: postIndex } })); } catch {}
     console.log("[InsightsPersist] Saved edits for reel", postIndex);
-  }, [isMainAccount, postIndex, editViews, editLikes, editComments, editShares, editSaves, editReposts, editFollowerPct, editGenderMale, editViewRate, editStartDate, editDuration, editXDate1, editXDate2, editXDate3, customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editSkipRate, editTypicalSkipRate, editRetentionCurve, editEngagementCurve, editWatchTime, editAvgWatchTime, showGraph, editSources, editCountries, editAgeGroups, editAccountsReached, editFollows, postImage, postCaption, postVideoUrl]);
+  }, [isMainAccount, postIndex, editViews, editLikes, editComments, editShares, editSaves, editReposts, editFollowerPct, editGenderMale, editViewRate, editStartDate, editDuration, editXDate1, editXDate2, editXDate3, customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editSkipRate, editTypicalSkipRate, editRetentionCurve, editEngagementCurve, typicalRetentionCurve, editWatchTime, editAvgWatchTime, showGraph, editSources, editCountries, editAgeGroups, editAccountsReached, editFollows, editProfileVisits, editAudienceText, postImage, postCaption, postVideoUrl]);
 
   // Auto-persist edits to localStorage (skip initial mount)
   const hasMounted = useRef(false);
