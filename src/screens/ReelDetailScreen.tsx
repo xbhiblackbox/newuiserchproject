@@ -7,9 +7,9 @@ import { mockAccounts, currentUser } from "@/data/mockData";
 import { loadReelsData, saveReelsData } from "@/data/reelInsightsData";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { supabase } from "@/integrations/supabase/client";
 import CommentsSheet from "@/components/CommentsSheet";
 import ShareSheet from "@/components/ShareSheet";
+import { getReelsAccountKey, mergeAndSaveOverride } from "@/lib/reelsDataStore";
 
 const CameraIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -101,22 +101,10 @@ const ProfileReelCard = ({
       saveReelsData(fresh);
       try { window.dispatchEvent(new CustomEvent("reel-insights-updated", { detail: { index: data.index, updates } })); } catch {}
     } catch (e) { console.warn("[ReelDetail] localStorage persist failed", e); }
-    // Mirror to Supabase so other devices/screens reading from DB stay in sync
+    // Mirror to Lovable Cloud so other devices/screens reading from DB stay in sync
     (async () => {
       try {
-        const { data: row } = await (supabase as any)
-          .from("reels_data")
-          .select("data")
-          .eq("account", data.accountUsername)
-          .eq("post_index", data.index)
-          .maybeSingle();
-        const merged = { ...(row?.data || {}), ...updates };
-        await (supabase as any)
-          .from("reels_data")
-          .upsert(
-            { account: data.accountUsername, post_index: data.index, data: merged, updated_at: new Date().toISOString() },
-            { onConflict: "account,post_index" }
-          );
+        await mergeAndSaveOverride(data.accountUsername, data.index, updates);
       } catch (e) { console.warn("[ReelDetail] Supabase persist failed", e); }
     })();
   }, [data.index, data.accountUsername, data.isMainAccount]);
@@ -391,6 +379,7 @@ const ReelDetailScreen = () => {
   }
 
   const isMainAccount = accountUsername === "just4abhii" || account.profile === currentUser || account.profile.username.toLowerCase() === currentUser.username.toLowerCase();
+  const reelsAccountKey = getReelsAccountKey(accountUsername, isMainAccount);
   const reelsData = isMainAccount ? loadReelsData() : null;
 
   // Build all reels data for this profile
@@ -413,7 +402,7 @@ const ReelDetailScreen = () => {
       sends: ins?.shares ?? 24,
       saves: ins?.saves ?? 60,
       viewsNum: ins?.views ?? 7000,
-      accountUsername,
+      accountUsername: reelsAccountKey,
       profileAvatar: account.profile.avatar,
       profileUsername: account.profile.username,
       isMainAccount,
