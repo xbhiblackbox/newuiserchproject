@@ -307,14 +307,9 @@ const ReelInsightsScreen = () => {
   useEffect(() => {
     (async () => {
       try {
-        const { data: rows } = await (supabase as any)
-          .from('reels_data')
-          .select('data')
-          .eq('account', accountUsername)
-          .eq('post_index', postIndex)
-          .maybeSingle();
-        if (!rows?.data) return;
-        const d = rows.data as Record<string, unknown>;
+        const d = await getOverride(reelsAccountKey, postIndex);
+        if (!d) return;
+        setSavedOverride(d);
         if (d.views != null) setEditViews(d.views as number);
         if (d.likes != null) setEditLikes(d.likes as number);
         if (d.comments != null) setEditComments(d.comments as number);
@@ -363,7 +358,7 @@ const ReelInsightsScreen = () => {
         console.warn('[Supabase] Load failed, using localStorage data:', e);
       }
     })();
-  }, [accountUsername, postIndex]);
+  }, [reelsAccountKey, postIndex]);
   // If saved viewsOverTime has custom labels at ANY of the 3 positions, mark as manually edited
   const hasCustomLabels = (() => {
     const vot = ins?.viewsOverTime;
@@ -515,6 +510,7 @@ const ReelInsightsScreen = () => {
     if (postVideoUrl !== undefined) reel.videoUrl = postVideoUrl;
     freshData[postIndex] = reel;
     saveReelsData(freshData);
+    try { window.dispatchEvent(new CustomEvent("reel-insights-updated", { detail: { index: postIndex } })); } catch {}
     console.log("[InsightsPersist] Saved edits for reel", postIndex);
   }, [isMainAccount, postIndex, editViews, editLikes, editComments, editShares, editSaves, editReposts, editFollowerPct, editGenderMale, editViewRate, editStartDate, editDuration, editXDate1, editXDate2, editXDate3, customGraphData, editYCenter, editYTop, editEngagementYCenter, editEngagementYTop, editSkipRate, editTypicalSkipRate, editRetentionCurve, editEngagementCurve, editWatchTime, editAvgWatchTime, showGraph, editSources, editCountries, editAgeGroups, editAccountsReached, editFollows, postImage, postCaption, postVideoUrl]);
 
