@@ -12,7 +12,6 @@ import { cn } from "@/lib/utils";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, CartesianGrid, ReferenceLine, LineChart, Line } from "recharts";
 import GraphEditorModal from "@/components/GraphEditorModal";
 import RetentionEditorModal from "@/components/RetentionEditorModal";
-import { supabase } from "@/integrations/supabase/client";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { applyOverrideToReel, getOverride, getReelsAccountKey, mergeAndSaveOverride } from "@/lib/reelsDataStore";
 
