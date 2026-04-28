@@ -14,6 +14,7 @@ import VideoThumbnail from "@/components/VideoThumbnail";
 import { supabase } from "@/integrations/supabase/client";
 import { clearAuthSession } from "@/lib/auth";
 import HugeRepostIcon from "@/components/icons/RepostIcon";
+import { applyOverrideToReel } from "@/lib/reelsDataStore";
 
 const ProfileScreen = () => {
   const [activeTab, setActiveTab] = useState("posts");
@@ -127,17 +128,10 @@ const ProfileScreen = () => {
             const sourceUsername = typeof d.sourceUsername === 'string' ? d.sourceUsername.toLowerCase() : "";
             if (profileUsername !== "just4abhii" && sourceUsername !== profileUsername) continue;
             if (idx >= 0 && idx < updated.length) {
-              const reel = { ...updated[idx] };
-              if (d.thumbnail && typeof d.thumbnail === 'string') reel.thumbnail = d.thumbnail;
-              if (d.videoUrl && typeof d.videoUrl === 'string') reel.videoUrl = d.videoUrl;
-              if (d.caption && typeof d.caption === 'string') reel.caption = d.caption;
-              if (d.musicTitle && typeof d.musicTitle === 'string') reel.musicTitle = d.musicTitle;
-              if (d.musicIcon && typeof d.musicIcon === 'string') reel.musicIcon = d.musicIcon;
-              if (d.views != null) reel.insights = { ...reel.insights, views: d.views as number };
-              if (d.likes != null) reel.insights = { ...reel.insights, likes: d.likes as number };
-              updated[idx] = reel;
+              updated[idx] = applyOverrideToReel(updated[idx], d);
             }
           }
+          saveReelsData(updated);
           return updated;
         });
       } catch (err) {
