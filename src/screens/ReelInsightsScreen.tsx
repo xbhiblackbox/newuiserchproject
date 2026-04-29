@@ -597,7 +597,7 @@ const ReelInsightsScreen = () => {
       {/* Header */}
       <header className="sticky top-0 z-40 flex items-center justify-between px-4 py-3.5 bg-background">
         <div className="flex items-center gap-5">
-          <button onClick={() => navigate('/profile')} className="text-foreground">
+          <button onClick={() => { persistEdits(); saveToSupabase(); navigate('/profile'); }} className="text-foreground">
             <ArrowLeft size={22} strokeWidth={1.8} />
           </button>
           <h1 
