@@ -253,6 +253,7 @@ const ReelInsightsScreen = () => {
   // ── Supabase: save all editable state ──────────────────────────────────────
   const saveToSupabase = useCallback(async (overrides?: Record<string, unknown>) => {
     const data = {
+      sourceUsername: account.profile.username,
       views: editViews, likes: editLikes, comments: editComments,
       shares: editShares, saves: editSaves, reposts: editReposts,
       followerViewsPct: editFollowerPct, genderMale: editGenderMale,
@@ -287,8 +288,10 @@ const ReelInsightsScreen = () => {
       ...overrides,
     };
     try {
-      await mergeAndSaveOverride(reelsAccountKey, postIndex, data);
+      const saved = await mergeAndSaveOverride(reelsAccountKey, postIndex, data);
+      if (!saved) throw new Error("Unable to save reel override");
       setSavedOverride(prev => ({ ...(prev ?? {}), ...data }));
+      try { window.dispatchEvent(new CustomEvent("reel-insights-updated", { detail: { index: postIndex, data } })); } catch {}
     } catch (e) {
       console.warn('[Supabase] Save failed, using localStorage only:', e);
     }
@@ -302,7 +305,7 @@ const ReelInsightsScreen = () => {
     editXDate1, editXDate2, editXDate3, timeRangeMode, showGraph,
     editSources, editCountries, editAgeGroups, editAccountsReached, editFollows,
     editProfileVisits, editAudienceText, postImage, postVideoUrl, postCaption, retentionImageUrl,
-    reelsAccountKey, postIndex,
+    account.profile.username, reelsAccountKey, postIndex,
   ]);
 
   // ── Load from Supabase on mount (non-blocking) ─────────────────────────────
@@ -526,9 +529,12 @@ const ReelInsightsScreen = () => {
       hasMounted.current = true;
       return;
     }
-    const timer = setTimeout(() => persistEdits(), 100);
+    const timer = setTimeout(() => {
+      persistEdits();
+      saveToSupabase();
+    }, 350);
     return () => clearTimeout(timer);
-  }, [persistEdits]);
+  }, [persistEdits, saveToSupabase]);
 
   const [loading, setLoading] = useState(true);
 
