@@ -369,6 +369,7 @@ const ReelDetailScreen = () => {
   const accountUsername = searchParams.get("account") || "just4abhii";
   const account = mockAccounts[accountUsername] || mockAccounts["just4abhii"] || Object.values(mockAccounts)[0];
   const startIndex = parseInt(id || "0");
+  const isMainAccount = accountUsername === "just4abhii" || account.profile === currentUser || account.profile.username.toLowerCase() === currentUser.username.toLowerCase();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(startIndex);
@@ -379,7 +380,6 @@ const ReelDetailScreen = () => {
     return null;
   }
 
-  const isMainAccount = accountUsername === "just4abhii" || account.profile === currentUser || account.profile.username.toLowerCase() === currentUser.username.toLowerCase();
   const reelsAccountKey = getReelsAccountKey(accountUsername, isMainAccount);
   const reelsData = isMainAccount ? syncedReelsData : null;
 
