@@ -372,6 +372,7 @@ const ReelDetailScreen = () => {
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(startIndex);
+  const [syncedReelsData, setSyncedReelsData] = useState(() => isMainAccount ? loadReelsData() : null);
 
   if (!account) {
     navigate('/profile');
@@ -380,7 +381,32 @@ const ReelDetailScreen = () => {
 
   const isMainAccount = accountUsername === "just4abhii" || account.profile === currentUser || account.profile.username.toLowerCase() === currentUser.username.toLowerCase();
   const reelsAccountKey = getReelsAccountKey(accountUsername, isMainAccount);
-  const reelsData = isMainAccount ? loadReelsData() : null;
+  const reelsData = isMainAccount ? syncedReelsData : null;
+
+  useEffect(() => {
+    if (!isMainAccount) return;
+    const profileUsername = (account.profile.username || "").toLowerCase();
+    let active = true;
+    const refresh = async () => {
+      const fresh = [...loadReelsData()];
+      const overrides = await getAllOverrides(reelsAccountKey);
+      Object.entries(overrides).forEach(([idxKey, override]) => {
+        const idx = Number(idxKey);
+        const sourceUsername = typeof override.sourceUsername === "string" ? override.sourceUsername.toLowerCase() : "";
+        if (profileUsername !== "just4abhii" && sourceUsername && sourceUsername !== profileUsername) return;
+        if (idx >= 0 && idx < fresh.length) fresh[idx] = applyOverrideToReel(fresh[idx], override);
+      });
+      if (!active) return;
+      saveReelsData(fresh);
+      setSyncedReelsData(fresh);
+    };
+    refresh();
+    window.addEventListener("reel-insights-updated", refresh as EventListener);
+    return () => {
+      active = false;
+      window.removeEventListener("reel-insights-updated", refresh as EventListener);
+    };
+  }, [account.profile.username, isMainAccount, reelsAccountKey]);
 
   // Build all reels data for this profile
   const sourcePosts = isMainAccount && reelsData?.length ? reelsData : account.posts;
