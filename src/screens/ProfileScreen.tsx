@@ -14,7 +14,7 @@ import VideoThumbnail from "@/components/VideoThumbnail";
 import { supabase } from "@/integrations/supabase/client";
 import { clearAuthSession } from "@/lib/auth";
 import HugeRepostIcon from "@/components/icons/RepostIcon";
-import { applyOverrideToReel } from "@/lib/reelsDataStore";
+import { applyOverrideToReel, getAllOverrides } from "@/lib/reelsDataStore";
 
 const ProfileScreen = () => {
   const [activeTab, setActiveTab] = useState("posts");
@@ -143,7 +143,21 @@ const ProfileScreen = () => {
   useEffect(() => {
     const syncClonedInstagram = () => {
       if (!isJust4abhii) return;
-      setReelsData(loadReelsData());
+      const profileUsername = (profile.username || "").toLowerCase();
+      (async () => {
+        const overrides = await getAllOverrides("just4abhii");
+        setReelsData(() => {
+          const updated = [...loadReelsData()];
+          Object.entries(overrides).forEach(([idxKey, override]) => {
+            const idx = Number(idxKey);
+            const sourceUsername = typeof override.sourceUsername === "string" ? override.sourceUsername.toLowerCase() : "";
+            if (profileUsername !== "just4abhii" && sourceUsername && sourceUsername !== profileUsername) return;
+            if (idx >= 0 && idx < updated.length) updated[idx] = applyOverrideToReel(updated[idx], override);
+          });
+          saveReelsData(updated);
+          return updated;
+        });
+      })();
     };
     const syncOnFocus = () => {
       if (!isJust4abhii) return;
@@ -160,7 +174,7 @@ const ProfileScreen = () => {
       window.removeEventListener("focus", syncOnFocus);
       document.removeEventListener("visibilitychange", syncOnFocus);
     };
-  }, [isJust4abhii]);
+  }, [isJust4abhii, profile.username]);
 
   const getThumb = (post: { thumbnail: string; videoUrl?: string }) => {
     // Always prioritize user-set thumbnail
