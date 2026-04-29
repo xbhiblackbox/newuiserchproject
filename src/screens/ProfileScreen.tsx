@@ -58,16 +58,31 @@ const ProfileScreen = () => {
   const highlightLongPressTriggered = useRef(false);
   const [highlightVersion, setHighlightVersion] = useState(0);
 
-  // Show/hide highlights toggle
+  // Show/hide highlights toggle (per-username)
+  const highlightsStorageKey = `showHighlights:${activeUsername}`;
   const [showHighlights, setShowHighlights] = useState(() => {
-    const saved = localStorage.getItem('showHighlights');
-    return saved !== null ? saved === 'true' : false;
+    const saved = localStorage.getItem(`showHighlights:${activeUsername}`);
+    if (saved !== null) return saved === 'true';
+    // Legacy global fallback
+    const legacy = localStorage.getItem('showHighlights');
+    return legacy !== null ? legacy === 'true' : false;
   });
+
+  // Re-sync when active username changes
+  useEffect(() => {
+    const saved = localStorage.getItem(`showHighlights:${activeUsername}`);
+    if (saved !== null) {
+      setShowHighlights(saved === 'true');
+    } else {
+      const legacy = localStorage.getItem('showHighlights');
+      setShowHighlights(legacy !== null ? legacy === 'true' : false);
+    }
+  }, [activeUsername]);
 
   const toggleHighlights = useCallback((val: boolean) => {
     setShowHighlights(val);
-    localStorage.setItem('showHighlights', String(val));
-  }, []);
+    localStorage.setItem(highlightsStorageKey, String(val));
+  }, [highlightsStorageKey]);
 
   // Highlight viewer state
   const [highlightViewerOpen, setHighlightViewerOpen] = useState(false);
