@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import CommentsSheet from "@/components/CommentsSheet";
 import ShareSheet from "@/components/ShareSheet";
-import { getReelsAccountKey, mergeAndSaveOverride } from "@/lib/reelsDataStore";
+import { applyOverrideToReel, getAllOverrides, getReelsAccountKey, mergeAndSaveOverride } from "@/lib/reelsDataStore";
 
 const CameraIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -104,7 +104,7 @@ const ProfileReelCard = ({
     // Mirror to Lovable Cloud so other devices/screens reading from DB stay in sync
     (async () => {
       try {
-        await mergeAndSaveOverride(data.accountUsername, data.index, updates);
+        await mergeAndSaveOverride(data.accountUsername, data.index, { sourceUsername: data.profileUsername, ...updates });
       } catch (e) { console.warn("[ReelDetail] Supabase persist failed", e); }
     })();
   }, [data.index, data.accountUsername, data.isMainAccount]);
