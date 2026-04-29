@@ -297,7 +297,7 @@ const ReelInsightsScreen = () => {
     }
   }, [
     editViews, editLikes, editComments, editShares, editSaves, editReposts,
-    editFollowerPct, editGenderMale, editViewRate,
+    editFollowerPct, editGenderMale, editViewRate, editTypicalViewRate, monetisationStatus,
     editStartDate, editDisplayDate, editDuration,
     editWatchTime, editAvgWatchTime,
     editSkipRate, editTypicalSkipRate, editRetentionCurve, editEngagementCurve, typicalRetentionCurve,
