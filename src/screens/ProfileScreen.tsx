@@ -122,11 +122,15 @@ const ProfileScreen = () => {
         if (!rows || rows.length === 0) return;
         setReelsData(prev => {
           const updated = [...prev];
+          const hasProfileScopedRows = profileUsername !== "just4abhii" && rows.some((row: any) => {
+            const sourceUsername = typeof row.data?.sourceUsername === 'string' ? row.data.sourceUsername.toLowerCase() : "";
+            return sourceUsername === profileUsername;
+          });
           for (const row of rows) {
             const idx = row.post_index;
             const d = row.data as Record<string, unknown>;
             const sourceUsername = typeof d.sourceUsername === 'string' ? d.sourceUsername.toLowerCase() : "";
-            if (profileUsername !== "just4abhii" && sourceUsername !== profileUsername) continue;
+            if (hasProfileScopedRows && sourceUsername !== profileUsername) continue;
             if (idx >= 0 && idx < updated.length) {
               updated[idx] = applyOverrideToReel(updated[idx], d);
             }
@@ -148,10 +152,14 @@ const ProfileScreen = () => {
         const overrides = await getAllOverrides("just4abhii");
         setReelsData(() => {
           const updated = [...loadReelsData()];
+          const hasProfileScopedOverrides = profileUsername !== "just4abhii" && Object.values(overrides).some((override) => {
+            const sourceUsername = typeof override.sourceUsername === "string" ? override.sourceUsername.toLowerCase() : "";
+            return sourceUsername === profileUsername;
+          });
           Object.entries(overrides).forEach(([idxKey, override]) => {
             const idx = Number(idxKey);
             const sourceUsername = typeof override.sourceUsername === "string" ? override.sourceUsername.toLowerCase() : "";
-            if (profileUsername !== "just4abhii" && sourceUsername && sourceUsername !== profileUsername) return;
+            if (hasProfileScopedOverrides && sourceUsername !== profileUsername) return;
             if (idx >= 0 && idx < updated.length) updated[idx] = applyOverrideToReel(updated[idx], override);
           });
           saveReelsData(updated);
