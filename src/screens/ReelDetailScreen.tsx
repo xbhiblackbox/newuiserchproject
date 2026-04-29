@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 import CommentsSheet from "@/components/CommentsSheet";
 import ShareSheet from "@/components/ShareSheet";
-import { getReelsAccountKey, mergeAndSaveOverride } from "@/lib/reelsDataStore";
+import { applyOverrideToReel, getAllOverrides, getReelsAccountKey, mergeAndSaveOverride } from "@/lib/reelsDataStore";
 
 const CameraIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -104,7 +104,7 @@ const ProfileReelCard = ({
     // Mirror to Lovable Cloud so other devices/screens reading from DB stay in sync
     (async () => {
       try {
-        await mergeAndSaveOverride(data.accountUsername, data.index, updates);
+        await mergeAndSaveOverride(data.accountUsername, data.index, { sourceUsername: data.profileUsername, ...updates });
       } catch (e) { console.warn("[ReelDetail] Supabase persist failed", e); }
     })();
   }, [data.index, data.accountUsername, data.isMainAccount]);
@@ -369,18 +369,48 @@ const ReelDetailScreen = () => {
   const accountUsername = searchParams.get("account") || "just4abhii";
   const account = mockAccounts[accountUsername] || mockAccounts["just4abhii"] || Object.values(mockAccounts)[0];
   const startIndex = parseInt(id || "0");
+  const isMainAccount = accountUsername === "just4abhii" || account.profile === currentUser || account.profile.username.toLowerCase() === currentUser.username.toLowerCase();
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(startIndex);
+  const [syncedReelsData, setSyncedReelsData] = useState(() => isMainAccount ? loadReelsData() : null);
 
   if (!account) {
     navigate('/profile');
     return null;
   }
 
-  const isMainAccount = accountUsername === "just4abhii" || account.profile === currentUser || account.profile.username.toLowerCase() === currentUser.username.toLowerCase();
   const reelsAccountKey = getReelsAccountKey(accountUsername, isMainAccount);
-  const reelsData = isMainAccount ? loadReelsData() : null;
+  const reelsData = isMainAccount ? syncedReelsData : null;
+
+  useEffect(() => {
+    if (!isMainAccount) return;
+    const profileUsername = (account.profile.username || "").toLowerCase();
+    let active = true;
+    const refresh = async () => {
+      const fresh = [...loadReelsData()];
+      const overrides = await getAllOverrides(reelsAccountKey);
+      const hasProfileScopedOverrides = profileUsername !== "just4abhii" && Object.values(overrides).some((override) => {
+        const sourceUsername = typeof override.sourceUsername === "string" ? override.sourceUsername.toLowerCase() : "";
+        return sourceUsername === profileUsername;
+      });
+      Object.entries(overrides).forEach(([idxKey, override]) => {
+        const idx = Number(idxKey);
+        const sourceUsername = typeof override.sourceUsername === "string" ? override.sourceUsername.toLowerCase() : "";
+        if (hasProfileScopedOverrides && sourceUsername !== profileUsername) return;
+        if (idx >= 0 && idx < fresh.length) fresh[idx] = applyOverrideToReel(fresh[idx], override);
+      });
+      if (!active) return;
+      saveReelsData(fresh);
+      setSyncedReelsData(fresh);
+    };
+    refresh();
+    window.addEventListener("reel-insights-updated", refresh as EventListener);
+    return () => {
+      active = false;
+      window.removeEventListener("reel-insights-updated", refresh as EventListener);
+    };
+  }, [account.profile.username, isMainAccount, reelsAccountKey]);
 
   // Build all reels data for this profile
   const sourcePosts = isMainAccount && reelsData?.length ? reelsData : account.posts;

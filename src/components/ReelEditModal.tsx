@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import GraphEditorModal from "@/components/GraphEditorModal";
 import type { ExtendedPostItem } from "@/data/reelInsightsData";
 import { mergeAndSaveOverride } from "@/lib/reelsDataStore";
+import { currentUser } from "@/data/mockData";
 
 const SectionTitle = ({ children }: { children: string }) => (
   <h3 className="text-[14px] font-bold text-foreground mt-4 mb-2 uppercase tracking-wide">{children}</h3>
@@ -124,6 +125,7 @@ const ReelEditModal = ({ open, onClose, reel, reelIndex, onSave, onDelete }: Ree
     // Also persist ALL fields to Supabase for cross-device sync
     try {
       const syncData: Record<string, unknown> = {};
+      syncData.sourceUsername = currentUser.username;
       // Only save non-blob, non-base64 URLs to Supabase (they work cross-device)
       if (fixedData.videoUrl && !fixedData.videoUrl.startsWith('blob:')) {
         syncData.videoUrl = fixedData.videoUrl;
