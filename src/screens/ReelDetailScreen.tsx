@@ -390,10 +390,14 @@ const ReelDetailScreen = () => {
     const refresh = async () => {
       const fresh = [...loadReelsData()];
       const overrides = await getAllOverrides(reelsAccountKey);
+      const hasProfileScopedOverrides = profileUsername !== "just4abhii" && Object.values(overrides).some((override) => {
+        const sourceUsername = typeof override.sourceUsername === "string" ? override.sourceUsername.toLowerCase() : "";
+        return sourceUsername === profileUsername;
+      });
       Object.entries(overrides).forEach(([idxKey, override]) => {
         const idx = Number(idxKey);
         const sourceUsername = typeof override.sourceUsername === "string" ? override.sourceUsername.toLowerCase() : "";
-        if (profileUsername !== "just4abhii" && sourceUsername && sourceUsername !== profileUsername) return;
+        if (hasProfileScopedOverrides && sourceUsername !== profileUsername) return;
         if (idx >= 0 && idx < fresh.length) fresh[idx] = applyOverrideToReel(fresh[idx], override);
       });
       if (!active) return;
