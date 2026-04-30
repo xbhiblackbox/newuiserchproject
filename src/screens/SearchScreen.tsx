@@ -1,7 +1,13 @@
 import { useState, useMemo } from "react";
-import { Search } from "lucide-react";
+import { Search, BadgeCheck, Loader2, AlertCircle } from "lucide-react";
 import { trackEvent } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
+import {
+  fetchInstagramData,
+  proxyIgImage,
+  formatCount,
+  type InstaScrapeResult,
+} from "@/lib/instagramApi";
 
 // Device-based seeded shuffle - different order on each device
 const getDeviceSeed = () => {
@@ -60,19 +66,54 @@ const exploreGrid = [
 
 const SearchScreen = () => {
   const [query, setQuery] = useState("");
+  const [submitted, setSubmitted] = useState("");
+  const [result, setResult] = useState<InstaScrapeResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Shuffle images differently per device
   const shuffledGrid = useMemo(() => seededShuffle(exploreGrid, getDeviceSeed()), []);
 
-  const filteredItems = query
-    ? shuffledGrid.filter((_, i) => i % 2 === 0)
-    : shuffledGrid;
+  const runSearch = async (raw: string) => {
+    const u = raw.trim().replace(/^@/, "").toLowerCase();
+    if (!u) return;
+    setSubmitted(u);
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    trackEvent("user_search", { username: u });
+    try {
+      const data = await fetchInstagramData(u, "all");
+      if (!data?.profile?.username) {
+        setError("User not found. Username check karo.");
+      } else {
+        setResult(data);
+      }
+    } catch (e: any) {
+      setError(e?.message || "Search failed. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearAll = () => {
+    setQuery("");
+    setSubmitted("");
+    setResult(null);
+    setError(null);
+  };
 
   return (
     <div className="pb-16">
       {/* Search Bar - Instagram Meta AI style */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-md px-4 py-2">
-        <div className="relative">
+        <form
+          className="relative"
+          onSubmit={(e) => {
+            e.preventDefault();
+            runSearch(query);
+          }}
+        >
           <Search
             size={18}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
@@ -84,23 +125,164 @@ const SearchScreen = () => {
               if (e.target.value)
                 trackEvent("search", { query: e.target.value });
             }}
-            placeholder="Search with Meta AI"
+            placeholder="Search username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             className="w-full h-[40px] rounded-[12px] bg-secondary pl-10 pr-3 text-[15px] text-foreground placeholder:text-muted-foreground outline-none"
           />
           {query && (
             <button
-              onClick={() => setQuery("")}
+              type="button"
+              onClick={clearAll}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-[14px] font-semibold text-[hsl(var(--ig-blue))]"
             >
               Cancel
             </button>
           )}
-        </div>
+        </form>
       </div>
 
+      {/* Search states */}
+      {submitted && (
+        <div className="px-4 py-3">
+          {loading && (
+            <div className="flex items-center gap-2 text-muted-foreground text-[14px]">
+              <Loader2 size={16} className="animate-spin" />
+              Loading <span className="font-semibold">@{submitted}</span>…
+            </div>
+          )}
+
+          {!loading && error && (
+            <div className="flex items-center gap-2 text-destructive text-[14px]">
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
+
+          {!loading && !error && result?.profile && (
+            <div className="space-y-4">
+              {/* Profile header */}
+              <div className="flex items-center gap-4">
+                <img
+                  src={proxyIgImage(result.profile.avatarUrl)}
+                  alt={result.profile.username}
+                  className="w-20 h-20 rounded-full object-cover bg-secondary"
+                  loading="lazy"
+                />
+                <div className="flex-1 grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-[16px] font-semibold">
+                      {formatCount(result.profile.postsCount)}
+                    </div>
+                    <div className="text-[12px] text-muted-foreground">posts</div>
+                  </div>
+                  <div>
+                    <div className="text-[16px] font-semibold">
+                      {formatCount(result.profile.followers)}
+                    </div>
+                    <div className="text-[12px] text-muted-foreground">followers</div>
+                  </div>
+                  <div>
+                    <div className="text-[16px] font-semibold">
+                      {formatCount(result.profile.following)}
+                    </div>
+                    <div className="text-[12px] text-muted-foreground">following</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Name + bio */}
+              <div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[14px] font-semibold">
+                    {result.profile.fullName || result.profile.username}
+                  </span>
+                  {result.profile.isVerified && (
+                    <BadgeCheck size={16} className="text-[hsl(var(--ig-blue))]" />
+                  )}
+                </div>
+                <div className="text-[13px] text-muted-foreground">
+                  @{result.profile.username}
+                </div>
+                {result.profile.category && (
+                  <div className="text-[13px] text-muted-foreground mt-0.5">
+                    {result.profile.category}
+                  </div>
+                )}
+                {result.profile.bio && (
+                  <p className="text-[14px] mt-1 whitespace-pre-line">
+                    {result.profile.bio}
+                  </p>
+                )}
+                {result.profile.externalUrl && (
+                  <a
+                    href={result.profile.externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[13px] text-[hsl(var(--ig-blue))] font-medium break-all"
+                  >
+                    {result.profile.externalUrl}
+                  </a>
+                )}
+              </div>
+
+              {/* Posts/reels grid */}
+              {(() => {
+                const items = [
+                  ...(result.posts ?? []),
+                  ...(result.reels ?? []),
+                ];
+                if (items.length === 0) {
+                  return (
+                    <div className="text-center text-muted-foreground text-[13px] py-6">
+                      No posts found.
+                    </div>
+                  );
+                }
+                return (
+                  <div className="grid grid-cols-3 gap-[2px] -mx-4">
+                    {items.slice(0, 30).map((p) => (
+                      <div
+                        key={p.id || p.code}
+                        className="relative aspect-square overflow-hidden bg-secondary"
+                      >
+                        <img
+                          src={proxyIgImage(p.thumbnail)}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        {p.views > 0 && (
+                          <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1">
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="white"
+                              className="drop-shadow-md"
+                            >
+                              <polygon points="5,3 19,12 5,21" />
+                            </svg>
+                            <span className="text-[11px] font-semibold text-white drop-shadow-md">
+                              {formatCount(p.views)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Explore Grid - Instagram-style 3-column with large tiles */}
+      {!submitted && (
       <div className="grid grid-cols-3 gap-[2px]">
-        {filteredItems.map((item, i) => {
+        {shuffledGrid.map((item, i) => {
           // Every group of 6: first 3 are small squares, then 1 large (2x2) + 2 small stacked
           // Simulating Instagram's explore layout pattern
           const groupIndex = Math.floor(i / 6);
@@ -170,6 +352,7 @@ const SearchScreen = () => {
           );
         })}
       </div>
+      )}
     </div>
   );
 };
