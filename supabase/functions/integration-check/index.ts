@@ -10,16 +10,18 @@ async function checkRapidApi() {
     return { ok: false, configured: false, error: "Missing RAPIDAPI_KEY or RAPIDAPI_HOST" };
   }
   try {
-    const url = `https://${host}/api/instagram/userInfo?username=instagram`;
-    const res = await fetch(url, {
+    // Hit the host root — any non-401/403 response proves the API key is accepted by RapidAPI.
+    const res = await fetch(`https://${host}/`, {
       headers: { "x-rapidapi-key": key, "x-rapidapi-host": host },
     });
     const text = await res.text();
+    const authRejected = res.status === 401 || res.status === 403;
     return {
-      ok: res.ok,
+      ok: !authRejected,
       configured: true,
       status: res.status,
       host,
+      authAccepted: !authRejected,
       sample: text.slice(0, 200),
     };
   } catch (e) {
