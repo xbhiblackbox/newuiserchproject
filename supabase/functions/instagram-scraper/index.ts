@@ -1308,6 +1308,20 @@ async function paginatePostsResult(
 // ---------- main ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // ---- ACCESS KEY GATE (applies to ALL non-OPTIONS requests) ----
+  // Replay self-calls forward the original auth headers so they still pass.
+  const gateKey = req.headers.get("x-access-key") || "";
+  const gateFp = req.headers.get("x-device-fp") || "";
+  const gate = await validateAccessKey(gateKey, gateFp);
+  if (!gate.ok) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", reason: gate.reason }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
   // GET /...?debug=heatmap → cache HIT/MISS/STALE counts per username.
   // GET /...?debug=metrics → p50/p95/p99 latency + error rate per user/RapidAPI path.
   // GET /...?debug=traces  → recent recorded traces (inputs + outcome).
