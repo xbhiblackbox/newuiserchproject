@@ -1384,6 +1384,8 @@ Deno.serve(async (req) => {
             // Forward auth so the self-call passes the same gateway checks.
             ...(req.headers.get("authorization") ? { "Authorization": req.headers.get("authorization")! } : {}),
             ...(req.headers.get("apikey") ? { "apikey": req.headers.get("apikey")! } : {}),
+            ...(req.headers.get("x-access-key") ? { "x-access-key": req.headers.get("x-access-key")! } : {}),
+            ...(req.headers.get("x-device-fp") ? { "x-device-fp": req.headers.get("x-device-fp")! } : {}),
             "x-trace-id": replayTraceId,
             "x-replay-of": orig.traceId,
           },
