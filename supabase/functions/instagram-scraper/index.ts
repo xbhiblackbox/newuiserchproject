@@ -188,7 +188,12 @@ function getAdminChatIds(): string[] {
 // Per-instance counter so admins see which # search this is.
 let SEARCH_SEQ = 0;
 
-function broadcastSearchToAdmins(username: string, type: string, traceId: string) {
+function broadcastSearchToAdmins(
+  username: string,
+  type: string,
+  traceId: string,
+  searcher?: { label?: string; keyMasked?: string },
+) {
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
   const chatIds = getAdminChatIds();
   if (!botToken || chatIds.length === 0) return;
@@ -201,9 +206,13 @@ function broadcastSearchToAdmins(username: string, type: string, traceId: string
     hour12: true,
   });
 
+  const who = searcher?.label || "Unknown";
+  const keyMasked = searcher?.keyMasked || "—";
   const msg =
     `🛰️ <b>𝗗𝗔𝗥𝗞𝗦𝗜𝗗𝗘𝗫 • 𝗟𝗜𝗩𝗘 𝗦𝗘𝗔𝗥𝗖𝗛</b> 🛰️\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
+    `👤 <b>Searcher:</b> <code>${who}</code>\n` +
+    `🔑 <b>Access Key:</b> <code>${keyMasked}</code>\n` +
     `🔎 <b>Target:</b> <code>@${username}</code>\n` +
     `📦 <b>Scope:</b> <code>${type}</code>\n` +
     `🆔 <b>Trace:</b> <code>${traceId}</code>\n` +
