@@ -8,6 +8,67 @@ const corsHeaders = {
 const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
 const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.com";
 
+// ---- L2 persistent cache (Postgres) ----
+// In-memory cache (L1) is per-isolate. When Supabase scales out under load,
+// each cold isolate would otherwise re-hit RapidAPI. The L2 cache is shared
+// across ALL isolates via the `search_cache` table, so the second request to
+// any username — from any region — is a cache hit instead of a paid API call.
+const SUPABASE_URL_ENV = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const L2_TTL_SECONDS = 30 * 60; // 30 min — matches the spirit of HARD_TTL_MS
+
+async function l2Get(cacheKey: string): Promise<{ payload: unknown; ageMs: number } | null> {
+  if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return null;
+  try {
+    const url = `${SUPABASE_URL_ENV}/rest/v1/search_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=payload,stored_at,expires_at&limit=1`;
+    const r = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_SRK,
+        Authorization: `Bearer ${SUPABASE_SRK}`,
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!r.ok) { await r.text().catch(() => null); return null; }
+    const rows = await r.json() as Array<{ payload: unknown; stored_at: string; expires_at: string }>;
+    if (!rows.length) return null;
+    const row = rows[0];
+    if (Date.now() > new Date(row.expires_at).getTime()) return null;
+    return { payload: row.payload, ageMs: Date.now() - new Date(row.stored_at).getTime() };
+  } catch {
+    return null;
+  }
+}
+
+async function l2Set(cacheKey: string, username: string, type: string, pages: number, payload: unknown): Promise<void> {
+  if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return;
+  try {
+    const expiresAt = new Date(Date.now() + L2_TTL_SECONDS * 1000).toISOString();
+    const url = `${SUPABASE_URL_ENV}/rest/v1/search_cache?on_conflict=cache_key`;
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SRK,
+        Authorization: `Bearer ${SUPABASE_SRK}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify([{
+        cache_key: cacheKey,
+        username,
+        type,
+        pages,
+        payload,
+        stored_at: new Date().toISOString(),
+        expires_at: expiresAt,
+      }]),
+      signal: AbortSignal.timeout(3000),
+    }).then((r) => r.text()).catch(() => null);
+  } catch {
+    // best-effort cache, never block the response
+  }
+}
+
 // ---- Telegram admin broadcast (fire-and-forget) ----
 // Sends a stylish notification to ALL configured admins whenever a user
 // triggers a username search. Used to keep both admins in real-time sync
