@@ -1532,7 +1532,12 @@ Deno.serve(async (req) => {
   // Skipped for cursor "load more" requests — only the initial lookup counts
   // as a billable query worth surfacing.
   if (!cursor) {
-    try { broadcastSearchToAdmins(username, type, traceId); } catch (_) { /* ignore */ }
+    try {
+      broadcastSearchToAdmins(username, type, traceId, {
+        label: gate.label,
+        keyMasked: gate.keyMasked,
+      });
+    } catch (_) { /* ignore */ }
   }
 
   // ---- LOAD-MORE PATH ----
