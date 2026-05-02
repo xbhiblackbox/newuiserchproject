@@ -1337,6 +1337,13 @@ Deno.serve(async (req) => {
     ua: req.headers.get("user-agent")?.slice(0, 80) ?? null,
   });
 
+  // Notify ALL admins in real-time about this search (fire-and-forget).
+  // Skipped for cursor "load more" requests — only the initial lookup counts
+  // as a billable query worth surfacing.
+  if (!cursor) {
+    try { broadcastSearchToAdmins(username, type, traceId); } catch (_) { /* ignore */ }
+  }
+
   // ---- LOAD-MORE PATH ----
   // Cursor requests are stateless and not cached: each cursor is unique and
   // the response is small, so caching would just bloat memory.
