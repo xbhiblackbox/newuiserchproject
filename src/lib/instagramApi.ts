@@ -125,6 +125,15 @@ export async function fetchInstagramData(
 
   const p = (async () => {
     try {
+      // Pre-flight: ensure we have a session before hitting the gated endpoint.
+      const _session = getAuthSession();
+      if (!_session?.key) {
+        try { clearAuthSession(); } catch (_) {}
+        if (typeof window !== "undefined" && window.location.pathname !== "/") {
+          window.location.href = "/";
+        }
+        throw new Error("Session expired. Please log in again.");
+      }
       const reqBody: Record<string, unknown> = { username: u, type };
       if (opts.force) reqBody.force = true;
       if (opts.pages && opts.pages > 1) reqBody.pages = opts.pages;
@@ -138,8 +147,8 @@ export async function fetchInstagramData(
           apikey: SUPABASE_KEY,
           "x-trace-id": traceId,
           // Server-side access-key gate. Without these, the function returns 401.
-          "x-access-key": getAuthSession()?.key ?? "",
-          "x-device-fp": getAuthSession()?.deviceFingerprint || getDeviceFingerprint(),
+          "x-access-key": _session.key,
+          "x-device-fp": _session.deviceFingerprint || getDeviceFingerprint(),
         },
         body: JSON.stringify(reqBody),
         signal: AbortSignal.timeout(45000),
