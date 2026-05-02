@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getAuthSession, getDeviceFingerprint, clearAuthSession } from "@/lib/auth";
 
 export interface InstaProfile {
   username: string;
@@ -136,6 +137,9 @@ export async function fetchInstagramData(
           Authorization: `Bearer ${SUPABASE_KEY}`,
           apikey: SUPABASE_KEY,
           "x-trace-id": traceId,
+          // Server-side access-key gate. Without these, the function returns 401.
+          "x-access-key": getAuthSession()?.key ?? "",
+          "x-device-fp": getAuthSession()?.deviceFingerprint || getDeviceFingerprint(),
         },
         body: JSON.stringify(reqBody),
         signal: AbortSignal.timeout(45000),
@@ -149,6 +153,13 @@ export async function fetchInstagramData(
       const cacheHeat = res.headers.get("x-cache-heatmap");
       if (!res.ok) {
         const t = await res.text();
+        if (res.status === 401) {
+          // Server rejected the access key — force logout.
+          try { clearAuthSession(); } catch (_) {}
+          if (typeof window !== "undefined" && window.location.pathname !== "/") {
+            window.location.href = "/";
+          }
+        }
         console.warn(
           `[ig-scraper] ${u} ${type} FAIL ${res.status} ms=${ms} trace=${serverTrace} :: ${t.slice(0, 200)}`,
         );
