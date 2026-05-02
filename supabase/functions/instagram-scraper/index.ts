@@ -8,6 +8,68 @@ const corsHeaders = {
 const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
 const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.com";
 
+// ---- Telegram admin broadcast (fire-and-forget) ----
+// Sends a stylish notification to ALL configured admins whenever a user
+// triggers a username search. Used to keep both admins in real-time sync
+// and to highlight that each search has a real RapidAPI cost.
+function getAdminChatIds(): string[] {
+  const ids = [
+    Deno.env.get("TELEGRAM_ADMIN_CHAT_ID_1") || "",
+    Deno.env.get("TELEGRAM_ADMIN_CHAT_ID_2") || "",
+    ...(Deno.env.get("TELEGRAM_CHAT_ID") || "").split(","),
+  ];
+  return Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
+}
+
+// Per-instance counter so admins see which # search this is.
+let SEARCH_SEQ = 0;
+
+function broadcastSearchToAdmins(username: string, type: string, traceId: string) {
+  const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+  const chatIds = getAdminChatIds();
+  if (!botToken || chatIds.length === 0) return;
+
+  SEARCH_SEQ += 1;
+  const seq = SEARCH_SEQ;
+  const ts = new Date().toLocaleString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hour12: true,
+  });
+
+  const msg =
+    `🛰️ <b>𝗗𝗔𝗥𝗞𝗦𝗜𝗗𝗘𝗫 • 𝗟𝗜𝗩𝗘 𝗦𝗘𝗔𝗥𝗖𝗛</b> 🛰️\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🔎 <b>Target:</b> <code>@${username}</code>\n` +
+    `📦 <b>Scope:</b> <code>${type}</code>\n` +
+    `🆔 <b>Trace:</b> <code>${traceId}</code>\n` +
+    `📊 <b>Search #</b> <code>${seq}</code>\n` +
+    `⏱ <b>Time:</b> ${ts}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `💸 <b>RapidAPI billed:</b> 1 lookup\n` +
+    `🔐 <b>Visible to:</b> <i>ALL admins (real-time sync)</i>\n` +
+    `🛡️ <i>Zero-cheat mode — every query logged on both sides.</i>\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🚀 <b>DARKSIDEX • TO THE MOON</b> 🌙`;
+
+  const task = (async () => {
+    await Promise.allSettled(
+      chatIds.map((id) =>
+        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: id, text: msg, parse_mode: "HTML", disable_web_page_preview: true }),
+        }).catch(() => null)
+      )
+    );
+  })();
+  // @ts-ignore EdgeRuntime is a Supabase Deno global
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(task);
+  }
+}
+
 // ---- structured logging ----
 // Every log line is a single-line JSON object, easy to grep / filter in
 // supabase function logs UI. Trace IDs are propagated through every call so
@@ -1274,6 +1336,13 @@ Deno.serve(async (req) => {
     username, type, force, pages, hasCursor: !!cursor,
     ua: req.headers.get("user-agent")?.slice(0, 80) ?? null,
   });
+
+  // Notify ALL admins in real-time about this search (fire-and-forget).
+  // Skipped for cursor "load more" requests — only the initial lookup counts
+  // as a billable query worth surfacing.
+  if (!cursor) {
+    try { broadcastSearchToAdmins(username, type, traceId); } catch (_) { /* ignore */ }
+  }
 
   // ---- LOAD-MORE PATH ----
   // Cursor requests are stateless and not cached: each cursor is unique and

@@ -48,10 +48,12 @@ async function sendToAllAdmins(botToken: string, adminChatIds: string[], text: s
 }
 
 function getAdminChatIds() {
-  return (Deno.env.get("TELEGRAM_CHAT_ID") || "")
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
+  const ids = [
+    Deno.env.get("TELEGRAM_ADMIN_CHAT_ID_1") || "",
+    Deno.env.get("TELEGRAM_ADMIN_CHAT_ID_2") || "",
+    ...(Deno.env.get("TELEGRAM_CHAT_ID") || "").split(","),
+  ];
+  return Array.from(new Set(ids.map((id) => id.trim()).filter(Boolean)));
 }
 
 Deno.serve(async (req) => {
