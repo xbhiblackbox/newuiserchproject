@@ -557,6 +557,8 @@ function scheduleRevalidation(cacheKey: string, username: string, type: string, 
     try {
       const r = await buildResult(username, type, ctx, { pages });
       cacheSet(cacheKey, r);
+      // Also refresh the shared L2 cache so other isolates benefit.
+      l2Set(cacheKey, username, type, pages, r).catch(() => null);
       slog("info", traceId, "revalidate_done", {
         ms: Date.now() - ctx.startedAt, rapidCalls: ctx.rapidCalls.length,
       });
