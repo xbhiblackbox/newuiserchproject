@@ -49,6 +49,7 @@ async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean
     });
     if (!r.ok) return { ok: false, reason: "lookup_failed" };
     const rows = (await r.json()) as Array<{
+      id?: string;
       active: boolean;
       expires_at: string | null;
       device_fingerprints: string[] | null;
@@ -69,8 +70,36 @@ async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean
     }
     const fps = row.device_fingerprints || [];
     if (!fps.includes(fp)) {
-      KEY_CACHE.set(cacheKey, { ok: false, at: Date.now() });
-      return { ok: false, reason: "device_not_registered" };
+      // Auto-register this device if there's room — matches check-key-status
+      // behavior so existing users (logged in before the gate existed) and
+      // new logins both work seamlessly.
+      const maxDev = row.max_devices ?? 1;
+      if (fps.length >= maxDev) {
+        KEY_CACHE.set(cacheKey, { ok: false, at: Date.now() });
+        return { ok: false, reason: "device_limit_reached" };
+      }
+      try {
+        const updated = [...fps, fp];
+        await fetch(
+          `${SUPABASE_URL_ENV}/rest/v1/access_keys?key=eq.${encodeURIComponent(key)}`,
+          {
+            method: "PATCH",
+            headers: {
+              apikey: SUPABASE_SRK,
+              Authorization: `Bearer ${SUPABASE_SRK}`,
+              "Content-Type": "application/json",
+              Prefer: "return=minimal",
+            },
+            body: JSON.stringify({
+              device_fingerprints: updated,
+              updated_at: new Date().toISOString(),
+            }),
+            signal: AbortSignal.timeout(3000),
+          },
+        );
+      } catch (_e) {
+        // Even if the write fails, allow this request — next call will retry.
+      }
     }
     KEY_CACHE.set(cacheKey, { ok: true, at: Date.now() });
     return { ok: true };
