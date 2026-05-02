@@ -27,18 +27,20 @@ const L2_TTL_SECONDS = 30 * 60; // 30 min — matches the spirit of HARD_TTL_MS
 const KEY_CACHE = new Map<string, { ok: boolean; at: number }>();
 const KEY_CACHE_TTL_MS = 30_000;
 
-async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean; reason?: string }> {
+async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean; reason?: string; label?: string; keyMasked?: string }> {
   if (!key || !fp) return { ok: false, reason: "missing_credentials" };
   if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return { ok: false, reason: "server_misconfig" };
 
   const cacheKey = `${key}::${fp}`;
   const cached = KEY_CACHE.get(cacheKey);
   if (cached && Date.now() - cached.at < KEY_CACHE_TTL_MS) {
-    return cached.ok ? { ok: true } : { ok: false, reason: "cached_reject" };
+    return cached.ok
+      ? { ok: true, label: cached.label, keyMasked: maskKey(key) }
+      : { ok: false, reason: "cached_reject" };
   }
 
   try {
-    const url = `${SUPABASE_URL_ENV}/rest/v1/access_keys?key=eq.${encodeURIComponent(key)}&select=active,expires_at,device_fingerprints,max_devices&limit=1`;
+    const url = `${SUPABASE_URL_ENV}/rest/v1/access_keys?key=eq.${encodeURIComponent(key)}&select=active,expires_at,device_fingerprints,max_devices,label&limit=1`;
     const r = await fetch(url, {
       headers: {
         apikey: SUPABASE_SRK,
@@ -54,6 +56,7 @@ async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean
       expires_at: string | null;
       device_fingerprints: string[] | null;
       max_devices: number | null;
+      label: string | null;
     }>;
     const row = rows?.[0];
     if (!row) {
@@ -101,8 +104,9 @@ async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean
         // Even if the write fails, allow this request — next call will retry.
       }
     }
-    KEY_CACHE.set(cacheKey, { ok: true, at: Date.now() });
-    return { ok: true };
+    const label = row.label || "User";
+    KEY_CACHE.set(cacheKey, { ok: true, at: Date.now(), label });
+    return { ok: true, label, keyMasked: maskKey(key) };
   } catch (_e) {
     return { ok: false, reason: "lookup_error" };
   }
