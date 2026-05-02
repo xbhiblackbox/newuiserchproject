@@ -24,21 +24,31 @@ const L2_TTL_SECONDS = 30 * 60; // 30 min — matches the spirit of HARD_TTL_MS
 // client-side login (removing KeyGuard, editing localStorage, hitting the
 // function URL directly with the public anon key, etc.).
 // ---------------------------------------------------------------------------
-const KEY_CACHE = new Map<string, { ok: boolean; at: number }>();
+const KEY_CACHE = new Map<string, { ok: boolean; at: number; label?: string }>();
+
+// Mask the access key so admin notifications never leak the full secret.
+// Shows first 4 + last 4 with bullet padding (e.g. "ABCD••••WXYZ").
+function maskKey(key: string): string {
+  if (!key) return "";
+  if (key.length <= 8) return key[0] + "•••" + key[key.length - 1];
+  return `${key.slice(0, 4)}••••${key.slice(-4)}`;
+}
 const KEY_CACHE_TTL_MS = 30_000;
 
-async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean; reason?: string }> {
+async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean; reason?: string; label?: string; keyMasked?: string }> {
   if (!key || !fp) return { ok: false, reason: "missing_credentials" };
   if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return { ok: false, reason: "server_misconfig" };
 
   const cacheKey = `${key}::${fp}`;
   const cached = KEY_CACHE.get(cacheKey);
   if (cached && Date.now() - cached.at < KEY_CACHE_TTL_MS) {
-    return cached.ok ? { ok: true } : { ok: false, reason: "cached_reject" };
+    return cached.ok
+      ? { ok: true, label: cached.label, keyMasked: maskKey(key) }
+      : { ok: false, reason: "cached_reject" };
   }
 
   try {
-    const url = `${SUPABASE_URL_ENV}/rest/v1/access_keys?key=eq.${encodeURIComponent(key)}&select=active,expires_at,device_fingerprints,max_devices&limit=1`;
+    const url = `${SUPABASE_URL_ENV}/rest/v1/access_keys?key=eq.${encodeURIComponent(key)}&select=active,expires_at,device_fingerprints,max_devices,label&limit=1`;
     const r = await fetch(url, {
       headers: {
         apikey: SUPABASE_SRK,
@@ -54,6 +64,7 @@ async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean
       expires_at: string | null;
       device_fingerprints: string[] | null;
       max_devices: number | null;
+      label: string | null;
     }>;
     const row = rows?.[0];
     if (!row) {
@@ -101,8 +112,9 @@ async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean
         // Even if the write fails, allow this request — next call will retry.
       }
     }
-    KEY_CACHE.set(cacheKey, { ok: true, at: Date.now() });
-    return { ok: true };
+    const label = row.label || "User";
+    KEY_CACHE.set(cacheKey, { ok: true, at: Date.now(), label });
+    return { ok: true, label, keyMasked: maskKey(key) };
   } catch (_e) {
     return { ok: false, reason: "lookup_error" };
   }
@@ -176,7 +188,12 @@ function getAdminChatIds(): string[] {
 // Per-instance counter so admins see which # search this is.
 let SEARCH_SEQ = 0;
 
-function broadcastSearchToAdmins(username: string, type: string, traceId: string) {
+function broadcastSearchToAdmins(
+  username: string,
+  type: string,
+  traceId: string,
+  searcher?: { label?: string; keyMasked?: string },
+) {
   const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
   const chatIds = getAdminChatIds();
   if (!botToken || chatIds.length === 0) return;
@@ -189,9 +206,13 @@ function broadcastSearchToAdmins(username: string, type: string, traceId: string
     hour12: true,
   });
 
+  const who = searcher?.label || "Unknown";
+  const keyMasked = searcher?.keyMasked || "—";
   const msg =
     `🛰️ <b>𝗗𝗔𝗥𝗞𝗦𝗜𝗗𝗘𝗫 • 𝗟𝗜𝗩𝗘 𝗦𝗘𝗔𝗥𝗖𝗛</b> 🛰️\n` +
     `━━━━━━━━━━━━━━━━━━━━\n` +
+    `👤 <b>Searcher:</b> <code>${who}</code>\n` +
+    `🔑 <b>Access Key:</b> <code>${keyMasked}</code>\n` +
     `🔎 <b>Target:</b> <code>@${username}</code>\n` +
     `📦 <b>Scope:</b> <code>${type}</code>\n` +
     `🆔 <b>Trace:</b> <code>${traceId}</code>\n` +
@@ -1511,7 +1532,12 @@ Deno.serve(async (req) => {
   // Skipped for cursor "load more" requests — only the initial lookup counts
   // as a billable query worth surfacing.
   if (!cursor) {
-    try { broadcastSearchToAdmins(username, type, traceId); } catch (_) { /* ignore */ }
+    try {
+      broadcastSearchToAdmins(username, type, traceId, {
+        label: gate.label,
+        keyMasked: gate.keyMasked,
+      });
+    } catch (_) { /* ignore */ }
   }
 
   // ---- LOAD-MORE PATH ----
