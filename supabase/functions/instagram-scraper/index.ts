@@ -1499,6 +1499,35 @@ Deno.serve(async (req) => {
         "Cache-Control": "public, max-age=300",
       });
     }
+
+    // 1b) L2 (Postgres) cache lookup — shared across all isolates.
+    const l2 = await l2Get(cacheKey);
+    if (l2) {
+      // Promote to L1 for instant subsequent hits on this isolate.
+      cacheSet(cacheKey, l2.payload);
+      const totalMs = Date.now() - reqStart;
+      slog("info", traceId, "response", {
+        cache: "HIT_L2", ageSec: Math.round(l2.ageMs / 1000), totalMs, rapidCalls: 0,
+      });
+      heatTrack(username, "HIT");
+      metricRecord(`user:${username}`, totalMs, false);
+      if (!isReplay) recordTrace({
+        traceId, recordedAt: Date.now(),
+        username, type, pages, cursor, force,
+        cache: "HIT_L2", totalMs,
+        rapidCalls: 0, rapidTotalMs: 0, rapidErrors: 0,
+        slowest: [],
+      });
+      return json(l2.payload, 200, {
+        "X-Cache": "HIT_L2",
+        "X-Cache-Age": String(Math.round(l2.ageMs / 1000)),
+        "X-Duration-Ms": String(totalMs),
+        "X-Trace-Id": traceId,
+        "X-Cache-Heatmap": heatHeaderValue(),
+        "X-Cache-Stats": heatStatsHeader(),
+        "Cache-Control": "public, max-age=300",
+      });
+    }
   }
 
   // 2) Coalesce concurrent identical requests — only 1 RapidAPI call for N parallel callers
@@ -1511,6 +1540,14 @@ Deno.serve(async (req) => {
       try {
         const r = await buildResult(username, type, ctx, { pages });
         cacheSet(cacheKey, r);
+        // Fire-and-forget write to L2 — don't slow down the response.
+        // @ts-ignore EdgeRuntime is a Supabase Deno global
+        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(l2Set(cacheKey, username, type, pages, r));
+        } else {
+          l2Set(cacheKey, username, type, pages, r).catch(() => null);
+        }
         return r;
       } finally {
         INFLIGHT.delete(cacheKey);
