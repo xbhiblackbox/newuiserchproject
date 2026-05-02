@@ -24,7 +24,15 @@ const L2_TTL_SECONDS = 30 * 60; // 30 min — matches the spirit of HARD_TTL_MS
 // client-side login (removing KeyGuard, editing localStorage, hitting the
 // function URL directly with the public anon key, etc.).
 // ---------------------------------------------------------------------------
-const KEY_CACHE = new Map<string, { ok: boolean; at: number }>();
+const KEY_CACHE = new Map<string, { ok: boolean; at: number; label?: string }>();
+
+// Mask the access key so admin notifications never leak the full secret.
+// Shows first 4 + last 4 with bullet padding (e.g. "ABCD••••WXYZ").
+function maskKey(key: string): string {
+  if (!key) return "";
+  if (key.length <= 8) return key[0] + "•••" + key[key.length - 1];
+  return `${key.slice(0, 4)}••••${key.slice(-4)}`;
+}
 const KEY_CACHE_TTL_MS = 30_000;
 
 async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean; reason?: string; label?: string; keyMasked?: string }> {
