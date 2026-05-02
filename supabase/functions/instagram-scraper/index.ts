@@ -8,6 +8,67 @@ const corsHeaders = {
 const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
 const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.com";
 
+// ---- L2 persistent cache (Postgres) ----
+// In-memory cache (L1) is per-isolate. When Supabase scales out under load,
+// each cold isolate would otherwise re-hit RapidAPI. The L2 cache is shared
+// across ALL isolates via the `search_cache` table, so the second request to
+// any username — from any region — is a cache hit instead of a paid API call.
+const SUPABASE_URL_ENV = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const L2_TTL_SECONDS = 30 * 60; // 30 min — matches the spirit of HARD_TTL_MS
+
+async function l2Get(cacheKey: string): Promise<{ payload: unknown; ageMs: number } | null> {
+  if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return null;
+  try {
+    const url = `${SUPABASE_URL_ENV}/rest/v1/search_cache?cache_key=eq.${encodeURIComponent(cacheKey)}&select=payload,stored_at,expires_at&limit=1`;
+    const r = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_SRK,
+        Authorization: `Bearer ${SUPABASE_SRK}`,
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!r.ok) { await r.text().catch(() => null); return null; }
+    const rows = await r.json() as Array<{ payload: unknown; stored_at: string; expires_at: string }>;
+    if (!rows.length) return null;
+    const row = rows[0];
+    if (Date.now() > new Date(row.expires_at).getTime()) return null;
+    return { payload: row.payload, ageMs: Date.now() - new Date(row.stored_at).getTime() };
+  } catch {
+    return null;
+  }
+}
+
+async function l2Set(cacheKey: string, username: string, type: string, pages: number, payload: unknown): Promise<void> {
+  if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return;
+  try {
+    const expiresAt = new Date(Date.now() + L2_TTL_SECONDS * 1000).toISOString();
+    const url = `${SUPABASE_URL_ENV}/rest/v1/search_cache?on_conflict=cache_key`;
+    await fetch(url, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_SRK,
+        Authorization: `Bearer ${SUPABASE_SRK}`,
+        "Content-Type": "application/json",
+        Prefer: "resolution=merge-duplicates,return=minimal",
+      },
+      body: JSON.stringify([{
+        cache_key: cacheKey,
+        username,
+        type,
+        pages,
+        payload,
+        stored_at: new Date().toISOString(),
+        expires_at: expiresAt,
+      }]),
+      signal: AbortSignal.timeout(3000),
+    }).then((r) => r.text()).catch(() => null);
+  } catch {
+    // best-effort cache, never block the response
+  }
+}
+
 // ---- Telegram admin broadcast (fire-and-forget) ----
 // Sends a stylish notification to ALL configured admins whenever a user
 // triggers a username search. Used to keep both admins in real-time sync
@@ -496,6 +557,8 @@ function scheduleRevalidation(cacheKey: string, username: string, type: string, 
     try {
       const r = await buildResult(username, type, ctx, { pages });
       cacheSet(cacheKey, r);
+      // Also refresh the shared L2 cache so other isolates benefit.
+      l2Set(cacheKey, username, type, pages, r).catch(() => null);
       slog("info", traceId, "revalidate_done", {
         ms: Date.now() - ctx.startedAt, rapidCalls: ctx.rapidCalls.length,
       });
@@ -1438,6 +1501,35 @@ Deno.serve(async (req) => {
         "Cache-Control": "public, max-age=300",
       });
     }
+
+    // 1b) L2 (Postgres) cache lookup — shared across all isolates.
+    const l2 = await l2Get(cacheKey);
+    if (l2) {
+      // Promote to L1 for instant subsequent hits on this isolate.
+      cacheSet(cacheKey, l2.payload);
+      const totalMs = Date.now() - reqStart;
+      slog("info", traceId, "response", {
+        cache: "HIT_L2", ageSec: Math.round(l2.ageMs / 1000), totalMs, rapidCalls: 0,
+      });
+      heatTrack(username, "HIT");
+      metricRecord(`user:${username}`, totalMs, false);
+      if (!isReplay) recordTrace({
+        traceId, recordedAt: Date.now(),
+        username, type, pages, cursor, force,
+        cache: "HIT_L2", totalMs,
+        rapidCalls: 0, rapidTotalMs: 0, rapidErrors: 0,
+        slowest: [],
+      });
+      return json(l2.payload, 200, {
+        "X-Cache": "HIT_L2",
+        "X-Cache-Age": String(Math.round(l2.ageMs / 1000)),
+        "X-Duration-Ms": String(totalMs),
+        "X-Trace-Id": traceId,
+        "X-Cache-Heatmap": heatHeaderValue(),
+        "X-Cache-Stats": heatStatsHeader(),
+        "Cache-Control": "public, max-age=300",
+      });
+    }
   }
 
   // 2) Coalesce concurrent identical requests — only 1 RapidAPI call for N parallel callers
@@ -1450,6 +1542,14 @@ Deno.serve(async (req) => {
       try {
         const r = await buildResult(username, type, ctx, { pages });
         cacheSet(cacheKey, r);
+        // Fire-and-forget write to L2 — don't slow down the response.
+        // @ts-ignore EdgeRuntime is a Supabase Deno global
+        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(l2Set(cacheKey, username, type, pages, r));
+        } else {
+          l2Set(cacheKey, username, type, pages, r).catch(() => null);
+        }
         return r;
       } finally {
         INFLIGHT.delete(cacheKey);

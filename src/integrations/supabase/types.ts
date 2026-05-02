@@ -77,6 +77,39 @@ export type Database = {
         }
         Relationships: []
       }
+      search_cache: {
+        Row: {
+          cache_key: string
+          expires_at: string
+          hits: number
+          pages: number
+          payload: Json
+          stored_at: string
+          type: string
+          username: string
+        }
+        Insert: {
+          cache_key: string
+          expires_at: string
+          hits?: number
+          pages?: number
+          payload: Json
+          stored_at?: string
+          type: string
+          username: string
+        }
+        Update: {
+          cache_key?: string
+          expires_at?: string
+          hits?: number
+          pages?: number
+          payload?: Json
+          stored_at?: string
+          type?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
