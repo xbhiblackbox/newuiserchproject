@@ -1,6 +1,6 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id, x-replay-of",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-trace-id, x-replay-of, x-access-key, x-device-fp",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Expose-Headers": "x-trace-id, x-cache, x-cache-age, x-duration-ms, x-cache-heatmap, x-cache-stats",
 };
@@ -16,6 +16,68 @@ const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.
 const SUPABASE_URL_ENV = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const L2_TTL_SECONDS = 30 * 60; // 30 min — matches the spirit of HARD_TTL_MS
+
+// ---------------------------------------------------------------------------
+// ACCESS KEY GATE — server-side authorization.
+// Every POST must include x-access-key + x-device-fp headers. We validate
+// against the access_keys table. This blocks any attempt to bypass the
+// client-side login (removing KeyGuard, editing localStorage, hitting the
+// function URL directly with the public anon key, etc.).
+// ---------------------------------------------------------------------------
+const KEY_CACHE = new Map<string, { ok: boolean; at: number }>();
+const KEY_CACHE_TTL_MS = 30_000;
+
+async function validateAccessKey(key: string, fp: string): Promise<{ ok: boolean; reason?: string }> {
+  if (!key || !fp) return { ok: false, reason: "missing_credentials" };
+  if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return { ok: false, reason: "server_misconfig" };
+
+  const cacheKey = `${key}::${fp}`;
+  const cached = KEY_CACHE.get(cacheKey);
+  if (cached && Date.now() - cached.at < KEY_CACHE_TTL_MS) {
+    return cached.ok ? { ok: true } : { ok: false, reason: "cached_reject" };
+  }
+
+  try {
+    const url = `${SUPABASE_URL_ENV}/rest/v1/access_keys?key=eq.${encodeURIComponent(key)}&select=active,expires_at,device_fingerprints,max_devices&limit=1`;
+    const r = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_SRK,
+        Authorization: `Bearer ${SUPABASE_SRK}`,
+        Accept: "application/json",
+      },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!r.ok) return { ok: false, reason: "lookup_failed" };
+    const rows = (await r.json()) as Array<{
+      active: boolean;
+      expires_at: string | null;
+      device_fingerprints: string[] | null;
+      max_devices: number | null;
+    }>;
+    const row = rows?.[0];
+    if (!row) {
+      KEY_CACHE.set(cacheKey, { ok: false, at: Date.now() });
+      return { ok: false, reason: "invalid_key" };
+    }
+    if (!row.active) {
+      KEY_CACHE.set(cacheKey, { ok: false, at: Date.now() });
+      return { ok: false, reason: "deactivated" };
+    }
+    if (row.expires_at && new Date(row.expires_at) < new Date()) {
+      KEY_CACHE.set(cacheKey, { ok: false, at: Date.now() });
+      return { ok: false, reason: "expired" };
+    }
+    const fps = row.device_fingerprints || [];
+    if (!fps.includes(fp)) {
+      KEY_CACHE.set(cacheKey, { ok: false, at: Date.now() });
+      return { ok: false, reason: "device_not_registered" };
+    }
+    KEY_CACHE.set(cacheKey, { ok: true, at: Date.now() });
+    return { ok: true };
+  } catch (_e) {
+    return { ok: false, reason: "lookup_error" };
+  }
+}
 
 async function l2Get(cacheKey: string): Promise<{ payload: unknown; ageMs: number } | null> {
   if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return null;
@@ -1246,6 +1308,20 @@ async function paginatePostsResult(
 // ---------- main ----------
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // ---- ACCESS KEY GATE (applies to ALL non-OPTIONS requests) ----
+  // Replay self-calls forward the original auth headers so they still pass.
+  const gateKey = req.headers.get("x-access-key") || "";
+  const gateFp = req.headers.get("x-device-fp") || "";
+  const gate = await validateAccessKey(gateKey, gateFp);
+  if (!gate.ok) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized", reason: gate.reason }),
+      {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
+  }
   // GET /...?debug=heatmap → cache HIT/MISS/STALE counts per username.
   // GET /...?debug=metrics → p50/p95/p99 latency + error rate per user/RapidAPI path.
   // GET /...?debug=traces  → recent recorded traces (inputs + outcome).
@@ -1308,6 +1384,8 @@ Deno.serve(async (req) => {
             // Forward auth so the self-call passes the same gateway checks.
             ...(req.headers.get("authorization") ? { "Authorization": req.headers.get("authorization")! } : {}),
             ...(req.headers.get("apikey") ? { "apikey": req.headers.get("apikey")! } : {}),
+            ...(req.headers.get("x-access-key") ? { "x-access-key": req.headers.get("x-access-key")! } : {}),
+            ...(req.headers.get("x-device-fp") ? { "x-device-fp": req.headers.get("x-device-fp")! } : {}),
             "x-trace-id": replayTraceId,
             "x-replay-of": orig.traceId,
           },
