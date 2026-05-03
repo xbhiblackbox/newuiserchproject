@@ -1156,12 +1156,34 @@ async function fetchPosts(
   opts: { maxPages?: number; startCursor?: CursorToken | null } = {},
 ): Promise<PaginatedResult> {
   const startedAt = Date.now();
-  const result = await fetchPaginated([
-    { path: "/api/instagram/posts", method: "POST", body: { username } },
-    { path: "/api/instagram/userPosts", method: "POST", body: { username } },
-    { path: "/v1/posts", query: { username_or_id_or_url: username } },
-    { path: "/posts", query: { username } },
-  ], ctx, opts);
+  // The provider's /api/instagram/posts endpoint is the only one that returns
+  // a real feed, but it intermittently 500s with "link not found". Other paths
+  // (userPosts, /v1/posts, /posts) always 404 — keep them out of the hot path
+  // so we don't burn quota & latency. Retry the real endpoint a few times with
+  // small backoff on transient 500s before giving up.
+  const variants = [
+    { path: "/api/instagram/posts", method: "POST" as const, body: { username } },
+  ];
+  let lastErr: any;
+  let result: PaginatedResult | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      result = await fetchPaginated(variants, ctx, opts);
+      if (result.items.length > 0 || !result.hasMore) break;
+      // Empty result on a public account — try again, provider is flaky.
+      lastErr = new Error("empty_result");
+    } catch (e) {
+      lastErr = e;
+      if (ctx) slog("warn", ctx.traceId, "posts_retry", {
+        attempt: attempt + 1, err: (e as Error).message,
+      });
+    }
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+  }
+  if (!result) {
+    if (ctx) slog("error", ctx.traceId, "posts_failed", { err: String(lastErr?.message ?? lastErr) });
+    result = { items: [], nextCursor: "", hasMore: false };
+  }
   if (ctx) slog("info", ctx.traceId, "fetch_posts_done", {
     ms: Date.now() - startedAt, count: result.items.length,
     hasMore: result.hasMore, paginated: !!opts.startCursor,
