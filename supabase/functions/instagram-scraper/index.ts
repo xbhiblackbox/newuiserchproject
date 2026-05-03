@@ -1140,16 +1140,26 @@ function mergeProfile(primary: any, fallback: any, username: string) {
 // ---------- workers (each one self-contained, run in parallel) ----------
 async function fetchProfile(username: string, ctx?: ReqCtx) {
   const startedAt = Date.now();
-  const raw = await tryEndpoints([
-    { path: "/api/instagram/userInfo", method: "POST", body: { username } },
-    { path: "/api/instagram/userInfoByUsername", method: "POST", body: { username } },
-    { path: "/v1/info", query: { username_or_id_or_url: username } },
-    { path: "/userinfo", query: { username } },
-    { path: "/api/v1/users/web_profile_info", query: { username } },
-  ], ctx);
-  const profile = normalizeProfile(raw);
+  let profile: any = null;
+  let webRaw: any = null;
+  try {
+    const raw = await tryEndpoints([
+      { path: "/api/instagram/userInfo", method: "POST", body: { username } },
+      { path: "/api/instagram/userInfoByUsername", method: "POST", body: { username } },
+      { path: "/v1/info", query: { username_or_id_or_url: username } },
+      { path: "/userinfo", query: { username } },
+      { path: "/api/v1/users/web_profile_info", query: { username } },
+    ], ctx);
+    profile = normalizeProfile(raw);
+  } catch (e) {
+    if (ctx) slog("warn", ctx.traceId, "rapid_profile_failed", { err: (e as Error).message });
+  }
+  if (!profile?.username || !profile?.avatarUrl) {
+    webRaw = await fetchInstagramWebProfile(username, ctx);
+  }
+  profile = mergeProfile(profile, webRaw, username);
   if (ctx) slog("info", ctx.traceId, "fetch_profile_done", {
-    ms: Date.now() - startedAt, ok: !!profile.username,
+    ms: Date.now() - startedAt, ok: !!profile.username, hasAvatar: !!profile.avatarUrl,
   });
   return profile;
 }
