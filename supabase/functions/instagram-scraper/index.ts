@@ -841,7 +841,7 @@ function normalizeProfile(rawIn: any) {
     {};
   return {
     username: str(d.username ?? d.user_name),
-    fullName: str(d.full_name ?? d.fullname ?? d.name),
+    fullName: str(d.full_name ?? d.fullname ?? d.fullName ?? d.name),
     bio: str(d.biography ?? d.bio),
     avatarUrl: str(
       d.hd_profile_pic_url_info?.url ??
@@ -850,6 +850,7 @@ function normalizeProfile(rawIn: any) {
         d.profile_pic_url_hd ??
         d.profile_pic_url ??
         d.profile_pic_url_proxy ??
+        d.avatarUrl ??
         d.profile_picture ??
         d.avatar
     ),
