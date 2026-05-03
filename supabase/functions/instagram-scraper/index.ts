@@ -866,13 +866,13 @@ function normalizeProfile(rawIn: any) {
     ),
     isVerified: !!(d.is_verified ?? d.verified),
     followers: num(
-      d.follower_count ?? d.followers ?? d.followers_count ?? d.edge_followed_by?.count
+      d.follower_count ?? d.followers ?? d.followers_count ?? d.edge_followed_by?.count ?? d.edge_followed_by_count
     ),
     following: num(
-      d.following_count ?? d.following ?? d.followings ?? d.edge_follow?.count
+      d.following_count ?? d.following ?? d.followings ?? d.edge_follow?.count ?? d.edge_follow_count
     ),
     postsCount: num(
-      d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count
+      d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count ?? d.edge_owner_to_timeline_media_count
     ),
     externalUrl: str(d.external_url ?? d.website ?? d.bio_links?.[0]?.url),
     category: str(d.category ?? d.category_name),
