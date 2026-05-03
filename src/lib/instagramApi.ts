@@ -151,7 +151,7 @@ export async function fetchInstagramData(
           "x-device-fp": _session.deviceFingerprint || getDeviceFingerprint(),
         },
         body: JSON.stringify(reqBody),
-        signal: AbortSignal.timeout(45000),
+        signal: AbortSignal.timeout(90000),
       });
       const ms = Date.now() - startedAt;
       const serverTrace = res.headers.get("x-trace-id") || traceId;
