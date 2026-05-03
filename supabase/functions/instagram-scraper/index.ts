@@ -1120,12 +1120,19 @@ async function fetchInstagramWebProfile(username: string, ctx?: ReqCtx): Promise
           .replace(/&lt;/g, "<")
           .replace(/&gt;/g, ">");
     };
+    const description = extract(/<meta\s+name="description"\s+content="([^"]*)"/i);
+    const title = extract(/<meta\s+property="og:title"\s+content="([^"]*)"/i);
+    const descCounts = description.match(/([\d.,]+\s*[KMB]?)\s+Followers,\s+([\d.,]+\s*[KMB]?)\s+Following,\s+([\d.,]+\s*[KMB]?)\s+Posts/i);
+    const titleUser = title.match(/\(@([^\)]+)\)/)?.[1] || username;
     const payload = {
       user: {
-        username,
-        full_name: extract(/<meta\s+property="og:title"\s+content="([^"]*)"/i).split("(@")[0]?.trim() || "",
-        biography: extract(/<meta\s+name="description"\s+content="([^"]*)"/i),
+        username: titleUser,
+        full_name: title.split("(@")[0]?.trim() || "",
+        biography: description.replace(/^.*?Posts\s+-\s*/i, ""),
         profile_pic_url_hd: extract(/<meta\s+property="og:image"\s+content="([^"]*)"/i),
+        followers_count: compactNum(descCounts?.[1]),
+        following_count: compactNum(descCounts?.[2]),
+        media_count: compactNum(descCounts?.[3]),
       },
     };
     WEB_PROFILE_CACHE.set(key, { at: Date.now(), payload });
