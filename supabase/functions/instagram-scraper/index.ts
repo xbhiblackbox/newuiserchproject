@@ -703,6 +703,16 @@ const num = (v: unknown): number => {
 };
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
+const compactNum = (v: unknown): number => {
+  if (typeof v === "number") return v;
+  const s = str(v).replace(/,/g, "").trim();
+  const m = s.match(/([\d.]+)\s*([kmb])?/i);
+  if (!m) return 0;
+  const base = Number(m[1]) || 0;
+  const mult = m[2]?.toLowerCase() === "k" ? 1_000 : m[2]?.toLowerCase() === "m" ? 1_000_000 : m[2]?.toLowerCase() === "b" ? 1_000_000_000 : 1;
+  return Math.round(base * mult);
+};
+
 async function callRapid(path: string, init: RequestInit, ctx?: ReqCtx) {
   const url = `https://${RAPIDAPI_HOST}${path}`;
   const startedAt = Date.now();
