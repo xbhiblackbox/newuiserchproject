@@ -25,6 +25,8 @@ const L2_TTL_SECONDS = 30 * 60; // 30 min — matches the spirit of HARD_TTL_MS
 // function URL directly with the public anon key, etc.).
 // ---------------------------------------------------------------------------
 const KEY_CACHE = new Map<string, { ok: boolean; at: number; label?: string }>();
+const WEB_PROFILE_CACHE = new Map<string, { at: number; payload: any }>();
+const WEB_PROFILE_TTL_MS = 2 * 60 * 1000;
 
 // Mask the access key so admin notifications never leak the full secret.
 // Shows first 4 + last 4 with bullet padding (e.g. "ABCD••••WXYZ").
@@ -830,20 +832,25 @@ function normalizeProfile(rawIn: any) {
   const d =
     resultArr?.user ??
     raw?.result?.user ??
+    raw?.graphql?.user ??
     raw?.data?.user ??
+    raw?.user_info?.user ??
     raw?.data ??
     raw?.user ??
     raw ??
     {};
   return {
     username: str(d.username ?? d.user_name),
-    fullName: str(d.full_name ?? d.fullname ?? d.name),
+    fullName: str(d.full_name ?? d.fullname ?? d.fullName ?? d.name),
     bio: str(d.biography ?? d.bio),
     avatarUrl: str(
       d.hd_profile_pic_url_info?.url ??
+        d.profile_pic_url_info?.url ??
         d.hd_profile_pic_versions?.slice(-1)?.[0]?.url ??
         d.profile_pic_url_hd ??
         d.profile_pic_url ??
+        d.profile_pic_url_proxy ??
+        d.avatarUrl ??
         d.profile_picture ??
         d.avatar
     ),
@@ -870,6 +877,7 @@ function normalizeMediaItem(it: any) {
     it?.media ??
     it?.node ??
     it;
+  const owner = m.owner ?? m.user ?? it?.owner ?? it?.user ?? {};
   const id = str(m.id ?? m.pk ?? m.media_id);
   const code = str(m.code ?? m.shortcode ?? m.shortCode);
   const caption = str(
@@ -882,17 +890,22 @@ function normalizeMediaItem(it: any) {
     m.thumbnail_url ??
       m.display_url ??
       m.image_versions2?.candidates?.[0]?.url ??
+      m.image_versions2?.additional_candidates?.first_frame?.url ??
+      m.image_versions?.items?.[0]?.url ??
+      m.display_resources?.slice(-1)?.[0]?.src ??
       m.thumbnail_src ??
       m.cover_frame_url ??
       m.thumbnail ??
-      m.cover?.url
+      m.cover?.url ??
+      m.carousel_media?.[0]?.image_versions2?.candidates?.[0]?.url ??
+      m.carousel_media?.[0]?.display_url
   );
   const videoUrl = str(
     m.video_url ?? m.video_versions?.[0]?.url ?? m.videoUrl ?? m.video?.url ?? ""
   );
   const productType = str(m.product_type ?? m.media_type_name ?? "");
   const mediaType = num(m.media_type);
-  const isVideo = !!videoUrl || productType === "clips" || mediaType === 2;
+  const isVideo = !!videoUrl || productType === "clips" || mediaType === 2 || !!m.is_video;
   return {
     id,
     code,
@@ -917,6 +930,9 @@ function normalizeMediaItem(it: any) {
     takenAt: num(m.taken_at ?? m.taken_at_timestamp ?? m.takenAt),
     productType,
     isVideo,
+    ownerUsername: str(owner.username),
+    ownerFullName: str(owner.full_name ?? owner.fullname ?? owner.name),
+    ownerAvatar: str(owner.profile_pic_url ?? owner.profile_pic_url_hd ?? owner.profile_picture ?? owner.avatar),
   };
 }
 
@@ -931,6 +947,8 @@ function pickItems(rawIn: any): any[] {
     r0?.edges ??
     r0?.data?.items ??
     r0?.user?.edge_owner_to_timeline_media?.edges ??
+    raw?.user?.edge_owner_to_timeline_media?.edges ??
+    raw?.graphql?.user?.edge_owner_to_timeline_media?.edges ??
     raw?.data?.items ??
     raw?.data?.posts ??
     raw?.data?.reels ??
@@ -1064,19 +1082,90 @@ function normalizeHighlight(h: any) {
   };
 }
 
+async function fetchInstagramWebProfile(username: string, ctx?: ReqCtx): Promise<any | null> {
+  const key = username.toLowerCase();
+  const cached = WEB_PROFILE_CACHE.get(key);
+  if (cached && Date.now() - cached.at < WEB_PROFILE_TTL_MS) return cached.payload;
+
+  const startedAt = Date.now();
+  try {
+    const page = await fetch(`https://www.instagram.com/${encodeURIComponent(username)}/`, {
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "User-Agent": "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    const html = await page.text();
+    if (!page.ok || !html) throw new Error(`web_${page.status}`);
+
+      const extract = (re: RegExp) => {
+      const m = html.match(re);
+      if (!m?.[1]) return "";
+        return m[1]
+          .replace(/&amp;/g, "&")
+          .replace(/&quot;/g, '"')
+          .replace(/&#x27;/g, "'")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">");
+    };
+    const payload = {
+      user: {
+        username,
+        full_name: extract(/<meta\s+property="og:title"\s+content="([^"]*)"/i).split("(@")[0]?.trim() || "",
+        biography: extract(/<meta\s+name="description"\s+content="([^"]*)"/i),
+        profile_pic_url_hd: extract(/<meta\s+property="og:image"\s+content="([^"]*)"/i),
+      },
+    };
+    WEB_PROFILE_CACHE.set(key, { at: Date.now(), payload });
+    if (ctx) slog("info", ctx.traceId, "web_profile_done", { ms: Date.now() - startedAt, ok: !!payload.user.profile_pic_url_hd });
+    return payload;
+  } catch (e) {
+    if (ctx) slog("warn", ctx.traceId, "web_profile_failed", { ms: Date.now() - startedAt, err: (e as Error).message });
+    return null;
+  }
+}
+
+function mergeProfile(primary: any, fallback: any, username: string) {
+  const fb = fallback ? normalizeProfile(fallback) : null;
+  return {
+    username: primary?.username || fb?.username || username,
+    fullName: primary?.fullName || fb?.fullName || username,
+    bio: primary?.bio || fb?.bio || "",
+    avatarUrl: primary?.avatarUrl || fb?.avatarUrl || "",
+    isVerified: !!(primary?.isVerified || fb?.isVerified),
+    followers: primary?.followers || fb?.followers || 0,
+    following: primary?.following || fb?.following || 0,
+    postsCount: primary?.postsCount || fb?.postsCount || 0,
+    externalUrl: primary?.externalUrl || fb?.externalUrl || "",
+    category: primary?.category || fb?.category || "",
+  };
+}
+
 // ---------- workers (each one self-contained, run in parallel) ----------
 async function fetchProfile(username: string, ctx?: ReqCtx) {
   const startedAt = Date.now();
-  const raw = await tryEndpoints([
-    { path: "/api/instagram/userInfo", method: "POST", body: { username } },
-    { path: "/api/instagram/userInfoByUsername", method: "POST", body: { username } },
-    { path: "/v1/info", query: { username_or_id_or_url: username } },
-    { path: "/userinfo", query: { username } },
-    { path: "/api/v1/users/web_profile_info", query: { username } },
-  ], ctx);
-  const profile = normalizeProfile(raw);
+  let profile: any = null;
+  let webRaw: any = null;
+  try {
+    const raw = await tryEndpoints([
+      { path: "/api/instagram/userInfo", method: "POST", body: { username } },
+      { path: "/api/instagram/userInfoByUsername", method: "POST", body: { username } },
+      { path: "/v1/info", query: { username_or_id_or_url: username } },
+      { path: "/userinfo", query: { username } },
+      { path: "/api/v1/users/web_profile_info", query: { username } },
+    ], ctx);
+    profile = normalizeProfile(raw);
+  } catch (e) {
+    if (ctx) slog("warn", ctx.traceId, "rapid_profile_failed", { err: (e as Error).message });
+  }
+  if (!profile?.username || !profile?.avatarUrl) {
+    webRaw = await fetchInstagramWebProfile(username, ctx);
+  }
+  profile = mergeProfile(profile, webRaw, username);
   if (ctx) slog("info", ctx.traceId, "fetch_profile_done", {
-    ms: Date.now() - startedAt, ok: !!profile.username,
+    ms: Date.now() - startedAt, ok: !!profile.username, hasAvatar: !!profile.avatarUrl,
   });
   return profile;
 }
@@ -1230,18 +1319,6 @@ async function buildResult(
 
   const result: any = { username };
 
-  if (wants("profile")) {
-    if (profileRes.status === "fulfilled" && profileRes.value) {
-      result.profile = profileRes.value;
-      result.profileOk = !!result.profile.username;
-    } else {
-      result.profileOk = false;
-      if (profileRes.status === "rejected" && ctx) {
-        slog("error", ctx.traceId, "profile_failed", { err: String(profileRes.reason?.message ?? profileRes.reason) });
-      }
-    }
-  }
-
   let postsArr: any[] = [];
   let postsNextCursor = "";
   let postsHasMore = false;
@@ -1252,6 +1329,27 @@ async function buildResult(
     postsHasMore = pr.hasMore;
   } else if (postsRes.status === "rejected" && ctx) {
     slog("error", ctx.traceId, "posts_failed", { err: String(postsRes.reason?.message ?? postsRes.reason) });
+  }
+
+  if (wants("profile")) {
+    if (profileRes.status === "fulfilled" && profileRes.value) {
+      result.profile = profileRes.value;
+    } else {
+      if (profileRes.status === "rejected" && ctx) {
+        slog("error", ctx.traceId, "profile_failed", { err: String(profileRes.reason?.message ?? profileRes.reason) });
+      }
+      result.profile = mergeProfile(null, null, username);
+    }
+    const owner = postsArr.find((p: any) => p?.ownerUsername || p?.ownerAvatar || p?.ownerFullName);
+    if (owner) {
+      result.profile = {
+        ...result.profile,
+        username: result.profile.username || owner.ownerUsername || username,
+        fullName: result.profile.fullName || owner.ownerFullName || owner.ownerUsername || username,
+        avatarUrl: result.profile.avatarUrl || owner.ownerAvatar || "",
+      };
+    }
+    result.profileOk = !!result.profile.username;
   }
 
   if (wants("posts")) {
