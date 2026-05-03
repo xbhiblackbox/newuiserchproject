@@ -172,7 +172,18 @@ export async function fetchInstagramData(
         console.warn(
           `[ig-scraper] ${u} ${type} FAIL ${res.status} ms=${ms} trace=${serverTrace} :: ${t.slice(0, 200)}`,
         );
-        const err = new Error(`Scraper ${res.status}: ${t.slice(0, 200)}`) as Error & {
+        // Friendly, actionable message for end users.
+        let friendly = `Scraper ${res.status}: ${t.slice(0, 200)}`;
+        if (res.status === 401) {
+          friendly = "Session expired. Please log in again.";
+        } else if (res.status === 429) {
+          friendly = "Too many requests right now. Please wait a minute and try again.";
+        } else if (res.status === 404 || /not.?found/i.test(t)) {
+          friendly = `Account @${u} not found or is private.`;
+        } else if (res.status >= 500) {
+          friendly = "Instagram data provider is temporarily down. Please try again in a few seconds.";
+        }
+        const err = new Error(friendly) as Error & {
           __trace?: { traceId: string; serverTraceId: string; status: number; url: string };
         };
         err.__trace = {
