@@ -1081,6 +1081,62 @@ function normalizeHighlight(h: any) {
   };
 }
 
+async function fetchInstagramWebProfile(username: string, ctx?: ReqCtx): Promise<any | null> {
+  const key = username.toLowerCase();
+  const cached = WEB_PROFILE_CACHE.get(key);
+  if (cached && Date.now() - cached.at < WEB_PROFILE_TTL_MS) return cached.payload;
+
+  const startedAt = Date.now();
+  try {
+    const page = await fetch(`https://www.instagram.com/${encodeURIComponent(username)}/`, {
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "User-Agent": "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+      },
+      signal: AbortSignal.timeout(12000),
+    });
+    const html = await page.text();
+    if (!page.ok || !html) throw new Error(`web_${page.status}`);
+
+    const extract = (re: RegExp) => {
+      const m = html.match(re);
+      if (!m?.[1]) return "";
+      try { return JSON.parse(`"${m[1].replace(/"/g, '\\"')}"`); } catch { return m[1].replace(/&amp;/g, "&"); }
+    };
+    const payload = {
+      user: {
+        username,
+        full_name: extract(/<meta\s+property="og:title"\s+content="([^"]*)"/i).split("(@")[0]?.trim() || "",
+        biography: extract(/<meta\s+name="description"\s+content="([^"]*)"/i),
+        profile_pic_url_hd: extract(/<meta\s+property="og:image"\s+content="([^"]*)"/i),
+      },
+    };
+    WEB_PROFILE_CACHE.set(key, { at: Date.now(), payload });
+    if (ctx) slog("info", ctx.traceId, "web_profile_done", { ms: Date.now() - startedAt, ok: !!payload.user.profile_pic_url_hd });
+    return payload;
+  } catch (e) {
+    if (ctx) slog("warn", ctx.traceId, "web_profile_failed", { ms: Date.now() - startedAt, err: (e as Error).message });
+    return null;
+  }
+}
+
+function mergeProfile(primary: any, fallback: any, username: string) {
+  const fb = fallback ? normalizeProfile(fallback) : null;
+  return {
+    username: primary?.username || fb?.username || username,
+    fullName: primary?.fullName || fb?.fullName || username,
+    bio: primary?.bio || fb?.bio || "",
+    avatarUrl: primary?.avatarUrl || fb?.avatarUrl || "",
+    isVerified: !!(primary?.isVerified || fb?.isVerified),
+    followers: primary?.followers || fb?.followers || 0,
+    following: primary?.following || fb?.following || 0,
+    postsCount: primary?.postsCount || fb?.postsCount || 0,
+    externalUrl: primary?.externalUrl || fb?.externalUrl || "",
+    category: primary?.category || fb?.category || "",
+  };
+}
+
 // ---------- workers (each one self-contained, run in parallel) ----------
 async function fetchProfile(username: string, ctx?: ReqCtx) {
   const startedAt = Date.now();
