@@ -1099,10 +1099,15 @@ async function fetchInstagramWebProfile(username: string, ctx?: ReqCtx): Promise
     const html = await page.text();
     if (!page.ok || !html) throw new Error(`web_${page.status}`);
 
-    const extract = (re: RegExp) => {
+      const extract = (re: RegExp) => {
       const m = html.match(re);
       if (!m?.[1]) return "";
-      try { return JSON.parse(`"${m[1].replace(/"/g, '\\"')}"`); } catch { return m[1].replace(/&amp;/g, "&"); }
+        return m[1]
+          .replace(/&amp;/g, "&")
+          .replace(/&quot;/g, '"')
+          .replace(/&#x27;/g, "'")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">");
     };
     const payload = {
       user: {
