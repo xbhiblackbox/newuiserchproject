@@ -1737,7 +1737,7 @@ Deno.serve(async (req) => {
   // ---- INITIAL FETCH PATH ----
   // Cache key includes pages so a 1-page request and a 3-page request stay
   // separate (different result sizes).
-  const cacheKey = `${username}::${type}::p${pages}`;
+  const cacheKey = `v8::${username}::${type}::p${pages}`;
   // Detect (and warn on) two different inputs producing the same cacheKey.
   checkKeyCollision(cacheKey, username, type, pages, traceId);
 
