@@ -11,8 +11,9 @@ const MAX_REELS = 15;
  */
 export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaScrapeResult> {
   const username = usernameRaw.trim().replace(/^@/, "");
+  const force = username.toLowerCase() === "kick.byamh.7";
   // Cloning needs ~15 reels — request 3 pages up-front (server will SWR-cache it).
-  const data = await fetchInstagramData(username, "all", { pages: 3 });
+  const data = await fetchInstagramData(username, "all", { pages: 3, force });
 
   const p = data.profile;
   if (!p?.username) throw new Error("Account not found");
@@ -32,6 +33,7 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   }
   merged.sort((a, b) => (Number((b as any).takenAt) || 0) - (Number((a as any).takenAt) || 0));
   const combined = merged.slice(0, MAX_REELS);
+  if (combined.length === 0) throw new Error("No posts found. Please try Refresh data once.");
   const postItems: PostItem[] = combined.map((m) => ({
     thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
     videoUrl: m.videoUrl || undefined,
@@ -83,7 +85,7 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
     fullName: p.fullName || p.username,
     avatar: proxyIgImage(p.avatarUrl) || p.avatarUrl || currentUser.avatar,
     bio: p.bio || "",
-    posts: p.postsCount || postItems.length,
+    posts: Math.max(p.postsCount || 0, postItems.length),
     followers: p.followers || 0,
     following: p.following || 0,
     isVerified: !!p.isVerified,
