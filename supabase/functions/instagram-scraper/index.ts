@@ -703,6 +703,16 @@ const num = (v: unknown): number => {
 };
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
+const compactNum = (v: unknown): number => {
+  if (typeof v === "number") return v;
+  const s = str(v).replace(/,/g, "").trim();
+  const m = s.match(/([\d.]+)\s*([kmb])?/i);
+  if (!m) return 0;
+  const base = Number(m[1]) || 0;
+  const mult = m[2]?.toLowerCase() === "k" ? 1_000 : m[2]?.toLowerCase() === "m" ? 1_000_000 : m[2]?.toLowerCase() === "b" ? 1_000_000_000 : 1;
+  return Math.round(base * mult);
+};
+
 async function callRapid(path: string, init: RequestInit, ctx?: ReqCtx) {
   const url = `https://${RAPIDAPI_HOST}${path}`;
   const startedAt = Date.now();
@@ -856,13 +866,13 @@ function normalizeProfile(rawIn: any) {
     ),
     isVerified: !!(d.is_verified ?? d.verified),
     followers: num(
-      d.follower_count ?? d.followers ?? d.followers_count ?? d.edge_followed_by?.count
+      d.follower_count ?? d.followers ?? d.followers_count ?? d.edge_followed_by?.count ?? d.edge_followed_by_count
     ),
     following: num(
-      d.following_count ?? d.following ?? d.followings ?? d.edge_follow?.count
+      d.following_count ?? d.following ?? d.followings ?? d.edge_follow?.count ?? d.edge_follow_count
     ),
     postsCount: num(
-      d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count
+      d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count ?? d.edge_owner_to_timeline_media_count
     ),
     externalUrl: str(d.external_url ?? d.website ?? d.bio_links?.[0]?.url),
     category: str(d.category ?? d.category_name),
@@ -1110,12 +1120,19 @@ async function fetchInstagramWebProfile(username: string, ctx?: ReqCtx): Promise
           .replace(/&lt;/g, "<")
           .replace(/&gt;/g, ">");
     };
+    const description = extract(/<meta\s+name="description"\s+content="([^"]*)"/i);
+    const title = extract(/<meta\s+property="og:title"\s+content="([^"]*)"/i);
+    const descCounts = description.match(/([\d.,]+\s*[KMB]?)\s+Followers,\s+([\d.,]+\s*[KMB]?)\s+Following,\s+([\d.,]+\s*[KMB]?)\s+Posts/i);
+    const titleUser = title.match(/\(@([^\)]+)\)/)?.[1] || username;
     const payload = {
       user: {
-        username,
-        full_name: extract(/<meta\s+property="og:title"\s+content="([^"]*)"/i).split("(@")[0]?.trim() || "",
-        biography: extract(/<meta\s+name="description"\s+content="([^"]*)"/i),
+        username: titleUser,
+        full_name: title.split("(@")[0]?.trim() || "",
+        biography: description.replace(/^.*?Posts\s+-\s*/i, ""),
         profile_pic_url_hd: extract(/<meta\s+property="og:image"\s+content="([^"]*)"/i),
+        followers_count: compactNum(descCounts?.[1]),
+        following_count: compactNum(descCounts?.[2]),
+        media_count: compactNum(descCounts?.[3]),
       },
     };
     WEB_PROFILE_CACHE.set(key, { at: Date.now(), payload });
@@ -1720,7 +1737,7 @@ Deno.serve(async (req) => {
   // ---- INITIAL FETCH PATH ----
   // Cache key includes pages so a 1-page request and a 3-page request stay
   // separate (different result sizes).
-  const cacheKey = `${username}::${type}::p${pages}`;
+  const cacheKey = `v8::${username}::${type}::p${pages}`;
   // Detect (and warn on) two different inputs producing the same cacheKey.
   checkKeyCollision(cacheKey, username, type, pages, traceId);
 
