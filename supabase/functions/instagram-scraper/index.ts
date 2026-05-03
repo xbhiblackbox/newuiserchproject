@@ -1318,18 +1318,6 @@ async function buildResult(
 
   const result: any = { username };
 
-  if (wants("profile")) {
-    if (profileRes.status === "fulfilled" && profileRes.value) {
-      result.profile = profileRes.value;
-      result.profileOk = !!result.profile.username;
-    } else {
-      result.profileOk = false;
-      if (profileRes.status === "rejected" && ctx) {
-        slog("error", ctx.traceId, "profile_failed", { err: String(profileRes.reason?.message ?? profileRes.reason) });
-      }
-    }
-  }
-
   let postsArr: any[] = [];
   let postsNextCursor = "";
   let postsHasMore = false;
@@ -1340,6 +1328,27 @@ async function buildResult(
     postsHasMore = pr.hasMore;
   } else if (postsRes.status === "rejected" && ctx) {
     slog("error", ctx.traceId, "posts_failed", { err: String(postsRes.reason?.message ?? postsRes.reason) });
+  }
+
+  if (wants("profile")) {
+    if (profileRes.status === "fulfilled" && profileRes.value) {
+      result.profile = profileRes.value;
+    } else {
+      if (profileRes.status === "rejected" && ctx) {
+        slog("error", ctx.traceId, "profile_failed", { err: String(profileRes.reason?.message ?? profileRes.reason) });
+      }
+      result.profile = mergeProfile(null, null, username);
+    }
+    const owner = postsArr.find((p: any) => p?.ownerUsername || p?.ownerAvatar || p?.ownerFullName);
+    if (owner) {
+      result.profile = {
+        ...result.profile,
+        username: result.profile.username || owner.ownerUsername || username,
+        fullName: result.profile.fullName || owner.ownerFullName || owner.ownerUsername || username,
+        avatarUrl: result.profile.avatarUrl || owner.ownerAvatar || "",
+      };
+    }
+    result.profileOk = !!result.profile.username;
   }
 
   if (wants("posts")) {
