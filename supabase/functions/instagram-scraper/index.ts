@@ -25,6 +25,8 @@ const L2_TTL_SECONDS = 30 * 60; // 30 min — matches the spirit of HARD_TTL_MS
 // function URL directly with the public anon key, etc.).
 // ---------------------------------------------------------------------------
 const KEY_CACHE = new Map<string, { ok: boolean; at: number; label?: string }>();
+const WEB_PROFILE_CACHE = new Map<string, { at: number; payload: any }>();
+const WEB_PROFILE_TTL_MS = 2 * 60 * 1000;
 
 // Mask the access key so admin notifications never leak the full secret.
 // Shows first 4 + last 4 with bullet padding (e.g. "ABCD••••WXYZ").
@@ -830,7 +832,9 @@ function normalizeProfile(rawIn: any) {
   const d =
     resultArr?.user ??
     raw?.result?.user ??
+    raw?.graphql?.user ??
     raw?.data?.user ??
+    raw?.user_info?.user ??
     raw?.data ??
     raw?.user ??
     raw ??
@@ -841,9 +845,11 @@ function normalizeProfile(rawIn: any) {
     bio: str(d.biography ?? d.bio),
     avatarUrl: str(
       d.hd_profile_pic_url_info?.url ??
+        d.profile_pic_url_info?.url ??
         d.hd_profile_pic_versions?.slice(-1)?.[0]?.url ??
         d.profile_pic_url_hd ??
         d.profile_pic_url ??
+        d.profile_pic_url_proxy ??
         d.profile_picture ??
         d.avatar
     ),
@@ -870,6 +876,7 @@ function normalizeMediaItem(it: any) {
     it?.media ??
     it?.node ??
     it;
+  const owner = m.owner ?? m.user ?? it?.owner ?? it?.user ?? {};
   const id = str(m.id ?? m.pk ?? m.media_id);
   const code = str(m.code ?? m.shortcode ?? m.shortCode);
   const caption = str(
@@ -882,17 +889,22 @@ function normalizeMediaItem(it: any) {
     m.thumbnail_url ??
       m.display_url ??
       m.image_versions2?.candidates?.[0]?.url ??
+      m.image_versions2?.additional_candidates?.first_frame?.url ??
+      m.image_versions?.items?.[0]?.url ??
+      m.display_resources?.slice(-1)?.[0]?.src ??
       m.thumbnail_src ??
       m.cover_frame_url ??
       m.thumbnail ??
-      m.cover?.url
+      m.cover?.url ??
+      m.carousel_media?.[0]?.image_versions2?.candidates?.[0]?.url ??
+      m.carousel_media?.[0]?.display_url
   );
   const videoUrl = str(
     m.video_url ?? m.video_versions?.[0]?.url ?? m.videoUrl ?? m.video?.url ?? ""
   );
   const productType = str(m.product_type ?? m.media_type_name ?? "");
   const mediaType = num(m.media_type);
-  const isVideo = !!videoUrl || productType === "clips" || mediaType === 2;
+  const isVideo = !!videoUrl || productType === "clips" || mediaType === 2 || !!m.is_video;
   return {
     id,
     code,
@@ -917,6 +929,9 @@ function normalizeMediaItem(it: any) {
     takenAt: num(m.taken_at ?? m.taken_at_timestamp ?? m.takenAt),
     productType,
     isVideo,
+    ownerUsername: str(owner.username),
+    ownerFullName: str(owner.full_name ?? owner.fullname ?? owner.name),
+    ownerAvatar: str(owner.profile_pic_url ?? owner.profile_pic_url_hd ?? owner.profile_picture ?? owner.avatar),
   };
 }
 
@@ -931,6 +946,8 @@ function pickItems(rawIn: any): any[] {
     r0?.edges ??
     r0?.data?.items ??
     r0?.user?.edge_owner_to_timeline_media?.edges ??
+    raw?.user?.edge_owner_to_timeline_media?.edges ??
+    raw?.graphql?.user?.edge_owner_to_timeline_media?.edges ??
     raw?.data?.items ??
     raw?.data?.posts ??
     raw?.data?.reels ??
