@@ -62,7 +62,7 @@ const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 
 const USERNAME_KEY = "ig_connected_username";
-const CACHE_PREFIX = "ig_cache_v6";
+const CACHE_PREFIX = "ig_cache_v8";
 const CACHE_SOFT_TTL_MS = 5 * 60 * 1000;       // serve without background refresh
 const CACHE_HARD_TTL_MS = 24 * 60 * 60 * 1000; // serve stale up to a day, refresh in bg
 
