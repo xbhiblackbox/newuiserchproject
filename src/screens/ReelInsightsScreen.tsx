@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import * as React from "react";
 
-import { ArrowLeft, MoreVertical, Heart, MessageCircle, Bookmark, Info, Pencil, X, Plus, TrendingUp, ChevronRight, Clock } from "lucide-react";
+import { ArrowLeft, MoreVertical, Heart, MessageCircle, Bookmark, Info, Pencil, X, Plus, TrendingUp, ChevronRight, Clock, RefreshCw } from "lucide-react";
 import InstagramShareIcon from "@/components/icons/InstagramShareIcon";
 import RepostIcon from "@/components/icons/RepostIcon";
 import { toast } from "sonner";
@@ -625,6 +625,13 @@ const ReelInsightsScreen = () => {
           </h1>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => { persistEdits(); saveToSupabase(); window.location.reload(); }}
+            className="text-foreground active:opacity-60"
+            aria-label="Refresh preview"
+          >
+            <RefreshCw size={20} strokeWidth={2} />
+          </button>
           <TrendingUp size={22} className="text-foreground" />
           {!isEditMode ? (
             <button onClick={() => setIsActionMenuOpen(true)} className="p-1 text-foreground active:opacity-60">
