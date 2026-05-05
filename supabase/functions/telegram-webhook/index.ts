@@ -257,6 +257,92 @@ Deno.serve(async (req) => {
       return new Response("ok", { status: 200 });
     }
 
+    // /setapi <NEW_RAPIDAPI_KEY>
+    if (text.startsWith("/setapi")) {
+      const parts = text.split(/\s+/);
+      if (parts.length < 2 || !parts[1]) {
+        await sendToAllAdmins(
+          botToken,
+          adminChatIds,
+          `❌ <b>Usage:</b>\n<code>/setapi YOUR_NEW_RAPIDAPI_KEY</code>\n\n📌 New Gmail se RapidAPI account banao, Instagram120 API subscribe karo, key copy karke yahan bhejo.`
+        );
+        return new Response("ok", { status: 200 });
+      }
+
+      const newKey = parts.slice(1).join("").trim();
+      if (newKey.length < 20) {
+        await sendToAllAdmins(botToken, adminChatIds, `❌ Key bahut chhoti lag rahi hai. Sahi RapidAPI key bhejo.`);
+        return new Response("ok", { status: 200 });
+      }
+
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+
+      const { error } = await supabase
+        .from("api_settings")
+        .update({
+          current_key: newKey,
+          used_count: 0,
+          alerted_warning: false,
+          alerted_urgent: false,
+          period_start: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", 1);
+
+      if (error) {
+        await sendToAllAdmins(botToken, adminChatIds, `❌ DB Error: ${error.message}`);
+        return new Response("ok", { status: 200 });
+      }
+
+      const masked = newKey.length > 10
+        ? `${newKey.slice(0, 6)}••••${newKey.slice(-4)}`
+        : "••••";
+
+      await sendToAllAdmins(
+        botToken,
+        adminChatIds,
+        `✅ <b>NEW RAPIDAPI KEY ACTIVATED!</b>\n\n` +
+        `🔑 <b>Key:</b> <code>${masked}</code>\n` +
+        `📊 <b>Quota:</b> Reset to 0 / 500\n` +
+        `🚀 <b>Status:</b> Live — users ab bina ruke search kar sakte hain.\n\n` +
+        `<i>Purani key automatically replace ho gayi. Within ~30 sec sab edge instances naya key use karenge.</i>`
+      );
+      return new Response("ok", { status: 200 });
+    }
+
+    // /quota — show current usage
+    if (text.startsWith("/quota")) {
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      const { data, error } = await supabase
+        .from("api_settings")
+        .select("monthly_limit, used_count, period_start, current_key")
+        .eq("id", 1)
+        .maybeSingle();
+      if (error || !data) {
+        await sendToAllAdmins(botToken, adminChatIds, `❌ Quota fetch failed.`);
+        return new Response("ok", { status: 200 });
+      }
+      const remaining = Math.max(0, (data.monthly_limit || 0) - (data.used_count || 0));
+      const hasCustom = !!(data.current_key && data.current_key.length > 0);
+      await sendToAllAdmins(
+        botToken,
+        adminChatIds,
+        `📊 <b>RapidAPI Quota Status</b>\n\n` +
+        `🔢 <b>Used:</b> ${data.used_count} / ${data.monthly_limit}\n` +
+        `🟢 <b>Remaining:</b> ${remaining}\n` +
+        `📅 <b>Period start:</b> ${new Date(data.period_start).toLocaleString()}\n` +
+        `🔑 <b>Active key:</b> ${hasCustom ? "Custom (via /setapi)" : "Default (env)"}\n\n` +
+        `<i>Naya key bhejne ke liye:</i> <code>/setapi NEW_KEY</code>`
+      );
+      return new Response("ok", { status: 200 });
+    }
+
     // /help or /start
     if (text.startsWith("/start") || text.startsWith("/help")) {
       const welcomeMsg =
@@ -282,6 +368,8 @@ Deno.serve(async (req) => {
         `🔑 <code>/gen name days [devices]</code>\n   Generate a new key\n\n` +
         `📋 <code>/list</code>\n   List all keys (active + revoked)\n\n` +
         `🚫 <code>/revoke KEY-CODE</code>\n   Deactivate a key\n\n` +
+        `🔁 <code>/setapi NEW_RAPIDAPI_KEY</code>\n   Replace RapidAPI key (zero downtime)\n\n` +
+        `📊 <code>/quota</code>\n   Show RapidAPI usage status\n\n` +
         `<b>💡 Examples:</b>\n` +
         `<code>/gen Ahmed 7</code> → 7 days\n` +
         `<code>/gen Ali 30 2</code> → 30 days, 2 devices\n` +

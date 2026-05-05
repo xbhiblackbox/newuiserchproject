@@ -50,6 +50,39 @@ export type Database = {
         }
         Relationships: []
       }
+      api_settings: {
+        Row: {
+          alerted_urgent: boolean
+          alerted_warning: boolean
+          current_key: string | null
+          id: number
+          monthly_limit: number
+          period_start: string
+          updated_at: string
+          used_count: number
+        }
+        Insert: {
+          alerted_urgent?: boolean
+          alerted_warning?: boolean
+          current_key?: string | null
+          id?: number
+          monthly_limit?: number
+          period_start?: string
+          updated_at?: string
+          used_count?: number
+        }
+        Update: {
+          alerted_urgent?: boolean
+          alerted_warning?: boolean
+          current_key?: string | null
+          id?: number
+          monthly_limit?: number
+          period_start?: string
+          updated_at?: string
+          used_count?: number
+        }
+        Relationships: []
+      }
       reels_data: {
         Row: {
           account: string
