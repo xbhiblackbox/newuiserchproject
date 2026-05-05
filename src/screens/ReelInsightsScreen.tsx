@@ -849,7 +849,7 @@ const ReelInsightsScreen = () => {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
-                      <Icon size={18} className="text-foreground" strokeWidth={1.8} />
+                      <Icon size={20} className="text-foreground" strokeWidth={2.2} />
                     </div>
                     <span className="text-[15px] text-foreground">{label}</span>
                   </div>
