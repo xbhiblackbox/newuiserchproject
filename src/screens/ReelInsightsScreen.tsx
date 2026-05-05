@@ -241,9 +241,11 @@ const ReelInsightsScreen = () => {
   const [showGraph, setShowGraph] = useState(post?.showGraph !== false);
   const [editCountries, setEditCountries] = useState(hasAudienceRows(ins?.countries) ? ins.countries : defaultCountries);
   const [editAgeGroups, setEditAgeGroups] = useState(hasAudienceRows(ins?.ageGroups) ? ins.ageGroups : defaultAgeGroups);
-  const [editSources, setEditSources] = useState(ins?.sources || [
-    { name: "Feed", pct: 63.4 }, { name: "Reels tab", pct: 11.1 }, { name: "Stories", pct: 10.6 }, { name: "Explore", pct: 7.4 },
-  ]);
+  const [editSources, setEditSources] = useState(
+    hasAudienceRows(ins?.sources) ? ins!.sources : [
+      { name: "Feed", pct: 63.4 }, { name: "Reels tab", pct: 11.1 }, { name: "Stories", pct: 10.6 }, { name: "Explore", pct: 7.4 },
+    ]
+  );
   const [editAccountsReached, setEditAccountsReached] = useState(ins?.accountsReached ?? 567);
   const [editFollows, setEditFollows] = useState(ins?.follows ?? 0);
   const [monetisationStatus, setMonetisationStatus] = useState((post as any)?.monetisationStatus || "Not monetising");
