@@ -877,11 +877,12 @@ async function callRapid(path: string, init: RequestInit, ctx?: ReqCtx) {
   let status: "ok" | "err" = "ok";
   let errMsg: string | undefined;
   try {
+    const activeKey = await getActiveRapidKey();
     const r = await fetch(url, {
       ...init,
       headers: {
         ...(init.headers ?? {}),
-        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-key": activeKey,
         "x-rapidapi-host": RAPIDAPI_HOST,
       },
       signal: AbortSignal.timeout(40000),
@@ -910,6 +911,16 @@ async function callRapid(path: string, init: RequestInit, ctx?: ReqCtx) {
     // Per-RapidAPI-path metrics for the dashboard. Always recorded, even when
     // ctx is missing (e.g. background revalidation paths).
     metricRecord(`rapid:${path}`, ms, status === "err");
+    // Quota tracking: only count successful billable calls.
+    if (status === "ok") {
+      // @ts-ignore EdgeRuntime is a Supabase Deno global
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(incrementApiUsageAndAlert());
+      } else {
+        incrementApiUsageAndAlert().catch(() => null);
+      }
+    }
   }
 }
 
