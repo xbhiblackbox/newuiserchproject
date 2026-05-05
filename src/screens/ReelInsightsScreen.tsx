@@ -449,12 +449,20 @@ const ReelInsightsScreen = () => {
 
   const viewsOverTimeFollowers = useMemo(() => {
     const ratio = followerPct / 100;
-    return viewsOverTimeAll.map(d => ({ ...d, thisReel: Math.round(d.thisReel * ratio), typical: Math.round(d.typical * ratio) }));
+    return viewsOverTimeAll.map(d => ({
+      ...d,
+      thisReel: d.thisReel == null ? null : Math.round(d.thisReel * ratio),
+      typical: d.typical == null ? null : Math.round(d.typical * ratio),
+    }));
   }, [viewsOverTimeAll, followerPct]);
 
   const viewsOverTimeNonFollowers = useMemo(() => {
     const ratio = nonFollowerPct / 100;
-    return viewsOverTimeAll.map(d => ({ ...d, thisReel: Math.round(d.thisReel * ratio), typical: Math.round(d.typical * ratio) }));
+    return viewsOverTimeAll.map(d => ({
+      ...d,
+      thisReel: d.thisReel == null ? null : Math.round(d.thisReel * ratio),
+      typical: d.typical == null ? null : Math.round(d.typical * ratio),
+    }));
   }, [viewsOverTimeAll, nonFollowerPct]);
 
   const viewsOverTime = viewsFilter === "Followers" ? viewsOverTimeFollowers
