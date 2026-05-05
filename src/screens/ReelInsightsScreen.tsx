@@ -655,11 +655,11 @@ const ReelInsightsScreen = () => {
       {/* Engagement Stats Row */}
       <div className="flex justify-around px-4 py-4">
         {[
-          { icon: <Heart size={22} className="text-foreground" strokeWidth={2} fill="currentColor" />, val: likes, set: setEditLikes, label: "Likes" },
-          { icon: <MessageCircle size={22} className="text-foreground -scale-x-100" strokeWidth={2} fill="currentColor" />, val: comments, set: setEditComments, label: "Comments" },
-          { icon: <InstagramShareIcon size={22} className="text-foreground" />, val: shares, set: setEditShares, label: "Shares" },
+          { icon: <Heart size={22} className="text-foreground" strokeWidth={1.8} />, val: likes, set: setEditLikes, label: "Likes" },
+          { icon: <MessageCircle size={22} className="text-foreground -scale-x-100" strokeWidth={1.8} />, val: comments, set: setEditComments, label: "Comments" },
           { icon: <RepostIcon size={22} className="text-foreground" />, val: reposts, set: setEditReposts, label: "Reposts" },
-          { icon: <Bookmark size={22} className="text-foreground" strokeWidth={2} fill="currentColor" />, val: saves, set: setEditSaves, label: "Saves" },
+          { icon: <InstagramShareIcon size={22} className="text-foreground" />, val: shares, set: setEditShares, label: "Shares" },
+          { icon: <Bookmark size={22} className="text-foreground" strokeWidth={1.8} />, val: saves, set: setEditSaves, label: "Saves" },
         ].map((item) => (
           <div key={item.label} className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => isEditMode && setEditModal({ label: item.label, value: String(item.val), onSave: item.set })}>
             {item.icon}
