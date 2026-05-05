@@ -656,7 +656,7 @@ const ReelInsightsScreen = () => {
       <div className="flex justify-around px-4 py-4">
         {[
           { icon: <Heart size={22} className="text-foreground" strokeWidth={2} fill="currentColor" />, val: likes, set: setEditLikes, label: "Likes" },
-          { icon: <MessageCircle size={22} className="text-foreground -scale-x-100" strokeWidth={2} fill="currentColor" stroke="hsl(var(--background))" />, val: comments, set: setEditComments, label: "Comments" },
+          { icon: <MessageCircle size={22} className="text-foreground -scale-x-100" strokeWidth={2} fill="currentColor" />, val: comments, set: setEditComments, label: "Comments" },
           { icon: <InstagramShareIcon size={22} className="text-foreground" />, val: shares, set: setEditShares, label: "Shares" },
           { icon: <RepostIcon size={22} className="text-foreground" />, val: reposts, set: setEditReposts, label: "Reposts" },
           { icon: <Bookmark size={22} className="text-foreground" strokeWidth={2} fill="currentColor" />, val: saves, set: setEditSaves, label: "Saves" },
