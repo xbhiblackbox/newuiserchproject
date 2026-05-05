@@ -39,13 +39,13 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
     videoUrl: m.videoUrl || undefined,
   }));
 
-  const randInt = (min: number, max: number) => Math.floor(min + Math.random() * (max - min + 1));
-
   const reelItems: ExtendedPostItem[] = combined.map((m, index) => {
-    const views = Number(m.views) > 0 ? Number(m.views) : randInt(10000, 20000);
-    const likes = Number(m.likes) > 0 ? Number(m.likes) : Math.floor(views * (0.04 + Math.random() * 0.04));
-    const comments = Number(m.comments) > 0 ? Number(m.comments) : Math.floor(views * (0.005 + Math.random() * 0.01));
-    const shares = Number(m.shares) > 0 ? Number(m.shares) : Math.floor(views * (0.01 + Math.random() * 0.02));
+    // Use ONLY real scraped values — no random fallback. If a field is missing
+    // from the scraper, keep it at 0 so the UI shows the truth.
+    const views = Math.max(0, Number(m.views) || 0);
+    const likes = Math.max(0, Number(m.likes) || 0);
+    const comments = Math.max(0, Number(m.comments) || 0);
+    const shares = Math.max(0, Number(m.shares) || 0);
     return {
       thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
       videoUrl: m.videoUrl || undefined,
@@ -59,7 +59,7 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
         comments,
         shares,
         reposts: 0,
-        saves: Math.floor(views * (0.01 + Math.random() * 0.02)),
+        saves: 0,
         watchTime: "0m",
         avgWatchTime: "0s",
         followerViewsPct: 0,
