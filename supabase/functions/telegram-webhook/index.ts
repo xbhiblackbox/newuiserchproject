@@ -313,31 +313,46 @@ Deno.serve(async (req) => {
       return new Response("ok", { status: 200 });
     }
 
-    // /quota — show current usage
-    if (text.startsWith("/quota")) {
+    // /quota or /status — show current usage + flags
+    if (text.startsWith("/quota") || text.startsWith("/status")) {
       const supabase = createClient(
         Deno.env.get("SUPABASE_URL")!,
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
       const { data, error } = await supabase
         .from("api_settings")
-        .select("monthly_limit, used_count, period_start, current_key")
+        .select("monthly_limit, used_count, period_start, current_key, alerted_warning, alerted_urgent, updated_at")
         .eq("id", 1)
         .maybeSingle();
       if (error || !data) {
-        await sendToAllAdmins(botToken, adminChatIds, `❌ Quota fetch failed.`);
+        await sendToAllAdmins(botToken, adminChatIds, `❌ Status fetch failed.`);
         return new Response("ok", { status: 200 });
       }
       const remaining = Math.max(0, (data.monthly_limit || 0) - (data.used_count || 0));
       const hasCustom = !!(data.current_key && data.current_key.length > 0);
+      const keyMasked = hasCustom
+        ? `${data.current_key!.slice(0, 6)}••••${data.current_key!.slice(-4)}`
+        : "Default (env)";
+      const pct = Math.round(((data.used_count || 0) / (data.monthly_limit || 1)) * 100);
+      const barFilled = Math.min(10, Math.round(pct / 10));
+      const bar = "█".repeat(barFilled) + "░".repeat(10 - barFilled);
+      const warnFlag = data.alerted_urgent ? "🚨 URGENT SENT" : data.alerted_warning ? "⚠️ WARNING SENT" : "✅ Normal";
       await sendToAllAdmins(
         botToken,
         adminChatIds,
-        `📊 <b>RapidAPI Quota Status</b>\n\n` +
-        `🔢 <b>Used:</b> ${data.used_count} / ${data.monthly_limit}\n` +
-        `🟢 <b>Remaining:</b> ${remaining}\n` +
+        `📊 <b>DARKSIDEX • API STATUS</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `🔑 <b>Active Key:</b> <code>${keyMasked}</code>\n` +
+        `📦 <b>Source:</b> ${hasCustom ? "Custom (via /setapi)" : "Default env"}\n\n` +
+        `🔢 <b>Used:</b> ${data.used_count} / ${data.monthly_limit} (${pct}%)\n` +
+        `🟢 <b>Remaining:</b> ${remaining} searches\n` +
+        `📈 <code>${bar}</code>\n\n` +
+        `🚦 <b>Alert State:</b> ${warnFlag}\n` +
+        `   • Warning flag: ${data.alerted_warning ? "🟡 ON" : "⚪ OFF"}\n` +
+        `   • Urgent flag:  ${data.alerted_urgent ? "🔴 ON" : "⚪ OFF"}\n\n` +
         `📅 <b>Period start:</b> ${new Date(data.period_start).toLocaleString()}\n` +
-        `🔑 <b>Active key:</b> ${hasCustom ? "Custom (via /setapi)" : "Default (env)"}\n\n` +
+        `🕒 <b>Last update:</b> ${new Date(data.updated_at).toLocaleString()}\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
         `<i>Naya key bhejne ke liye:</i> <code>/setapi NEW_KEY</code>`
       );
       return new Response("ok", { status: 200 });
@@ -370,6 +385,7 @@ Deno.serve(async (req) => {
         `🚫 <code>/revoke KEY-CODE</code>\n   Deactivate a key\n\n` +
         `🔁 <code>/setapi NEW_RAPIDAPI_KEY</code>\n   Replace RapidAPI key (zero downtime)\n\n` +
         `📊 <code>/quota</code>\n   Show RapidAPI usage status\n\n` +
+        `🔍 <code>/status</code>\n   Detailed key + quota + alert flags\n\n` +
         `<b>💡 Examples:</b>\n` +
         `<code>/gen Ahmed 7</code> → 7 days\n` +
         `<code>/gen Ali 30 2</code> → 30 days, 2 devices\n` +
