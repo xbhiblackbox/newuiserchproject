@@ -211,7 +211,19 @@ const ViewsDetailScreen = () => {
                   className="text-[36px] font-bold text-foreground bg-secondary rounded px-1 outline-none w-36 text-center"
                 />
               ) : (
-                <span className="text-[36px] font-bold text-foreground tracking-tight">{formatCount(data.views)}</span>
+                (() => {
+                  const txt = data.views.toLocaleString();
+                  const len = txt.length;
+                  const size = len <= 7 ? 36 : len <= 9 ? 28 : len <= 11 ? 23 : 19;
+                  return (
+                    <span
+                      style={{ fontSize: `${size}px` }}
+                      className="font-bold text-foreground tracking-tight px-4 text-center leading-none"
+                    >
+                      {txt}
+                    </span>
+                  );
+                })()
               )}
             </div>
           </div>
