@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getDeviceFingerprint, clearAuthSession, getAuthSession } from "@/lib/auth";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
