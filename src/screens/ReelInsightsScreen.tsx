@@ -653,15 +653,15 @@ const ReelInsightsScreen = () => {
       </div>
 
       {/* Engagement Stats Row */}
-      <div className="flex justify-around px-4 py-3">
+      <div className="flex justify-around px-4 py-4">
         {[
-          { icon: <Heart size={18} className="text-foreground" />, val: likes, set: setEditLikes, label: "Likes" },
-          { icon: <MessageCircle size={18} className="text-foreground -scale-x-100" />, val: comments, set: setEditComments, label: "Comments" },
-          { icon: <RepostIcon size={18} className="text-foreground" />, val: reposts, set: setEditReposts, label: "Reposts" },
-          { icon: <InstagramShareIcon size={18} className="text-foreground" />, val: shares, set: setEditShares, label: "Shares" },
-          { icon: <Bookmark size={18} className="text-foreground" />, val: saves, set: setEditSaves, label: "Saves" },
+          { icon: <Heart size={22} className="text-foreground" strokeWidth={2} fill="currentColor" />, val: likes, set: setEditLikes, label: "Likes" },
+          { icon: <MessageCircle size={22} className="text-foreground -scale-x-100" strokeWidth={2} fill="currentColor" />, val: comments, set: setEditComments, label: "Comments" },
+          { icon: <InstagramShareIcon size={22} className="text-foreground" />, val: shares, set: setEditShares, label: "Shares" },
+          { icon: <RepostIcon size={22} className="text-foreground" />, val: reposts, set: setEditReposts, label: "Reposts" },
+          { icon: <Bookmark size={22} className="text-foreground" strokeWidth={2} fill="currentColor" />, val: saves, set: setEditSaves, label: "Saves" },
         ].map((item) => (
-          <div key={item.label} className="flex flex-col items-center gap-1 cursor-pointer" onClick={() => isEditMode && setEditModal({ label: item.label, value: String(item.val), onSave: item.set })}>
+          <div key={item.label} className="flex flex-col items-center gap-1.5 cursor-pointer" onClick={() => isEditMode && setEditModal({ label: item.label, value: String(item.val), onSave: item.set })}>
             {item.icon}
             <span className="text-[13px] font-medium text-foreground">{fmtNum(item.val)}</span>
           </div>
