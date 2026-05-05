@@ -10,6 +10,7 @@ import LoginScreen from "@/screens/LoginScreen";
 import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { isAuthenticated } from "@/lib/auth";
 import KeyGuard from "@/components/KeyGuard";
+import LoadingRing from "@/components/LoadingRing";
 const HomeScreen = lazy(() => import("@/screens/HomeScreen"));
 const SearchScreen = lazy(() => import("@/screens/SearchScreen"));
 const MessagesScreen = lazy(() => import("@/screens/MessagesScreen"));
@@ -101,7 +102,7 @@ const App = () => {
                     {showSplash && <div className="fixed inset-0 z-[9998] bg-black" />}
                     <AppLayout>
                       <KeyGuard>
-                        <Suspense fallback={<div className="min-h-screen" />}>
+                        <Suspense fallback={<LoadingRing />}>
                         <Routes>
                           <Route path="/" element={<HomeScreen />} />
                           <Route path="/search" element={<SearchScreen />} />
