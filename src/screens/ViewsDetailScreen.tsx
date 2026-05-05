@@ -205,11 +205,18 @@ const ViewsDetailScreen = () => {
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-[11px] text-muted-foreground mb-0.5">Views</span>
               {isEditing ? (
-                <input 
-                  type="number" value={data.views} 
-                  onChange={e => updateField('views', parseInt(e.target.value) || 0)}
-                  className="text-[36px] font-bold text-foreground bg-secondary rounded px-1 outline-none w-36 text-center"
-                />
+                (() => {
+                  const len = String(data.views).length;
+                  const size = len <= 6 ? 32 : len <= 8 ? 24 : len <= 10 ? 20 : 17;
+                  return (
+                    <input
+                      type="number" value={data.views}
+                      onChange={e => updateField('views', parseInt(e.target.value) || 0)}
+                      style={{ fontSize: `${size}px` }}
+                      className="font-bold text-foreground bg-secondary rounded px-1 outline-none w-[150px] text-center"
+                    />
+                  );
+                })()
               ) : (
                 (() => {
                   const txt = data.views.toLocaleString();
