@@ -163,6 +163,7 @@ const ProfileReelCard = ({
     else if (editField === "comments") { setCommentCount(v); persistInsights({ comments: v }); }
     else if (editField === "sends") { setSendCount(v); persistInsights({ shares: v }); }
     else if (editField === "saves") { setSaveCount(v); persistInsights({ saves: v }); }
+    else if (editField === "reposts") { setRepostCount(v); persistInsights({ reposts: v }); }
     else if (editField === "views") { setViewCount(v); persistInsights({ views: v }); }
     setEditField(null);
   };
@@ -227,8 +228,17 @@ const ProfileReelCard = ({
             <span className="text-[12px] text-white font-semibold">{fmtK(commentCount)}</span>
           </button>
           {/* Repost */}
-          <button onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-0.5">
+          <button
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={() => startPress("reposts", String(repostCount))}
+            onPointerUp={endPress}
+            onPointerLeave={endPress}
+            className="flex flex-col items-center gap-0.5"
+          >
             <RepostIcon size={30} className="text-white" strokeWidth={2} />
+            {repostCount > 0 && (
+              <span className="text-[12px] text-white font-semibold">{fmtK(repostCount)}</span>
+            )}
           </button>
           {/* Send */}
           <button
@@ -435,6 +445,7 @@ const ReelDetailScreen = () => {
       comments: ins?.comments ?? 10,
       sends: ins?.shares ?? 24,
       saves: ins?.saves ?? 60,
+      reposts: ins?.reposts ?? 0,
       viewsNum: ins?.views ?? 7000,
       accountUsername: reelsAccountKey,
       profileAvatar: account.profile.avatar,
