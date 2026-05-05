@@ -36,6 +36,7 @@ interface ProfileReelData {
   comments: number;
   sends: number;
   saves: number;
+  reposts: number;
   viewsNum: number;
   accountUsername: string;
   profileAvatar: string;
@@ -71,6 +72,7 @@ const ProfileReelCard = ({
   const [commentCount, setCommentCount] = useState(data.comments);
   const [sendCount, setSendCount] = useState(data.sends);
   const [saveCount, setSaveCount] = useState(data.saves);
+  const [repostCount, setRepostCount] = useState(data.reposts);
   const [viewCount, setViewCount] = useState(data.viewsNum);
 
   // Sync local state with incoming data (e.g. after re-load from storage)
@@ -79,11 +81,12 @@ const ProfileReelCard = ({
     setCommentCount(data.comments);
     setSendCount(data.sends);
     setSaveCount(data.saves);
+    setRepostCount(data.reposts);
     setViewCount(data.viewsNum);
-  }, [data.likes, data.comments, data.sends, data.saves, data.viewsNum]);
+  }, [data.likes, data.comments, data.sends, data.saves, data.reposts, data.viewsNum]);
 
   // Persist edits back to localStorage + Supabase so insights & profile thumbnail stay in sync
-  const persistInsights = useCallback((updates: { likes?: number; comments?: number; shares?: number; saves?: number; views?: number }) => {
+  const persistInsights = useCallback((updates: { likes?: number; comments?: number; shares?: number; saves?: number; reposts?: number; views?: number }) => {
     if (!data.isMainAccount) return;
     try {
       const fresh = loadReelsData();
@@ -95,6 +98,7 @@ const ProfileReelCard = ({
         ...(updates.comments != null ? { comments: updates.comments } : {}),
         ...(updates.shares != null ? { shares: updates.shares } : {}),
         ...(updates.saves != null ? { saves: updates.saves } : {}),
+        ...(updates.reposts != null ? { reposts: updates.reposts } : {}),
         ...(updates.views != null ? { views: updates.views } : {}),
       };
       fresh[data.index] = reel;
