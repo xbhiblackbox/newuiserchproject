@@ -70,12 +70,12 @@ const App = () => {
     const theme = params.get("theme");
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
     } else if (theme === "light") {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    } else if (localStorage.getItem("theme") === "dark") {
-      document.documentElement.classList.add("dark");
+    } else {
+      // Default: light mode. Clear any stale persisted dark setting.
+      document.documentElement.classList.remove("dark");
+      localStorage.removeItem("theme");
     }
   }, []);
 
