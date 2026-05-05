@@ -36,6 +36,7 @@ interface ProfileReelData {
   comments: number;
   sends: number;
   saves: number;
+  reposts: number;
   viewsNum: number;
   accountUsername: string;
   profileAvatar: string;
@@ -71,6 +72,7 @@ const ProfileReelCard = ({
   const [commentCount, setCommentCount] = useState(data.comments);
   const [sendCount, setSendCount] = useState(data.sends);
   const [saveCount, setSaveCount] = useState(data.saves);
+  const [repostCount, setRepostCount] = useState(data.reposts);
   const [viewCount, setViewCount] = useState(data.viewsNum);
 
   // Sync local state with incoming data (e.g. after re-load from storage)
@@ -79,11 +81,12 @@ const ProfileReelCard = ({
     setCommentCount(data.comments);
     setSendCount(data.sends);
     setSaveCount(data.saves);
+    setRepostCount(data.reposts);
     setViewCount(data.viewsNum);
-  }, [data.likes, data.comments, data.sends, data.saves, data.viewsNum]);
+  }, [data.likes, data.comments, data.sends, data.saves, data.reposts, data.viewsNum]);
 
   // Persist edits back to localStorage + Supabase so insights & profile thumbnail stay in sync
-  const persistInsights = useCallback((updates: { likes?: number; comments?: number; shares?: number; saves?: number; views?: number }) => {
+  const persistInsights = useCallback((updates: { likes?: number; comments?: number; shares?: number; saves?: number; reposts?: number; views?: number }) => {
     if (!data.isMainAccount) return;
     try {
       const fresh = loadReelsData();
@@ -95,6 +98,7 @@ const ProfileReelCard = ({
         ...(updates.comments != null ? { comments: updates.comments } : {}),
         ...(updates.shares != null ? { shares: updates.shares } : {}),
         ...(updates.saves != null ? { saves: updates.saves } : {}),
+        ...(updates.reposts != null ? { reposts: updates.reposts } : {}),
         ...(updates.views != null ? { views: updates.views } : {}),
       };
       fresh[data.index] = reel;
@@ -159,6 +163,7 @@ const ProfileReelCard = ({
     else if (editField === "comments") { setCommentCount(v); persistInsights({ comments: v }); }
     else if (editField === "sends") { setSendCount(v); persistInsights({ shares: v }); }
     else if (editField === "saves") { setSaveCount(v); persistInsights({ saves: v }); }
+    else if (editField === "reposts") { setRepostCount(v); persistInsights({ reposts: v }); }
     else if (editField === "views") { setViewCount(v); persistInsights({ views: v }); }
     setEditField(null);
   };
@@ -223,8 +228,17 @@ const ProfileReelCard = ({
             <span className="text-[12px] text-white font-semibold">{fmtK(commentCount)}</span>
           </button>
           {/* Repost */}
-          <button onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-0.5">
+          <button
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={() => startPress("reposts", String(repostCount))}
+            onPointerUp={endPress}
+            onPointerLeave={endPress}
+            className="flex flex-col items-center gap-0.5"
+          >
             <RepostIcon size={30} className="text-white" strokeWidth={2} />
+            {repostCount > 0 && (
+              <span className="text-[12px] text-white font-semibold">{fmtK(repostCount)}</span>
+            )}
           </button>
           {/* Send */}
           <button
@@ -431,6 +445,7 @@ const ReelDetailScreen = () => {
       comments: ins?.comments ?? 10,
       sends: ins?.shares ?? 24,
       saves: ins?.saves ?? 60,
+      reposts: ins?.reposts ?? 0,
       viewsNum: ins?.views ?? 7000,
       accountUsername: reelsAccountKey,
       profileAvatar: account.profile.avatar,
