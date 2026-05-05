@@ -5,8 +5,166 @@ const corsHeaders = {
   "Access-Control-Expose-Headers": "x-trace-id, x-cache, x-cache-age, x-duration-ms, x-cache-heatmap, x-cache-stats",
 };
 
-const RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
+let RAPIDAPI_KEY = Deno.env.get("RAPIDAPI_KEY") ?? "";
 const RAPIDAPI_HOST = Deno.env.get("RAPIDAPI_HOST") ?? "instagram120.p.rapidapi.com";
+
+// ---- Active RapidAPI key & quota tracking ----
+// The active key can be overridden via api_settings.current_key (managed
+// from Telegram via /setapi). We cache the lookup briefly to avoid hitting
+// the DB on every scrape.
+let ACTIVE_KEY_CACHE: { key: string; at: number } | null = null;
+const ACTIVE_KEY_TTL_MS = 30_000;
+
+async function getActiveRapidKey(): Promise<string> {
+  if (ACTIVE_KEY_CACHE && Date.now() - ACTIVE_KEY_CACHE.at < ACTIVE_KEY_TTL_MS) {
+    return ACTIVE_KEY_CACHE.key;
+  }
+  if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return RAPIDAPI_KEY;
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL_ENV}/rest/v1/api_settings?id=eq.1&select=current_key&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_SRK,
+          Authorization: `Bearer ${SUPABASE_SRK}`,
+          Accept: "application/json",
+        },
+        signal: AbortSignal.timeout(2000),
+      },
+    );
+    if (r.ok) {
+      const rows = await r.json() as Array<{ current_key: string | null }>;
+      const k = rows?.[0]?.current_key?.trim();
+      const finalKey = k && k.length > 0 ? k : RAPIDAPI_KEY;
+      ACTIVE_KEY_CACHE = { key: finalKey, at: Date.now() };
+      return finalKey;
+    }
+  } catch (_) { /* fall back */ }
+  return RAPIDAPI_KEY;
+}
+
+function invalidateActiveKeyCache() { ACTIVE_KEY_CACHE = null; }
+
+// Increment usage counter & send alerts when thresholds are crossed.
+// Fire-and-forget: never blocks the user response.
+async function incrementApiUsageAndAlert(): Promise<void> {
+  if (!SUPABASE_URL_ENV || !SUPABASE_SRK) return;
+  try {
+    const r = await fetch(
+      `${SUPABASE_URL_ENV}/rest/v1/api_settings?id=eq.1&select=monthly_limit,used_count,alerted_warning,alerted_urgent,period_start`,
+      {
+        headers: {
+          apikey: SUPABASE_SRK,
+          Authorization: `Bearer ${SUPABASE_SRK}`,
+          Accept: "application/json",
+        },
+        signal: AbortSignal.timeout(2500),
+      },
+    );
+    if (!r.ok) return;
+    const rows = await r.json() as Array<{
+      monthly_limit: number; used_count: number;
+      alerted_warning: boolean; alerted_urgent: boolean;
+      period_start: string;
+    }>;
+    const row = rows?.[0];
+    if (!row) return;
+
+    // Auto-reset if a new calendar month started
+    const now = new Date();
+    const ps = new Date(row.period_start);
+    let used = row.used_count;
+    let warned = row.alerted_warning;
+    let urgent = row.alerted_urgent;
+    let resetPeriod = false;
+    if (ps.getUTCFullYear() !== now.getUTCFullYear() || ps.getUTCMonth() !== now.getUTCMonth()) {
+      used = 0; warned = false; urgent = false; resetPeriod = true;
+    }
+    used += 1;
+
+    const limit = row.monthly_limit || 500;
+    const remaining = Math.max(0, limit - used);
+
+    let triggerWarning = false;
+    let triggerUrgent = false;
+    if (!urgent && remaining <= 5) { triggerUrgent = true; urgent = true; }
+    else if (!warned && remaining <= 10) { triggerWarning = true; warned = true; }
+
+    const patch: Record<string, unknown> = {
+      used_count: used,
+      alerted_warning: warned,
+      alerted_urgent: urgent,
+      updated_at: now.toISOString(),
+    };
+    if (resetPeriod) patch.period_start = now.toISOString();
+
+    await fetch(`${SUPABASE_URL_ENV}/rest/v1/api_settings?id=eq.1`, {
+      method: "PATCH",
+      headers: {
+        apikey: SUPABASE_SRK,
+        Authorization: `Bearer ${SUPABASE_SRK}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(patch),
+      signal: AbortSignal.timeout(2500),
+    }).catch(() => null);
+
+    if (triggerWarning || triggerUrgent) {
+      sendQuotaAlert({ used, limit, remaining, urgent: triggerUrgent });
+    }
+  } catch (_) { /* best-effort */ }
+}
+
+function sendQuotaAlert(opts: { used: number; limit: number; remaining: number; urgent: boolean }) {
+  const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN");
+  const chatIds = getAdminChatIds();
+  if (!botToken || chatIds.length === 0) return;
+
+  const { used, limit, remaining, urgent } = opts;
+  const header = urgent
+    ? `🚨🚨 <b>URGENT — RAPIDAPI QUOTA ALMOST GONE</b> 🚨🚨`
+    : `⚠️ <b>RAPIDAPI QUOTA WARNING</b> ⚠️`;
+
+  const msg =
+    `${header}\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `📊 <b>Used:</b> <code>${used} / ${limit}</code>\n` +
+    `🔻 <b>Remaining:</b> <code>${remaining}</code> searches\n\n` +
+    (urgent
+      ? `🔥 Sirf <b>${remaining}</b> searches bachi hain!\n` +
+        `💀 Iske baad searches band ho jayengi.\n\n`
+      : `⏳ Sirf <b>${remaining}</b> searches bachi hain.\n` +
+        `📌 Naya RapidAPI key ready rakho.\n\n`) +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🛠 <b>Naya API key submit karne ke liye:</b>\n` +
+    `<code>/setapi YOUR_NEW_RAPIDAPI_KEY</code>\n\n` +
+    `📍 New Gmail se RapidAPI account banao →\n` +
+    `   Instagram120 API subscribe (free) →\n` +
+    `   API key copy karo →\n` +
+    `   Yahan <code>/setapi KEY</code> bhejo.\n\n` +
+    `✅ Submit karte hi quota auto-reset ho jayega\n` +
+    `   aur users bina ruke search karte rahenge.\n` +
+    `━━━━━━━━━━━━━━━━━━━━\n` +
+    `🚀 <b>DARKSIDEX — ZERO DOWNTIME</b> 🌙`;
+
+  const task = (async () => {
+    await Promise.allSettled(
+      chatIds.map((id) =>
+        fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: id, text: msg, parse_mode: "HTML", disable_web_page_preview: true }),
+        }).catch(() => null)
+      )
+    );
+  })();
+  // @ts-ignore EdgeRuntime is a Supabase Deno global
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(task);
+  }
+}
 
 // ---- L2 persistent cache (Postgres) ----
 // In-memory cache (L1) is per-isolate. When Supabase scales out under load,
