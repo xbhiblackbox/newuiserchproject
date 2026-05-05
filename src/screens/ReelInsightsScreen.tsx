@@ -774,8 +774,8 @@ const ReelInsightsScreen = () => {
                   };
                   const visualData = viewsOverTime.map(d => ({
                     ...d,
-                    thisReel: remap(d.thisReel),
-                    typical: remap(d.typical),
+                    thisReel: d.thisReel == null ? null : remap(d.thisReel),
+                    typical: d.typical == null ? null : remap(d.typical),
                   }));
                   const fmt = (v: number) => v === 0 ? '0' : v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}K` : String(v);
                   const tickLabel = (v: number) => v === 0 ? fmt(0) : v === 1 ? fmt(midVal) : fmt(topVal);
