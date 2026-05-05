@@ -3,8 +3,8 @@ import { X, Pencil } from "lucide-react";
 
 interface GraphPoint {
   day: string;
-  thisReel: number;
-  typical: number;
+  thisReel: number | null;
+  typical: number | null;
 }
 
 interface GraphEditorModalProps {
@@ -190,13 +190,19 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
   }, []);
 
   const handleSave = () => {
-    // Interpolate both lines to 5 evenly spaced points (still in 0..1 space)
-    const interpolate = (points: DrawPoint[], numOut: number): number[] => {
-      if (points.length === 0) return Array(numOut).fill(0);
+    // Interpolate both lines to 5 evenly spaced points (still in 0..1 space).
+    // Points OUTSIDE the user's drawn range become null so the rendered line
+    // ends exactly where the user stopped drawing (no flat extension).
+    const interpolate = (points: DrawPoint[], numOut: number): (number | null)[] => {
+      if (points.length === 0) return Array(numOut).fill(null);
       const sorted = [...points].sort((a, b) => a.x - b.x);
-      const result: number[] = [];
+      const minX = sorted[0].x;
+      const maxX = sorted[sorted.length - 1].x;
+      const eps = 1e-6;
+      const result: (number | null)[] = [];
       for (let i = 0; i < numOut; i++) {
         const frac = i / (numOut - 1);
+        if (frac < minX - eps || frac > maxX + eps) { result.push(null); continue; }
         if (frac <= sorted[0].x) { result.push(sorted[0].y); continue; }
         if (frac >= sorted[sorted.length - 1].x) { result.push(sorted[sorted.length - 1].y); continue; }
         let lo = 0;
@@ -212,8 +218,8 @@ const GraphEditorModal = ({ open, onClose, onSave, initialData, maxViews, inline
     // Multiply normalized shape (0..1) by outer Y-axis top (maxViews)
     // so the actual quantity is set by the outer chart, not the editor.
     const scale = Math.max(maxViews, 1);
-    const reelVals = interpolate(reelPoints, 5).map(v => Math.round(v * scale));
-    const typicalVals = interpolate(typicalPoints, 5).map(v => Math.round(v * scale));
+    const reelVals = interpolate(reelPoints, 5).map(v => v == null ? null : Math.round(v * scale));
+    const typicalVals = interpolate(typicalPoints, 5).map(v => v == null ? null : Math.round(v * scale));
     const data: GraphPoint[] = [];
     for (let i = 0; i < 5; i++) {
       let day = "";
