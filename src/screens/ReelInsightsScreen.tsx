@@ -724,7 +724,7 @@ const ReelInsightsScreen = () => {
               ].map((item) => (
                 <div 
                   key={item.label}
-                  className={cn("bg-[#EEF0F2] rounded-xl p-4", isEditMode && "cursor-pointer active:opacity-60")}
+                  className={cn("bg-[#EEF0F2] dark:bg-secondary rounded-xl p-4", isEditMode && "cursor-pointer active:opacity-60")}
                   onClick={() => isEditMode && item.onEdit()}
                 >
                   <span className="text-[12px] text-muted-foreground block mb-1">{item.label}</span>
@@ -867,7 +867,7 @@ const ReelInsightsScreen = () => {
                   onClick={() => isEditMode && onEdit()}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-[#EEF0F2] flex items-center justify-center">
+                    <div className="w-9 h-9 rounded-full bg-[#EEF0F2] dark:bg-secondary flex items-center justify-center">
                       <Icon size={20} className="text-foreground" strokeWidth={2.2} />
                     </div>
                     <span className="text-[15px] text-foreground">{label}</span>
