@@ -1,12 +1,10 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { getDeviceFingerprint, clearAuthSession, getAuthSession } from "@/lib/auth";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export default function KeyGuard({ children }: { children: React.ReactNode }) {
-    const [isValidating, setIsValidating] = useState(true);
-    const [isInitialCheck, setIsInitialCheck] = useState(true);
     const failCountRef = useRef(0);
 
     useEffect(() => {
@@ -57,11 +55,6 @@ export default function KeyGuard({ children }: { children: React.ReactNode }) {
             } catch (err) {
                 // Network error — never logout
                 console.log("[KeyGuard] Network error, staying logged in.", err);
-            } finally {
-                if (mounted) {
-                    setIsInitialCheck(false);
-                    setIsValidating(false);
-                }
             }
         };
 
@@ -75,17 +68,6 @@ export default function KeyGuard({ children }: { children: React.ReactNode }) {
             clearInterval(interval);
         };
     }, []); // No dependencies — stable interval
-
-    if (isValidating && isInitialCheck) {
-        return (
-            <div className="fixed inset-0 flex items-center justify-center bg-black/95 z-[9999]">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-[3px] border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <p className="text-white/60 text-xs font-medium tracking-wide">Validating your access...</p>
-                </div>
-            </div>
-        );
-    }
 
     return <>{children}</>;
 }
