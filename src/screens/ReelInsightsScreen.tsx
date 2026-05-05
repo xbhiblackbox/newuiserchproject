@@ -164,14 +164,10 @@ const ReelInsightsScreen = () => {
   const [editSaves, setEditSaves] = useState(ins?.saves ?? 8);
   const [editReposts, setEditReposts] = useState(ins?.reposts ?? 0);
   const [editFollowerPct, setEditFollowerPct] = useState(
-    ins?.followerViewsPct && ins.followerViewsPct > 0
-      ? ins.followerViewsPct
-      : [42, 38, 55, 48, 35, 60, 45, 50, 40, 52, 36, 58, 44, 39, 47, 53, 41, 56, 43, 49][postIndex % 20] || 45
+    ins?.followerViewsPct && ins.followerViewsPct > 0 ? ins.followerViewsPct : 36
   );
   const [editGenderMale, setEditGenderMale] = useState(
-    ins?.genderMale && ins.genderMale > 0
-      ? ins.genderMale
-      : [62, 55, 70, 58, 48, 65, 52, 60, 50, 67, 54, 72, 56, 49, 63, 59, 51, 68, 53, 61][postIndex % 20] || 58
+    ins?.genderMale && ins.genderMale > 0 ? ins.genderMale : 56
   );
   const [editViewRate, setEditViewRate] = useState(ins?.viewRatePast3Sec ?? 42);
   const [editStartDate, setEditStartDate] = useState(post?.graphStartDate || ins?.viewsOverTime?.[0]?.day || "23 Jan");
