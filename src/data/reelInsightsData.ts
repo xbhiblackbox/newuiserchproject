@@ -17,7 +17,7 @@ export interface ReelInsights {
   sources: { name: string; pct: number }[];
   accountsReached: number;
   follows: number;
-  viewsOverTime: { day: string; thisReel: number; typical: number }[];
+  viewsOverTime: { day: string; thisReel: number | null; typical: number | null }[];
   // Retention
   skipRate: number;
   typicalSkipRate: number;

@@ -449,12 +449,20 @@ const ReelInsightsScreen = () => {
 
   const viewsOverTimeFollowers = useMemo(() => {
     const ratio = followerPct / 100;
-    return viewsOverTimeAll.map(d => ({ ...d, thisReel: Math.round(d.thisReel * ratio), typical: Math.round(d.typical * ratio) }));
+    return viewsOverTimeAll.map(d => ({
+      ...d,
+      thisReel: d.thisReel == null ? null : Math.round(d.thisReel * ratio),
+      typical: d.typical == null ? null : Math.round(d.typical * ratio),
+    }));
   }, [viewsOverTimeAll, followerPct]);
 
   const viewsOverTimeNonFollowers = useMemo(() => {
     const ratio = nonFollowerPct / 100;
-    return viewsOverTimeAll.map(d => ({ ...d, thisReel: Math.round(d.thisReel * ratio), typical: Math.round(d.typical * ratio) }));
+    return viewsOverTimeAll.map(d => ({
+      ...d,
+      thisReel: d.thisReel == null ? null : Math.round(d.thisReel * ratio),
+      typical: d.typical == null ? null : Math.round(d.typical * ratio),
+    }));
   }, [viewsOverTimeAll, nonFollowerPct]);
 
   const viewsOverTime = viewsFilter === "Followers" ? viewsOverTimeFollowers
@@ -766,8 +774,8 @@ const ReelInsightsScreen = () => {
                   };
                   const visualData = viewsOverTime.map(d => ({
                     ...d,
-                    thisReel: remap(d.thisReel),
-                    typical: remap(d.typical),
+                    thisReel: d.thisReel == null ? null : remap(d.thisReel),
+                    typical: d.typical == null ? null : remap(d.typical),
                   }));
                   const fmt = (v: number) => v === 0 ? '0' : v >= 1000 ? `${(v / 1000).toFixed(v >= 10000 ? 0 : 1)}K` : String(v);
                   const tickLabel = (v: number) => v === 0 ? fmt(0) : v === 1 ? fmt(midVal) : fmt(topVal);
