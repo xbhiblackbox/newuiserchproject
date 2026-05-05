@@ -1795,7 +1795,8 @@ Deno.serve(async (req) => {
     return json({ error: "POST only" }, 405);
   }
   if (req.method !== "POST") return json({ error: "POST only" }, 405);
-  if (!RAPIDAPI_KEY) return json({ error: "RAPIDAPI_KEY missing" }, 500);
+  const activeKey = await getActiveRapidKey();
+  if (!activeKey) return json({ error: "RAPIDAPI_KEY missing" }, 500);
 
   // Use client-supplied trace id if present (so client logs and server logs
   // share the same id), otherwise mint a fresh one.
