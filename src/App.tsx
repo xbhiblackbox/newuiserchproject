@@ -64,6 +64,21 @@ const App = () => {
     }
   }, [authed]);
 
+  // Allow toggling dark mode via ?theme=dark or ?theme=light in the URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const theme = params.get("theme");
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else if (theme === "light") {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    } else if (localStorage.getItem("theme") === "dark") {
+      document.documentElement.classList.add("dark");
+    }
+  }, []);
+
   const handleLoginSuccess = () => {
     setAuthed(true);
   };
