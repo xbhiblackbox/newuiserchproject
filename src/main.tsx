@@ -5,13 +5,13 @@ import "./index.css";
 
 // Anti-inspect protection disabled for Lovable preview compatibility
 
-// Restore saved theme — default to dark
+// Restore saved theme — default to light
 const savedTheme = localStorage.getItem("theme");
-if (savedTheme === "light") {
-  document.documentElement.classList.remove("dark");
-} else {
+if (savedTheme === "dark") {
   document.documentElement.classList.add("dark");
-  if (!savedTheme) localStorage.setItem("theme", "dark");
+} else {
+  document.documentElement.classList.remove("dark");
+  if (!savedTheme) localStorage.setItem("theme", "light");
 }
 
 const shouldRegisterServiceWorker = import.meta.env.PROD;
