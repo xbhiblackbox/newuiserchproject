@@ -65,6 +65,7 @@ const USERNAME_KEY = "ig_connected_username";
 const CACHE_PREFIX = "ig_cache_v8";
 const CACHE_SOFT_TTL_MS = 5 * 60 * 1000;       // serve without background refresh
 const CACHE_HARD_TTL_MS = 24 * 60 * 60 * 1000; // serve stale up to a day, refresh in bg
+const SCRAPER_TIMEOUT_MS = 18_000;
 
 export const getConnectedUsername = (): string | null => {
   try {
@@ -151,7 +152,7 @@ export async function fetchInstagramData(
           "x-device-fp": _session.deviceFingerprint || getDeviceFingerprint(),
         },
         body: JSON.stringify(reqBody),
-        signal: AbortSignal.timeout(90000),
+        signal: AbortSignal.timeout(SCRAPER_TIMEOUT_MS),
       });
       const ms = Date.now() - startedAt;
       const serverTrace = res.headers.get("x-trace-id") || traceId;
