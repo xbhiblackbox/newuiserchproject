@@ -1401,7 +1401,7 @@ async function fetchProfile(username: string, ctx?: ReqCtx) {
   } catch (e) {
     if (ctx) slog("warn", ctx.traceId, "rapid_profile_failed", { err: (e as Error).message });
   }
-  if (!profile?.username || !profile?.avatarUrl) {
+  if (!profile?.username || !profile?.avatarUrl || !profile?.followers || !profile?.postsCount) {
     webRaw = await fetchInstagramWebProfile(username, ctx);
   }
   profile = mergeProfile(profile, webRaw, username);
