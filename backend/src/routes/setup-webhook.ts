@@ -2,12 +2,12 @@ import { Router, Request, Response } from "express";
 
 const router = Router();
 
-router.post("/", async (_req: Request, res: Response): Promise<void> => {
+router.post("/", async (req: Request, res: Response): Promise<void> => {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const publicBaseUrl = process.env.PUBLIC_BASE_URL;
+  const publicBaseUrl = process.env.PUBLIC_BASE_URL || `https://${req.get("host")}`;
 
-  if (!botToken || !publicBaseUrl) {
-    res.status(500).json({ error: "TELEGRAM_BOT_TOKEN or PUBLIC_BASE_URL missing" });
+  if (!botToken) {
+    res.status(500).json({ error: "TELEGRAM_BOT_TOKEN missing" });
     return;
   }
 

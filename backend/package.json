@@ -2,9 +2,9 @@
   "name": "darksidex-backend",
   "version": "1.0.0",
   "description": "Railway backend — port of all Supabase edge functions",
-  "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
+    "prestart": "node dist/lib/migrate.js",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "migrate": "node -e \"require('./dist/lib/migrate.js').runMigrations()\"",
