@@ -60,7 +60,7 @@ export interface InstaScrapeResult {
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || SUPABASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://newuiserchproject-production.up.railway.app";
 
 const USERNAME_KEY = "ig_connected_username";
 const CACHE_PREFIX = "ig_cache_v9";
