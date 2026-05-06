@@ -856,8 +856,13 @@ const json = (d: unknown, status = 200, extraHeaders: Record<string, string> = {
 
 const num = (v: unknown): number => {
   if (typeof v === "number") return v;
-  if (typeof v === "string") return Number(v.replace(/[^\d.]/g, "")) || 0;
-  return 0;
+  if (typeof v !== "string") return 0;
+  const s = v.replace(/,/g, "").trim();
+  const m = s.match(/([\d.]+)\s*([kmb])?/i);
+  if (!m) return 0;
+  const base = Number(m[1]) || 0;
+  const mult = m[2]?.toLowerCase() === "k" ? 1_000 : m[2]?.toLowerCase() === "m" ? 1_000_000 : m[2]?.toLowerCase() === "b" ? 1_000_000_000 : 1;
+  return Math.round(base * mult);
 };
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
@@ -1003,6 +1008,35 @@ function unwrap(raw: any): any {
   return raw;
 }
 
+function pickFirst<T = any>(root: any, paths: string[][]): T | undefined {
+  for (const path of paths) {
+    let cur = root;
+    for (const part of path) cur = cur?.[part];
+    if (cur !== undefined && cur !== null && cur !== "") return cur as T;
+  }
+  return undefined;
+}
+
+function deepFindByKeys(root: any, keys: string[], depth = 5): any {
+  const wanted = new Set(keys);
+  const seen = new Set<any>();
+  const walk = (node: any, d: number): any => {
+    if (!node || typeof node !== "object" || d < 0 || seen.has(node)) return undefined;
+    seen.add(node);
+    for (const key of keys) {
+      const val = node[key];
+      if (val !== undefined && val !== null && val !== "") return val;
+    }
+    for (const [key, val] of Object.entries(node)) {
+      if (wanted.has(key)) continue;
+      const hit = walk(val, d - 1);
+      if (hit !== undefined && hit !== null && hit !== "") return hit;
+    }
+    return undefined;
+  };
+  return walk(root, depth);
+}
+
 function normalizeProfile(rawIn: any) {
   // instagram120: { data: { result: [{ status:"ok", user: {...} }] } }
   // others: { result: { user: {...} } } | { data: {...} } | direct user
@@ -1018,10 +1052,11 @@ function normalizeProfile(rawIn: any) {
     raw?.user ??
     raw ??
     {};
+  const root = rawIn;
   return {
-    username: str(d.username ?? d.user_name),
-    fullName: str(d.full_name ?? d.fullname ?? d.fullName ?? d.name),
-    bio: str(d.biography ?? d.bio),
+    username: str(d.username ?? d.user_name ?? deepFindByKeys(root, ["username", "user_name"])),
+    fullName: str(d.full_name ?? d.fullname ?? d.fullName ?? d.name ?? deepFindByKeys(root, ["full_name", "fullname", "fullName", "name"])),
+    bio: str(d.biography ?? d.bio ?? deepFindByKeys(root, ["biography", "bio"])),
     avatarUrl: str(
       d.hd_profile_pic_url_info?.url ??
         d.profile_pic_url_info?.url ??
@@ -1031,17 +1066,19 @@ function normalizeProfile(rawIn: any) {
         d.profile_pic_url_proxy ??
         d.avatarUrl ??
         d.profile_picture ??
-        d.avatar
+        d.avatar ??
+        pickFirst(root, [["profile_pic_url_hd"], ["profile_pic_url"], ["avatarUrl"], ["profile_picture"], ["avatar"]]) ??
+        deepFindByKeys(root, ["profile_pic_url_hd", "profile_pic_url", "profile_picture", "avatarUrl", "avatar"])
     ),
     isVerified: !!(d.is_verified ?? d.verified),
     followers: num(
-      d.follower_count ?? d.followers ?? d.followers_count ?? d.edge_followed_by?.count ?? d.edge_followed_by_count
+      d.follower_count ?? d.followers ?? d.followers_count ?? d.edge_followed_by?.count ?? d.edge_followed_by_count ?? deepFindByKeys(root, ["follower_count", "followers_count", "followers", "edge_followed_by_count"])
     ),
     following: num(
-      d.following_count ?? d.following ?? d.followings ?? d.edge_follow?.count ?? d.edge_follow_count
+      d.following_count ?? d.following ?? d.followings ?? d.edge_follow?.count ?? d.edge_follow_count ?? deepFindByKeys(root, ["following_count", "followings_count", "following", "followings", "edge_follow_count"])
     ),
     postsCount: num(
-      d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count ?? d.edge_owner_to_timeline_media_count
+      d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count ?? d.edge_owner_to_timeline_media_count ?? deepFindByKeys(root, ["media_count", "posts_count", "post_count", "edge_owner_to_timeline_media_count"])
     ),
     externalUrl: str(d.external_url ?? d.website ?? d.bio_links?.[0]?.url),
     category: str(d.category ?? d.category_name),
@@ -1053,15 +1090,22 @@ function normalizeMediaItem(it: any) {
   // Drill through edge wrappers: { node: { media: {...} } } | { node: {...} } | { media: {...} } | direct
   const m =
     it?.node?.media ??
+    it?.node?.item ??
+    it?.node?.post ??
     it?.media ??
+    it?.item ??
+    it?.post ??
+    it?.clips_metadata?.original_media_info ??
     it?.node ??
     it;
   const owner = m.owner ?? m.user ?? it?.owner ?? it?.user ?? {};
-  const id = str(m.id ?? m.pk ?? m.media_id);
-  const code = str(m.code ?? m.shortcode ?? m.shortCode);
+  const id = str(m.id ?? m.pk ?? m.media_id ?? m.taken_at_timestamp ?? m.code ?? m.shortcode);
+  const code = str(m.code ?? m.shortcode ?? m.shortCode ?? m.shortcode_media?.shortcode);
   const caption = str(
     m.caption?.text ??
       (typeof m.caption === "string" ? m.caption : undefined) ??
+      m.title ??
+      m.accessibility_caption ??
       m.edge_media_to_caption?.edges?.[0]?.node?.text ??
       ""
   );
@@ -1074,17 +1118,22 @@ function normalizeMediaItem(it: any) {
       m.display_resources?.slice(-1)?.[0]?.src ??
       m.thumbnail_src ??
       m.cover_frame_url ??
+      m.video_dash_manifest?.thumbnail_url ??
       m.thumbnail ??
+      m.cover_pic_url ??
+      m.preview_image_url ??
+      m.image_url ??
       m.cover?.url ??
       m.carousel_media?.[0]?.image_versions2?.candidates?.[0]?.url ??
-      m.carousel_media?.[0]?.display_url
+      m.carousel_media?.[0]?.display_url ??
+      deepFindByKeys(m, ["thumbnail_url", "display_url", "cover_frame_url", "image_url", "thumbnail"], 3)
   );
   const videoUrl = str(
-    m.video_url ?? m.video_versions?.[0]?.url ?? m.videoUrl ?? m.video?.url ?? ""
+    m.video_url ?? m.video_versions?.[0]?.url ?? m.videoUrl ?? m.video?.url ?? m.playback_url ?? m.video_playback_url ?? ""
   );
-  const productType = str(m.product_type ?? m.media_type_name ?? "");
+  const productType = str(m.product_type ?? m.media_type_name ?? m.type ?? "").toLowerCase();
   const mediaType = num(m.media_type);
-  const isVideo = !!videoUrl || productType === "clips" || mediaType === 2 || !!m.is_video;
+  const isVideo = !!videoUrl || ["clips", "video", "reel"].includes(productType) || mediaType === 2 || !!m.is_video || !!m.video_versions;
   return {
     id,
     code,
@@ -1120,13 +1169,19 @@ function pickItems(rawIn: any): any[] {
   // result may be array OR object
   const r0 = Array.isArray(raw?.result) ? raw.result[0] : raw?.result;
   return (
+    r0?.data?.user?.edge_owner_to_timeline_media?.edges ??
+    r0?.user?.media?.nodes ??
+    r0?.data?.user?.media?.nodes ??
     r0?.items ??
     r0?.posts ??
     r0?.reels ??
     r0?.edges ??
     r0?.data?.items ??
     r0?.user?.edge_owner_to_timeline_media?.edges ??
+    raw?.data?.user?.edge_owner_to_timeline_media?.edges ??
+    raw?.data?.user?.media?.nodes ??
     raw?.user?.edge_owner_to_timeline_media?.edges ??
+    raw?.user?.media?.nodes ??
     raw?.graphql?.user?.edge_owner_to_timeline_media?.edges ??
     raw?.data?.items ??
     raw?.data?.posts ??
@@ -1346,7 +1401,7 @@ async function fetchProfile(username: string, ctx?: ReqCtx) {
   } catch (e) {
     if (ctx) slog("warn", ctx.traceId, "rapid_profile_failed", { err: (e as Error).message });
   }
-  if (!profile?.username || !profile?.avatarUrl) {
+  if (!profile?.username || !profile?.avatarUrl || !profile?.followers || !profile?.postsCount) {
     webRaw = await fetchInstagramWebProfile(username, ctx);
   }
   profile = mergeProfile(profile, webRaw, username);
@@ -1907,7 +1962,7 @@ Deno.serve(async (req) => {
   // ---- INITIAL FETCH PATH ----
   // Cache key includes pages so a 1-page request and a 3-page request stay
   // separate (different result sizes).
-  const cacheKey = `v8::${username}::${type}::p${pages}`;
+  const cacheKey = `v9::${username}::${type}::p${pages}`;
   // Detect (and warn on) two different inputs producing the same cacheKey.
   checkKeyCollision(cacheKey, username, type, pages, traceId);
 
