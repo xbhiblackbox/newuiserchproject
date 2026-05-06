@@ -123,6 +123,15 @@ const ViewsDetailScreen = () => {
     minWidth: clampPct(pct) > 0 ? 6 : 0,
   });
 
+  // Instagram color: green for positive change, red for negative, muted for neutral/--
+  const changeColor = (val: string | undefined) => {
+    if (!val) return "text-muted-foreground";
+    const t = val.trim();
+    if (t.startsWith("+")) return "text-[hsl(142_71%_38%)]";
+    if (t.startsWith("-")) return "text-[hsl(0_72%_51%)]";
+    return "text-muted-foreground";
+  };
+
   const updateField = (field: keyof ViewsData, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
   };
@@ -288,11 +297,11 @@ const ViewsDetailScreen = () => {
               ) : (
                 <span className="text-[14px] text-foreground font-semibold">{formatCount(data.accountsReached)}</span>
               )}
-              {isEditing ? (
-                <input className="w-14 bg-secondary rounded text-right text-[11px] outline-none text-muted-foreground block ml-auto mt-0.5" value={data.accountsReachedChange} onChange={e => updateField('accountsReachedChange', e.target.value)} />
-              ) : (
-                <p className="text-[11px] text-muted-foreground">{data.accountsReachedChange}</p>
-              )}
+               {isEditing ? (
+                 <input className={cn("w-14 bg-secondary rounded text-right text-[11px] outline-none block ml-auto mt-0.5", changeColor(data.accountsReachedChange))} value={data.accountsReachedChange} onChange={e => updateField('accountsReachedChange', e.target.value)} />
+               ) : (
+                 <p className={cn("text-[11px]", changeColor(data.accountsReachedChange))}>{data.accountsReachedChange}</p>
+               )}
             </div>
           </div>
         </div>
@@ -571,9 +580,9 @@ const ViewsDetailScreen = () => {
               ) : data.profileActivityCompare}
             </span>
             {isEditing ? (
-              <input className="w-14 bg-secondary rounded text-right text-[11px] text-muted-foreground outline-none" value={data.profileActivityChange} onChange={e => updateField('profileActivityChange', e.target.value)} />
+              <input className={cn("w-14 bg-secondary rounded text-right text-[11px] outline-none", changeColor(data.profileActivityChange))} value={data.profileActivityChange} onChange={e => updateField('profileActivityChange', e.target.value)} />
             ) : (
-              <span className="text-[11px] text-muted-foreground">{data.profileActivityChange}</span>
+              <span className={cn("text-[11px]", changeColor(data.profileActivityChange))}>{data.profileActivityChange}</span>
             )}
           </div>
           
@@ -587,9 +596,9 @@ const ViewsDetailScreen = () => {
                   <p className="text-[14px] text-foreground font-semibold">{data.profileVisits}</p>
                 )}
                 {isEditing ? (
-                  <input className="w-14 bg-secondary rounded text-right text-[11px] text-muted-foreground outline-none block ml-auto mt-0.5" value={data.profileVisitsChange} onChange={e => updateField('profileVisitsChange', e.target.value)} />
+                  <input className={cn("w-14 bg-secondary rounded text-right text-[11px] outline-none block ml-auto mt-0.5", changeColor(data.profileVisitsChange))} value={data.profileVisitsChange} onChange={e => updateField('profileVisitsChange', e.target.value)} />
                 ) : (
-                  <p className="text-[11px] text-muted-foreground">{data.profileVisitsChange}</p>
+                  <p className={cn("text-[11px]", changeColor(data.profileVisitsChange))}>{data.profileVisitsChange}</p>
                 )}
               </div>
             </div>
@@ -603,9 +612,9 @@ const ViewsDetailScreen = () => {
                   <p className="text-[14px] text-foreground font-semibold">{data.linkTaps}</p>
                 )}
                 {isEditing ? (
-                  <input className="w-14 bg-secondary rounded text-right text-[11px] text-muted-foreground outline-none block ml-auto mt-0.5" value={data.linkTapsChange ?? "--"} onChange={e => updateField('linkTapsChange', e.target.value)} />
+                  <input className={cn("w-14 bg-secondary rounded text-right text-[11px] outline-none block ml-auto mt-0.5", changeColor(data.linkTapsChange))} value={data.linkTapsChange ?? "--"} onChange={e => updateField('linkTapsChange', e.target.value)} />
                 ) : (
-                  <p className="text-[11px] text-muted-foreground">{data.linkTapsChange ?? "--"}</p>
+                  <p className={cn("text-[11px]", changeColor(data.linkTapsChange))}>{data.linkTapsChange ?? "--"}</p>
                 )}
               </div>
             </div>
