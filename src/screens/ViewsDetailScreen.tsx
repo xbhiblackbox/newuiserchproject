@@ -115,6 +115,12 @@ const ViewsDetailScreen = () => {
     setIsEditing(false);
   };
 
+  const clampPct = (value: number) => Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+  const pctBarStyle = (pct: number) => ({
+    width: `${clampPct(pct)}%`,
+    minWidth: clampPct(pct) > 0 ? 6 : 0,
+  });
+
   const updateField = (field: keyof ViewsData, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
   };
@@ -160,7 +166,7 @@ const ViewsDetailScreen = () => {
           </div>
           <div className="flex items-center gap-3">
             {isEditing && (
-              <button onClick={saveChanges} className="bg-[#0095f6] text-white p-1.5 rounded-full shadow-lg">
+              <button onClick={saveChanges} className="bg-[hsl(var(--ig-blue))] text-primary-foreground p-1.5 rounded-full shadow-lg">
                 <Check size={18} strokeWidth={3} />
               </button>
             )}
@@ -363,7 +369,7 @@ const ViewsDetailScreen = () => {
         <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[15px] font-bold text-foreground">By top content</h3>
-            <button className="text-[13px] text-[#3B82F6] font-semibold">See All</button>
+            <button className="text-[13px] text-[hsl(var(--ig-blue))] font-semibold">See All</button>
           </div>
           
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
@@ -371,7 +377,7 @@ const ViewsDetailScreen = () => {
               <div key={i} className="flex-shrink-0" style={{ width: 'calc((100% - 24px) / 4)' }}>
                 <div 
                   onClick={() => isEditing && handleImageUpload(i)}
-                  className={cn("relative rounded-[10px] overflow-hidden aspect-[3/4.5]", isEditing && "cursor-pointer ring-2 ring-[#0095f6]")}
+                  className={cn("relative rounded-[10px] overflow-hidden aspect-[3/4.5]", isEditing && "cursor-pointer ring-2 ring-[hsl(var(--ig-blue))]")}
                 >
                   <img src={item.image} alt="" className="w-full h-full object-cover" />
                   {/* Reels play icon top-right */}
@@ -380,15 +386,15 @@ const ViewsDetailScreen = () => {
                   </div>
                   {/* Views count bottom-center */}
                   <div className="absolute bottom-2 left-0 right-0 flex justify-center">
-                    <span className="text-white text-[13px] font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{item.views}</span>
+                    <span className="text-primary-foreground text-[13px] font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{item.views}</span>
                   </div>
                   {isEditing && (
                     <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1">
-                      <input className="w-14 bg-white text-black rounded text-center text-[9px] font-bold outline-none py-0.5" value={item.views} onClick={e => e.stopPropagation()} onChange={e => {
+                      <input className="w-14 bg-background text-foreground rounded text-center text-[9px] font-bold outline-none py-0.5" value={item.views} onClick={e => e.stopPropagation()} onChange={e => {
                         const n = [...data.topContent]; n[i].views = e.target.value; updateField('topContent', n);
                       }} />
-                      <div className="bg-white/90 p-1 rounded-full">
-                        <Camera size={12} className="text-[#0095f6]" />
+                      <div className="bg-background/90 p-1 rounded-full">
+                        <Camera size={12} className="text-[hsl(var(--ig-blue))]" />
                       </div>
                     </div>
                   )}
@@ -420,27 +426,27 @@ const ViewsDetailScreen = () => {
             {/* Towns/Cities */}
             <div className="flex-shrink-0 w-[82vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top towns/cities</h4>
-              <div className="space-y-[2px]">
+              <div className="space-y-3">
                 {data.cities.map((city, i) => (
-                  <div key={city.name}>
-                    {isEditing ? (
-                      <input className="text-[13px] text-foreground mb-1.5 bg-secondary rounded px-1.5 py-0.5 outline-none w-full" value={city.name} onChange={e => {
-                        const n = [...data.cities]; n[i].name = e.target.value; updateField('cities', n);
-                      }} />
-                    ) : (
-                      <p className="text-[13px] text-foreground mb-1.5">{city.name}</p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${city.pct}%` }} />
-                      </div>
+                  <div key={`city-${i}`}>
+                    <div className="h-8 flex items-center justify-between gap-3 mb-1.5">
                       {isEditing ? (
-                        <input className="bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-1" type="number" value={city.pct} onChange={e => {
-                          const n = [...data.cities]; n[i].pct = parseFloat(e.target.value) || 0; updateField('cities', n);
+                        <input className="min-w-0 flex-1 h-8 text-[13px] text-foreground bg-secondary rounded px-2 outline-none" value={city.name} onChange={e => {
+                          const n = data.cities.map((item, idx) => idx === i ? { ...item, name: e.target.value } : item); updateField('cities', n);
                         }} />
                       ) : (
-                        <span className="text-[13px] text-foreground w-10 text-right">{city.pct}%</span>
+                        <p className="min-w-0 flex-1 text-[13px] text-foreground truncate">{city.name}</p>
                       )}
+                      {isEditing ? (
+                        <input className="shrink-0 h-8 bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-2" type="number" inputMode="decimal" value={city.pct} onChange={e => {
+                          const n = data.cities.map((item, idx) => idx === i ? { ...item, pct: clampPct(parseFloat(e.target.value)) } : item); updateField('cities', n);
+                        }} />
+                      ) : (
+                        <span className="shrink-0 text-[13px] text-foreground w-10 text-right">{city.pct}%</span>
+                      )}
+                    </div>
+                    <div className="h-[8px] bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-[#D946EF] rounded-full" style={pctBarStyle(city.pct)} />
                     </div>
                   </div>
                 ))}
@@ -450,27 +456,27 @@ const ViewsDetailScreen = () => {
             {/* Countries */}
             <div className="flex-shrink-0 w-[82vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top countries</h4>
-              <div className="space-y-[2px]">
+              <div className="space-y-3">
                 {data.countries.map((country, i) => (
-                  <div key={country.name}>
-                    {isEditing ? (
-                      <input className="text-[13px] text-foreground mb-1.5 bg-secondary rounded px-1.5 py-0.5 outline-none w-full" value={country.name} onChange={e => {
-                        const n = [...data.countries]; n[i].name = e.target.value; updateField('countries', n);
-                      }} />
-                    ) : (
-                      <p className="text-[13px] text-foreground mb-1.5">{country.name}</p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${country.pct}%` }} />
-                      </div>
+                  <div key={`country-${i}`}>
+                    <div className="h-8 flex items-center justify-between gap-3 mb-1.5">
                       {isEditing ? (
-                        <input className="bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-1" type="number" value={country.pct} onChange={e => {
-                          const n = [...data.countries]; n[i].pct = parseFloat(e.target.value) || 0; updateField('countries', n);
+                        <input className="min-w-0 flex-1 h-8 text-[13px] text-foreground bg-secondary rounded px-2 outline-none" value={country.name} onChange={e => {
+                          const n = data.countries.map((item, idx) => idx === i ? { ...item, name: e.target.value } : item); updateField('countries', n);
                         }} />
                       ) : (
-                        <span className="text-[13px] text-foreground w-10 text-right">{country.pct}%</span>
+                        <p className="min-w-0 flex-1 text-[13px] text-foreground truncate">{country.name}</p>
                       )}
+                      {isEditing ? (
+                        <input className="shrink-0 h-8 bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-2" type="number" inputMode="decimal" value={country.pct} onChange={e => {
+                          const n = data.countries.map((item, idx) => idx === i ? { ...item, pct: clampPct(parseFloat(e.target.value)) } : item); updateField('countries', n);
+                        }} />
+                      ) : (
+                        <span className="shrink-0 text-[13px] text-foreground w-10 text-right">{country.pct}%</span>
+                      )}
+                    </div>
+                    <div className="h-[8px] bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-[#D946EF] rounded-full" style={pctBarStyle(country.pct)} />
                     </div>
                   </div>
                 ))}
@@ -480,27 +486,27 @@ const ViewsDetailScreen = () => {
             {/* Age Ranges */}
             <div className="flex-shrink-0 w-[82vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top age ranges</h4>
-              <div className="space-y-[2px]">
+              <div className="space-y-3">
                 {data.ageRanges.map((range, i) => (
-                  <div key={range.range}>
-                    {isEditing ? (
-                      <input className="text-[13px] text-foreground mb-1.5 bg-secondary rounded px-1.5 py-0.5 outline-none w-full" value={range.range} onChange={e => {
-                        const n = [...data.ageRanges]; n[i].range = e.target.value; updateField('ageRanges', n);
-                      }} />
-                    ) : (
-                      <p className="text-[13px] text-foreground mb-1.5">{range.range}</p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${range.pct}%` }} />
-                      </div>
+                  <div key={`age-${i}`}>
+                    <div className="h-8 flex items-center justify-between gap-3 mb-1.5">
                       {isEditing ? (
-                        <input className="bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-1" type="number" value={range.pct} onChange={e => {
-                          const n = [...data.ageRanges]; n[i].pct = parseFloat(e.target.value) || 0; updateField('ageRanges', n);
+                        <input className="min-w-0 flex-1 h-8 text-[13px] text-foreground bg-secondary rounded px-2 outline-none" value={range.range} onChange={e => {
+                          const n = data.ageRanges.map((item, idx) => idx === i ? { ...item, range: e.target.value } : item); updateField('ageRanges', n);
                         }} />
                       ) : (
-                        <span className="text-[13px] text-foreground w-10 text-right">{range.pct}%</span>
+                        <p className="min-w-0 flex-1 text-[13px] text-foreground truncate">{range.range}</p>
                       )}
+                      {isEditing ? (
+                        <input className="shrink-0 h-8 bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-2" type="number" inputMode="decimal" value={range.pct} onChange={e => {
+                          const n = data.ageRanges.map((item, idx) => idx === i ? { ...item, pct: clampPct(parseFloat(e.target.value)) } : item); updateField('ageRanges', n);
+                        }} />
+                      ) : (
+                        <span className="shrink-0 text-[13px] text-foreground w-10 text-right">{range.pct}%</span>
+                      )}
+                    </div>
+                    <div className="h-[8px] bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-[#D946EF] rounded-full" style={pctBarStyle(range.pct)} />
                     </div>
                   </div>
                 ))}
@@ -510,27 +516,27 @@ const ViewsDetailScreen = () => {
             {/* Gender */}
             <div className="flex-shrink-0 w-[82vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Gender</h4>
-              <div className="space-y-[2px]">
+              <div className="space-y-3">
                 {data.gender.map((g, i) => (
-                  <div key={g.name}>
-                    {isEditing ? (
-                      <input className="text-[13px] text-foreground mb-1.5 bg-secondary rounded px-1.5 py-0.5 outline-none w-full" value={g.name} onChange={e => {
-                        const n = [...data.gender]; n[i].name = e.target.value; updateField('gender', n);
-                      }} />
-                    ) : (
-                      <p className="text-[13px] text-foreground mb-1.5">{g.name}</p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${g.pct}%`, backgroundColor: g.color }} />
-                      </div>
+                  <div key={`gender-${i}`}>
+                    <div className="h-8 flex items-center justify-between gap-3 mb-1.5">
                       {isEditing ? (
-                        <input className="bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-1" type="number" value={g.pct} onChange={e => {
-                          const n = [...data.gender]; n[i].pct = parseFloat(e.target.value) || 0; updateField('gender', n);
+                        <input className="min-w-0 flex-1 h-8 text-[13px] text-foreground bg-secondary rounded px-2 outline-none" value={g.name} onChange={e => {
+                          const n = data.gender.map((item, idx) => idx === i ? { ...item, name: e.target.value } : item); updateField('gender', n);
                         }} />
                       ) : (
-                        <span className="text-[13px] text-foreground w-10 text-right">{g.pct}%</span>
+                        <p className="min-w-0 flex-1 text-[13px] text-foreground truncate">{g.name}</p>
                       )}
+                      {isEditing ? (
+                        <input className="shrink-0 h-8 bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-2" type="number" inputMode="decimal" value={g.pct} onChange={e => {
+                          const n = data.gender.map((item, idx) => idx === i ? { ...item, pct: clampPct(parseFloat(e.target.value)) } : item); updateField('gender', n);
+                        }} />
+                      ) : (
+                        <span className="shrink-0 text-[13px] text-foreground w-10 text-right">{g.pct}%</span>
+                      )}
+                    </div>
+                    <div className="h-[8px] bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ ...pctBarStyle(g.pct), backgroundColor: g.color }} />
                     </div>
                   </div>
                 ))}
@@ -607,7 +613,7 @@ const ViewsDetailScreen = () => {
           >
             <button 
               onClick={saveChanges}
-              className="bg-[#0095f6] text-white font-bold py-3 px-10 rounded-full shadow-2xl active:scale-[0.98] flex items-center gap-2 text-[14px]"
+              className="bg-[hsl(var(--ig-blue))] text-primary-foreground font-bold py-3 px-10 rounded-full shadow-2xl active:scale-[0.98] flex items-center gap-2 text-[14px]"
             >
               <Check size={18} strokeWidth={3} />
               SAVE CHANGES
