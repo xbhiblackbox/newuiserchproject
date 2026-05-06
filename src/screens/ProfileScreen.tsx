@@ -615,7 +615,6 @@ const ProfileScreen = () => {
     if (!isPulling.current || isRefreshing) return;
     const diff = e.touches[0].clientY - touchStartY.current;
     if (diff > 0) {
-      e.preventDefault();
       setPullDistance(Math.min(diff * 0.4, 64));
     }
   }, [isRefreshing]);
@@ -638,7 +637,7 @@ const ProfileScreen = () => {
   return (
     <div
       ref={scrollContainerRef}
-      className="pb-16 overflow-y-auto h-full overscroll-none touch-pan-y"
+      className="pb-16 min-h-screen overflow-y-auto overscroll-contain touch-pan-y"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
