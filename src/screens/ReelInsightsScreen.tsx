@@ -152,13 +152,19 @@ const ReelInsightsScreen = () => {
   // Get insights data
   const ins = post?.insights || null;
 
+  // Fallback random views/likes (same formula as ProfileScreen) so insights match grid
+  const fallbackSeed = ((postIndex ?? 0) * 9301 + 49297) % 233280;
+  const fallbackRand = fallbackSeed / 233280;
+  const fallbackViews = Math.floor(12000 + fallbackRand * 13000);
+  const fallbackLikes = Math.floor(800 + fallbackRand * 2200);
+
   const [viewsFilter, setViewsFilter] = useState("All");
   const filterOrder = ["All", "Followers", "Non-followers"];
   const [audienceTab, setAudienceTab] = useState("Gender");
 
   // Editable state - all values can be long-pressed to edit
-  const [editViews, setEditViews] = useState(ins?.views ?? 1000);
-  const [editLikes, setEditLikes] = useState(ins?.likes ?? 69);
+  const [editViews, setEditViews] = useState(ins?.views && ins.views > 0 ? ins.views : fallbackViews);
+  const [editLikes, setEditLikes] = useState(ins?.likes && ins.likes > 0 ? ins.likes : fallbackLikes);
   const [editComments, setEditComments] = useState(ins?.comments ?? 11);
   const [editShares, setEditShares] = useState(ins?.shares ?? 2);
   const [editSaves, setEditSaves] = useState(ins?.saves ?? 8);
