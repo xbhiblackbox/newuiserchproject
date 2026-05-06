@@ -34,17 +34,10 @@ const LoadingRing = () => {
               />
               <path
                 d="M20 3a17 17 0 0 1 17 17"
-                stroke="url(#ig-ring-gradient)"
+                stroke="hsl(var(--muted-foreground) / 0.55)"
                 strokeWidth="3"
                 strokeLinecap="round"
               />
-              <defs>
-                <linearGradient id="ig-ring-gradient" x1="20" y1="3" x2="37" y2="20" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="hsl(280, 70%, 50%)" />
-                  <stop offset="0.5" stopColor="hsl(350, 80%, 55%)" />
-                  <stop offset="1" stopColor="hsl(37, 97%, 55%)" />
-                </linearGradient>
-              </defs>
             </svg>
           </div>
         </motion.div>
