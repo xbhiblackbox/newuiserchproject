@@ -605,7 +605,9 @@ const ProfileScreen = () => {
   );
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (scrollContainerRef.current && scrollContainerRef.current.scrollTop <= 0 && !isRefreshing) {
+    const shell = scrollContainerRef.current?.closest(".app-scroll-shell");
+    const appScrollTop = shell && shell.scrollHeight > shell.clientHeight ? shell.scrollTop : window.scrollY;
+    if (appScrollTop <= 0 && !isRefreshing) {
       touchStartY.current = e.touches[0].clientY;
       isPulling.current = true;
     }
@@ -637,7 +639,7 @@ const ProfileScreen = () => {
   return (
     <div
       ref={scrollContainerRef}
-      className="pb-16 min-h-screen overflow-y-auto overscroll-contain touch-pan-y"
+      className="pb-16 min-h-screen touch-pan-y"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
