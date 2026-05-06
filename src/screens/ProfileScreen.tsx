@@ -605,7 +605,8 @@ const ProfileScreen = () => {
   );
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const appScrollTop = scrollContainerRef.current?.closest(".app-scroll-shell")?.scrollTop ?? window.scrollY;
+    const shell = scrollContainerRef.current?.closest(".app-scroll-shell");
+    const appScrollTop = shell && shell.scrollHeight > shell.clientHeight ? shell.scrollTop : window.scrollY;
     if (appScrollTop <= 0 && !isRefreshing) {
       touchStartY.current = e.touches[0].clientY;
       isPulling.current = true;
