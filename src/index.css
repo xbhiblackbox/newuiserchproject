@@ -14,13 +14,9 @@ body {
   overscroll-behavior-y: none;
   overscroll-behavior-x: none;
   -webkit-overflow-scrolling: touch;
-  height: 100%;
-  overflow: hidden;
 }
 
 #root {
-  height: 100%;
-  overflow: hidden;
   overscroll-behavior: none;
 }
 
