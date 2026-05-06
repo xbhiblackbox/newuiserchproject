@@ -28,6 +28,7 @@ interface ViewsData {
   profileVisits: number;
   profileVisitsChange: string;
   linkTaps: number;
+  linkTapsChange?: string;
 }
 
 const defaultData: ViewsData = {
@@ -77,6 +78,7 @@ const defaultData: ViewsData = {
   profileVisits: 210,
   profileVisitsChange: "-17.0%",
   linkTaps: 0,
+  linkTapsChange: "--",
 };
 
 const ViewsDetailScreen = () => {
@@ -584,7 +586,11 @@ const ViewsDetailScreen = () => {
                 ) : (
                   <p className="text-[14px] text-foreground font-semibold">{data.profileVisits}</p>
                 )}
-                <p className="text-[11px] text-muted-foreground">{data.profileVisitsChange}</p>
+                {isEditing ? (
+                  <input className="w-14 bg-secondary rounded text-right text-[11px] text-muted-foreground outline-none block ml-auto mt-0.5" value={data.profileVisitsChange} onChange={e => updateField('profileVisitsChange', e.target.value)} />
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">{data.profileVisitsChange}</p>
+                )}
               </div>
             </div>
 
@@ -596,7 +602,11 @@ const ViewsDetailScreen = () => {
                 ) : (
                   <p className="text-[14px] text-foreground font-semibold">{data.linkTaps}</p>
                 )}
-                <p className="text-[11px] text-muted-foreground">--</p>
+                {isEditing ? (
+                  <input className="w-14 bg-secondary rounded text-right text-[11px] text-muted-foreground outline-none block ml-auto mt-0.5" value={data.linkTapsChange ?? "--"} onChange={e => updateField('linkTapsChange', e.target.value)} />
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">{data.linkTapsChange ?? "--"}</p>
+                )}
               </div>
             </div>
           </div>
