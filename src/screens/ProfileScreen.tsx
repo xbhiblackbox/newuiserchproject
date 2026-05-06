@@ -615,7 +615,8 @@ const ProfileScreen = () => {
     if (!isPulling.current || isRefreshing) return;
     const diff = e.touches[0].clientY - touchStartY.current;
     if (diff > 0) {
-      setPullDistance(Math.min(diff * 0.4, 80));
+      e.preventDefault();
+      setPullDistance(Math.min(diff * 0.4, 64));
     }
   }, [isRefreshing]);
 
@@ -637,8 +638,20 @@ const ProfileScreen = () => {
   return (
     <div
       ref={scrollContainerRef}
-      className="pb-16 overflow-y-auto h-screen overscroll-none"
+      className="pb-16 overflow-y-auto h-full overscroll-none touch-pan-y"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
+      <div
+        className="fixed left-0 right-0 top-[48px] z-40 mx-auto flex max-w-lg items-center justify-center overflow-hidden bg-background/95 transition-[height] duration-200"
+        style={{ height: isRefreshing ? PULL_THRESHOLD : pullDistance }}
+      >
+        {(pullDistance > 8 || isRefreshing) && (
+          <div className={cn("h-8 w-8 rounded-full border-2 border-muted border-t-muted-foreground", isRefreshing && "animate-spin")} />
+        )}
+      </div>
       {/* Search Overlay */}
       <AnimatePresence>
         {searchOpen && (
