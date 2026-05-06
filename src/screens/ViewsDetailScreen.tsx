@@ -115,6 +115,12 @@ const ViewsDetailScreen = () => {
     setIsEditing(false);
   };
 
+  const clampPct = (value: number) => Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+  const pctBarStyle = (pct: number) => ({
+    width: `${clampPct(pct)}%`,
+    minWidth: clampPct(pct) > 0 ? 6 : 0,
+  });
+
   const updateField = (field: keyof ViewsData, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
   };
