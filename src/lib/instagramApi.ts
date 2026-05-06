@@ -60,6 +60,7 @@ export interface InstaScrapeResult {
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || SUPABASE_URL;
 
 const USERNAME_KEY = "ig_connected_username";
 const CACHE_PREFIX = "ig_cache_v9";
@@ -140,7 +141,7 @@ export async function fetchInstagramData(
       if (opts.pages && opts.pages > 1) reqBody.pages = opts.pages;
       if (opts.cursor) reqBody.cursor = opts.cursor;
 
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/instagram-scraper`, {
+      const res = await fetch(`${API_BASE_URL}/functions/v1/instagram-scraper`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -191,7 +192,7 @@ export async function fetchInstagramData(
           traceId,
           serverTraceId: serverTrace,
           status: res.status,
-          url: `${SUPABASE_URL}/functions/v1/instagram-scraper`,
+          url: `${API_BASE_URL}/functions/v1/instagram-scraper`,
         };
         throw err;
       }
@@ -212,7 +213,7 @@ export async function fetchInstagramData(
           traceId,
           serverTraceId: serverTrace,
           status: res.status,
-          url: `${SUPABASE_URL}/functions/v1/instagram-scraper`,
+          url: `${API_BASE_URL}/functions/v1/instagram-scraper`,
         };
         throw err;
       }
@@ -447,7 +448,7 @@ export function useInstagramData(usernameArg?: string, type: InstaScrapeType = "
 export const proxyIgImage = (url?: string | null): string => {
   if (!url) return "";
   if (!/cdninstagram\.com|fbcdn\.net|instagram\.com/.test(url)) return url;
-  const base = SUPABASE_URL || (PROJECT_ID ? `https://${PROJECT_ID}.supabase.co` : "");
+  const base = API_BASE_URL || (PROJECT_ID ? `https://${PROJECT_ID}.supabase.co` : "");
   return `${base}/functions/v1/ig-image-proxy?url=${encodeURIComponent(url)}`;
 };
 
