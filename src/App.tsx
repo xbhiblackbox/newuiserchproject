@@ -105,6 +105,7 @@ const App = () => {
                         <Suspense fallback={<LoadingRing />}>
                         <Routes>
                           <Route path="/" element={<HomeScreen />} />
+                          <Route path="/index" element={<HomeScreen />} />
                           <Route path="/search" element={<SearchScreen />} />
                           <Route path="/create" element={<MessagesScreen />} />
                           <Route path="/reels" element={<ReelsScreen />} />
