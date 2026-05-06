@@ -1,18 +1,15 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { callRapid, getAdminChatIds } from "../lib/rapidapi";
+import { callRapid } from "../lib/rapidapi";
 import { queryOne, execute } from "../lib/db";
 import { sendToAllAdmins } from "../lib/telegram";
 import {
   cacheGet, cacheSet, l2Get, l2Set,
   getInflight, setInflight, deleteInflight,
-  isRevalidating, markRevalidating, clearRevalidating,
-  CacheLookup
 } from "../lib/cache";
 import {
-  normalizeProfile, normalizeMediaItem, pickItems, dedupeMediaItems,
-  normalizeHighlight, readPageInfo, paginationVariants,
-  mergeProfile, extractDetailFields, newTraceId, Variant, encodeCursor, decodeCursor
+  normalizeProfile, normalizeMediaItem, dedupeMediaItems,
+  normalizeHighlight, newTraceId, str, num
 } from "../lib/scraperHelpers";
 
 const router = Router();
@@ -25,86 +22,176 @@ const ScrapeReqSchema = z.object({
   cursor: z.string().optional(),
 });
 
-type InstaScrapeResult = any;
+// ─── Instagram Looter 2 (instagram-looter2.p.rapidapi.com) helpers ───────────
 
-const PROFILE_VARIANTS: Variant[] = [
-  { path: "/v1.2/info", query: {} },
-  { path: "/api/v1/users/web_profile_info/", query: {} },
-  { path: "/v1/info", query: {} }
-];
-const REELS_VARIANTS: Variant[] = [
-  { path: "/v1.2/reels", query: {} },
-  { path: "/v1/reels", query: {} },
-  { path: "/api/v1/feed/user/", query: {} }
-];
-const POSTS_VARIANTS: Variant[] = [
-  { path: "/v1.2/posts", query: {} },
-  { path: "/v1/posts", query: {} },
-  { path: "/api/v1/feed/user/", query: {} }
-];
-const HIGHLIGHTS_VARIANTS: Variant[] = [
-  { path: "/v1/highlights", query: {} }
-];
+/**
+ * Step 1: Resolve username → numeric user ID.
+ * Uses /id endpoint. Cached in memory for the request lifecycle.
+ */
+const userIdCache = new Map<string, string>();
 
-async function tryVariants(variants: Variant[], username: string, cursor?: string): Promise<{ data: any; variantUsed: Variant } | null> {
-  const varsToTry = cursor ? [decodeCursor(cursor)?.v].filter(Boolean) as Variant[] : variants;
-  if (varsToTry.length === 0) return null;
+async function resolveUserId(username: string): Promise<string> {
+  const cached = userIdCache.get(username);
+  if (cached) return cached;
 
-  const errors: any[] = [];
-  for (const variant of varsToTry) {
+  try {
+    const data = await callRapid(`/id?username=${encodeURIComponent(username)}`, { method: "GET" }, () => {});
+    // Response can be: { id: "12345" } or { data: { id: "12345" } } or just a string
+    const id = str(data?.id ?? data?.data?.id ?? data?.user_id ?? data?.pk ?? data);
+    if (!id || id === "0") throw new Error("User ID not found");
+    userIdCache.set(username, id);
+    return id;
+  } catch (e: any) {
+    throw new Error(`Could not resolve user ID for @${username}: ${e.message}`);
+  }
+}
+
+/**
+ * Step 2: Fetch profile by username using /profile or /web-profile endpoint.
+ */
+async function scrapeProfile(username: string): Promise<any> {
+  const errors: string[] = [];
+
+  // Try /web-profile first (more detailed)
+  for (const path of ["/web-profile", "/profile"]) {
     try {
-      const q = new URLSearchParams({ username_or_id_or_url: username, ...variant.query });
-      if (cursor && !variant.query?.max_id && !variant.query?.maxId && !variant.query?.cursor) {
-         q.set("max_id", cursor);
-      }
-      const data = await callRapid(`${variant.path}?${q.toString()}`, { method: variant.method || "GET" }, () => {});
-      if (data && (data.data || data.result || data.user || data.items || data.graphql || data.edge_owner_to_timeline_media)) {
-        return { data, variantUsed: variant };
-      } else if (data && data.message) {
-         throw new Error(`RapidAPI Error: ${data.message}`);
+      const data = await callRapid(
+        `${path}?username=${encodeURIComponent(username)}`,
+        { method: "GET" },
+        () => {}
+      );
+      if (data && (data.data || data.user || data.username || data.pk)) {
+        return normalizeProfile(data);
       }
     } catch (e: any) {
-      errors.push(e.message);
-      console.warn(`Variant failed: ${variant.path}`, e.message);
+      errors.push(`${path}: ${e.message}`);
+      console.warn(`[looter2] profile variant failed: ${path}`, e.message);
     }
   }
-  throw new Error(`All variants failed. Errors: ${errors.join(" | ")}`);
+
+  // Fallback: try resolving via user ID then /user-info
+  try {
+    const uid = await resolveUserId(username);
+    const data = await callRapid(
+      `/user-info?id=${encodeURIComponent(uid)}`,
+      { method: "GET" },
+      () => {}
+    );
+    if (data && (data.data || data.user || data.username || data.pk)) {
+      return normalizeProfile(data);
+    }
+  } catch (e: any) {
+    errors.push(`/user-info: ${e.message}`);
+  }
+
+  throw new Error(`Profile not found for @${username}. Errors: ${errors.join(" | ")}`);
 }
 
-async function scrapeProfile(username: string): Promise<any> {
-  const res = await tryVariants(PROFILE_VARIANTS, username);
-  if (!res) throw new Error("Profile not found");
-  return normalizeProfile(res.data);
-}
+/**
+ * Fetch reels or posts using user ID-based endpoints.
+ */
+async function scrapeMedia(
+  username: string,
+  mediaType: "reels" | "posts",
+  pages: number,
+  cursor?: string
+): Promise<{ items: any[]; hasNext: boolean; nextCursor: string }> {
+  // Must get user ID first
+  const uid = await resolveUserId(username);
 
-async function scrapeMedia(username: string, variants: Variant[], pages: number, cursor?: string): Promise<{ items: any[], hasNext: boolean, nextCursor: string }> {
-  let allItems: any[] = [];
-  let currentCursor = cursor;
-  let hasNext = true;
-  let variantToUse: Variant | undefined;
+  const allItems: any[] = [];
+  let currentCursor = cursor || "";
+  let hasNext = false;
 
-  for (let i = 0; i < pages && hasNext; i++) {
-    const res = await tryVariants(variantToUse ? [variantToUse] : variants, username, currentCursor);
-    if (!res) break;
-    variantToUse = res.variantUsed;
-    
-    const rawItems = pickItems(res.data);
-    const normalized = dedupeMediaItems(rawItems).map(normalizeMediaItem).filter(Boolean);
-    allItems = allItems.concat(normalized);
-    
-    const pageInfo = readPageInfo(res.data);
-    hasNext = pageInfo.hasNext;
-    currentCursor = pageInfo.cursor;
-    if (!currentCursor) hasNext = false;
+  // Endpoint paths for each media type
+  const endpointPrimary = mediaType === "reels" ? "/reels" : "/user-feeds";
+  const endpointFallback = mediaType === "reels" ? "/user-reels" : "/posts";
+
+  for (let page = 0; page < pages; page++) {
+    let data: any = null;
+    const cursorParam = currentCursor ? `&max_id=${encodeURIComponent(currentCursor)}` : "";
+
+    // Try primary endpoint
+    for (const path of [endpointPrimary, endpointFallback]) {
+      try {
+        data = await callRapid(
+          `${path}?id=${encodeURIComponent(uid)}&count=12${cursorParam}`,
+          { method: "GET" },
+          () => {}
+        );
+        if (data && (data.items || data.data || data.reels || data.posts || data.feeds || Array.isArray(data))) {
+          break;
+        }
+        data = null;
+      } catch (e: any) {
+        console.warn(`[looter2] ${mediaType} variant failed: ${path}`, e.message);
+        data = null;
+      }
+    }
+
+    if (!data) break;
+
+    // Normalize items from response
+    const rawArr: any[] = (
+      data?.items ??
+      data?.data?.items ??
+      data?.reels ??
+      data?.data?.reels ??
+      data?.feeds ??
+      data?.data?.feeds ??
+      data?.posts ??
+      data?.data?.posts ??
+      (Array.isArray(data) ? data : null) ??
+      []
+    );
+
+    const normalized = dedupeMediaItems(rawArr)
+      .map(normalizeMediaItem)
+      .filter(Boolean);
+    allItems.push(...normalized);
+
+    // Pagination
+    const nextMaxId = str(
+      data?.next_max_id ??
+      data?.data?.next_max_id ??
+      data?.pagination?.next_max_id ??
+      data?.page_info?.end_cursor ??
+      ""
+    );
+    hasNext = !!(data?.more_available ?? data?.data?.more_available ?? (nextMaxId && nextMaxId !== currentCursor));
+    currentCursor = nextMaxId;
+    if (!currentCursor || !hasNext) break;
   }
 
   return {
     items: allItems,
     hasNext,
-    nextCursor: currentCursor ? encodeCursor({ c: currentCursor, v: variantToUse! }) : ""
+    nextCursor: currentCursor,
   };
 }
 
+/**
+ * Fetch highlights — Instagram Looter 2 doesn't have a direct endpoint,
+ * so we try to extract from web-profile or return empty gracefully.
+ */
+async function scrapeHighlights(username: string): Promise<any[]> {
+  try {
+    const uid = await resolveUserId(username);
+    // Try highlights endpoint if it exists
+    const data = await callRapid(
+      `/highlights?id=${encodeURIComponent(uid)}`,
+      { method: "GET" },
+      () => {}
+    );
+    const rawArr: any[] = data?.items ?? data?.data ?? (Array.isArray(data) ? data : []);
+    return rawArr.map(normalizeHighlight).filter(Boolean);
+  } catch {
+    // Highlights not available — return empty, don't fail the whole request
+    return [];
+  }
+}
+
+// ─── Express Route ────────────────────────────────────────────────────────────
 
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   const traceId = (req as any).traceId;
@@ -117,7 +204,10 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   }
 
   // Authorize via db
-  const row = await queryOne<{ id: string; active: boolean; expires_at: string | null; device_fingerprints: string[]; max_devices: number; label: string }>(
+  const row = await queryOne<{
+    id: string; active: boolean; expires_at: string | null;
+    device_fingerprints: string[]; max_devices: number; label: string;
+  }>(
     "SELECT id, active, expires_at, device_fingerprints, max_devices, label FROM access_keys WHERE key = $1 LIMIT 1",
     [accessKey]
   );
@@ -126,7 +216,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     res.status(401).json({ error: "Invalid or expired key" });
     return;
   }
-  
+
   if (deviceFp) {
     const fps = row.device_fingerprints || [];
     if (!fps.includes(deviceFp)) {
@@ -148,9 +238,9 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   const { username, type, force, pages, cursor } = parsed.data;
   const u = username.toLowerCase().replace(/^@/, "");
 
-  // Scope cache to device fingerprint so data doesn't mix across users
-  const cacheKey = `v1:${deviceFp || "anon"}:${u}:${type}:${pages}${cursor ? `:${cursor}` : ""}`;
-  
+  // Cache key scoped to device fingerprint
+  const cacheKey = `v2:${deviceFp || "anon"}:${u}:${type}:${pages}${cursor ? `:${cursor.slice(0, 20)}` : ""}`;
+
   if (!force) {
     const l1 = cacheGet(cacheKey);
     if (l1 && !l1.isStale) {
@@ -160,7 +250,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       return;
     }
     const l2 = await l2Get(cacheKey);
-    if (l2 && l2.ageMs < 5 * 60 * 1000) { // 5 min soft TTL for L2
+    if (l2 && l2.ageMs < 5 * 60 * 1000) {
       cacheSet(cacheKey, l2.payload);
       res.setHeader("X-Cache", "HIT-L2");
       res.setHeader("X-Cache-Age", String(Math.round(l2.ageMs / 1000)));
@@ -184,20 +274,55 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
   const doScrape = async () => {
     const result: any = { username: u };
+
     if (type === "profile" || type === "all") {
-       try { result.profile = await scrapeProfile(u); result.profileOk = true; } catch (e: any) { result.profileOk = false; result.profileError = e.message; }
+      try {
+        result.profile = await scrapeProfile(u);
+        result.profileOk = true;
+      } catch (e: any) {
+        result.profileOk = false;
+        result.profileError = e.message;
+        console.warn(`[looter2] profile failed for @${u}:`, e.message);
+      }
     }
+
     if (type === "reels" || type === "all") {
-       try {
-         const r = await scrapeMedia(u, REELS_VARIANTS, pages, cursor);
-         result.reels = r.items; result.reelsHasMore = r.hasNext; result.reelsNextCursor = r.nextCursor; result.reelsOk = true;
-       } catch (e: any) { result.reelsOk = false; result.reelsError = e.message; }
+      try {
+        const r = await scrapeMedia(u, "reels", pages, cursor);
+        result.reels = r.items;
+        result.reelsHasMore = r.hasNext;
+        result.reelsNextCursor = r.nextCursor;
+        result.reelsOk = true;
+      } catch (e: any) {
+        result.reelsOk = false;
+        result.reelsError = e.message;
+        console.warn(`[looter2] reels failed for @${u}:`, e.message);
+      }
     }
+
     if (type === "posts" || type === "all") {
-       try {
-         const p = await scrapeMedia(u, POSTS_VARIANTS, pages, cursor);
-         result.posts = p.items; result.postsHasMore = p.hasNext; result.postsNextCursor = p.nextCursor; result.postsOk = true;
-       } catch (e: any) { result.postsOk = false; result.postsError = e.message; }
+      try {
+        const p = await scrapeMedia(u, "posts", pages, cursor);
+        result.posts = p.items;
+        result.postsHasMore = p.hasNext;
+        result.postsNextCursor = p.nextCursor;
+        result.postsOk = true;
+      } catch (e: any) {
+        result.postsOk = false;
+        result.postsError = e.message;
+        console.warn(`[looter2] posts failed for @${u}:`, e.message);
+      }
+    }
+
+    if (type === "highlights" || type === "all") {
+      try {
+        result.highlights = await scrapeHighlights(u);
+        result.highlightsOk = true;
+      } catch (e: any) {
+        result.highlightsOk = false;
+        result.highlights = [];
+        result.highlightsError = e.message;
+      }
     }
 
     if (cursor) result.paginated = true;
@@ -209,10 +334,11 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
   const p = doScrape();
   setInflight(cacheKey, p);
-  
+
   try {
     const data = await p;
     res.setHeader("X-Cache", "MISS");
+    res.setHeader("X-Trace-Id", traceId || "");
     res.status(200).json(data);
   } catch (e: any) {
     res.status(500).json({ error: e.message });

@@ -141,7 +141,7 @@ export function getAdminChatIds(): string[] {
 }
 
 export const RAPIDAPI_HOST =
-  process.env.RAPIDAPI_HOST ?? "instagram120.p.rapidapi.com";
+  process.env.RAPIDAPI_HOST ?? "instagram-looter2.p.rapidapi.com";
 
 // Central callRapid — sets x-rapidapi-* headers, 40s timeout
 export async function callRapid(
