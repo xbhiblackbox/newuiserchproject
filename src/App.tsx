@@ -52,7 +52,9 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     const y = e.touches[0]?.clientY;
     if (y == null || lastTouchY.current == null) return;
-    scrollShellBy(lastTouchY.current - y);
+    const delta = lastTouchY.current - y;
+    scrollShellBy(delta);
+    if (Math.abs(delta) > 1) e.preventDefault();
     lastTouchY.current = y;
   }, [scrollShellBy]);
 
@@ -62,10 +64,10 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
       className="mx-auto max-w-[430px] h-[100dvh] overflow-y-auto overscroll-contain bg-background relative shadow-2xl md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-2xl md:border md:border-border/30"
       style={{ WebkitOverflowScrolling: "touch" }}
       onWheel={(e) => scrollShellBy(e.deltaY)}
-      onTouchStart={(e) => { lastTouchY.current = e.touches[0]?.clientY ?? null; }}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={() => { lastTouchY.current = null; }}
-      onTouchCancel={() => { lastTouchY.current = null; }}
+      onTouchStartCapture={(e) => { lastTouchY.current = e.touches[0]?.clientY ?? null; }}
+      onTouchMoveCapture={handleTouchMove}
+      onTouchEndCapture={() => { lastTouchY.current = null; }}
+      onTouchCancelCapture={() => { lastTouchY.current = null; }}
     >
       <AnalyticsTracker />
       {children}
