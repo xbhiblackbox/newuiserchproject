@@ -41,7 +41,10 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const hideBottomNav = location.pathname.startsWith("/reel-insights/") || location.pathname.startsWith("/analytics");
   return (
-    <div className="mx-auto max-w-[430px] min-h-screen bg-background relative shadow-2xl md:my-4 md:rounded-2xl md:min-h-[calc(100vh-2rem)] md:border md:border-border/30">
+    <div
+      className="mx-auto max-w-[430px] h-[100dvh] overflow-y-auto overscroll-contain bg-background relative shadow-2xl md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-2xl md:border md:border-border/30"
+      style={{ WebkitOverflowScrolling: "touch" }}
+    >
       <AnalyticsTracker />
       {children}
       {!hideBottomNav && <BottomNav />}
