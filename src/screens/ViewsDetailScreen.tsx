@@ -288,11 +288,11 @@ const ViewsDetailScreen = () => {
               ) : (
                 <span className="text-[14px] text-foreground font-semibold">{formatCount(data.accountsReached)}</span>
               )}
-              {isEditing ? (
-                <input className="w-14 bg-secondary rounded text-right text-[11px] outline-none text-muted-foreground block ml-auto mt-0.5" value={data.accountsReachedChange} onChange={e => updateField('accountsReachedChange', e.target.value)} />
-              ) : (
-                <p className="text-[11px] text-muted-foreground">{data.accountsReachedChange}</p>
-              )}
+               {isEditing ? (
+                 <input className={cn("w-14 bg-secondary rounded text-right text-[11px] outline-none block ml-auto mt-0.5", changeColor(data.accountsReachedChange))} value={data.accountsReachedChange} onChange={e => updateField('accountsReachedChange', e.target.value)} />
+               ) : (
+                 <p className={cn("text-[11px]", changeColor(data.accountsReachedChange))}>{data.accountsReachedChange}</p>
+               )}
             </div>
           </div>
         </div>
