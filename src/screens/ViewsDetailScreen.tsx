@@ -516,27 +516,27 @@ const ViewsDetailScreen = () => {
             {/* Gender */}
             <div className="flex-shrink-0 w-[82vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Gender</h4>
-              <div className="space-y-[2px]">
+              <div className="space-y-3">
                 {data.gender.map((g, i) => (
-                  <div key={g.name}>
-                    {isEditing ? (
-                      <input className="text-[13px] text-foreground mb-1.5 bg-secondary rounded px-1.5 py-0.5 outline-none w-full" value={g.name} onChange={e => {
-                        const n = [...data.gender]; n[i].name = e.target.value; updateField('gender', n);
-                      }} />
-                    ) : (
-                      <p className="text-[13px] text-foreground mb-1.5">{g.name}</p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full rounded-full" style={{ width: `${g.pct}%`, backgroundColor: g.color }} />
-                      </div>
+                  <div key={`gender-${i}`}>
+                    <div className="h-8 flex items-center justify-between gap-3 mb-1.5">
                       {isEditing ? (
-                        <input className="bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-1" type="number" value={g.pct} onChange={e => {
-                          const n = [...data.gender]; n[i].pct = parseFloat(e.target.value) || 0; updateField('gender', n);
+                        <input className="min-w-0 flex-1 h-8 text-[13px] text-foreground bg-secondary rounded px-2 outline-none" value={g.name} onChange={e => {
+                          const n = data.gender.map((item, idx) => idx === i ? { ...item, name: e.target.value } : item); updateField('gender', n);
                         }} />
                       ) : (
-                        <span className="text-[13px] text-foreground w-10 text-right">{g.pct}%</span>
+                        <p className="min-w-0 flex-1 text-[13px] text-foreground truncate">{g.name}</p>
                       )}
+                      {isEditing ? (
+                        <input className="shrink-0 h-8 bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-2" type="number" inputMode="decimal" value={g.pct} onChange={e => {
+                          const n = data.gender.map((item, idx) => idx === i ? { ...item, pct: clampPct(parseFloat(e.target.value)) } : item); updateField('gender', n);
+                        }} />
+                      ) : (
+                        <span className="shrink-0 text-[13px] text-foreground w-10 text-right">{g.pct}%</span>
+                      )}
+                    </div>
+                    <div className="h-[8px] bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{ ...pctBarStyle(g.pct), backgroundColor: g.color }} />
                     </div>
                   </div>
                 ))}
