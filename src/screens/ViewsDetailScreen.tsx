@@ -123,6 +123,15 @@ const ViewsDetailScreen = () => {
     minWidth: clampPct(pct) > 0 ? 6 : 0,
   });
 
+  // Instagram color: green for positive change, red for negative, muted for neutral/--
+  const changeColor = (val: string | undefined) => {
+    if (!val) return "text-muted-foreground";
+    const t = val.trim();
+    if (t.startsWith("+")) return "text-[hsl(142_71%_38%)]";
+    if (t.startsWith("-")) return "text-[hsl(0_72%_51%)]";
+    return "text-muted-foreground";
+  };
+
   const updateField = (field: keyof ViewsData, value: any) => {
     setData(prev => ({ ...prev, [field]: value }));
   };
