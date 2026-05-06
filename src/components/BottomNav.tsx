@@ -25,8 +25,10 @@ const ReelsIcon = ({ size = 26, active = false }: { size?: number; active?: bool
 // Instagram Messenger/DM icon - paper plane style
 const MessengerIcon = ({ size = 26, active = false }: { size?: number; active?: boolean }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13" />
-    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+    {/* Outer paper-plane outline */}
+    <path d="M21.5 2.5 2.5 9.3l7.6 3.1 3.1 7.6 8.3-17.5z" />
+    {/* Inner fold (the "L" gap) */}
+    <path d="M21.5 2.5 10.1 12.4" />
   </svg>
 );
 
