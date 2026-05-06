@@ -1008,6 +1008,35 @@ function unwrap(raw: any): any {
   return raw;
 }
 
+function pickFirst<T = any>(root: any, paths: string[][]): T | undefined {
+  for (const path of paths) {
+    let cur = root;
+    for (const part of path) cur = cur?.[part];
+    if (cur !== undefined && cur !== null && cur !== "") return cur as T;
+  }
+  return undefined;
+}
+
+function deepFindByKeys(root: any, keys: string[], depth = 5): any {
+  const wanted = new Set(keys);
+  const seen = new Set<any>();
+  const walk = (node: any, d: number): any => {
+    if (!node || typeof node !== "object" || d < 0 || seen.has(node)) return undefined;
+    seen.add(node);
+    for (const key of keys) {
+      const val = node[key];
+      if (val !== undefined && val !== null && val !== "") return val;
+    }
+    for (const [key, val] of Object.entries(node)) {
+      if (wanted.has(key)) continue;
+      const hit = walk(val, d - 1);
+      if (hit !== undefined && hit !== null && hit !== "") return hit;
+    }
+    return undefined;
+  };
+  return walk(root, depth);
+}
+
 function normalizeProfile(rawIn: any) {
   // instagram120: { data: { result: [{ status:"ok", user: {...} }] } }
   // others: { result: { user: {...} } } | { data: {...} } | direct user
