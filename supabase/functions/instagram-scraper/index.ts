@@ -1052,10 +1052,11 @@ function normalizeProfile(rawIn: any) {
     raw?.user ??
     raw ??
     {};
+  const root = rawIn;
   return {
-    username: str(d.username ?? d.user_name),
-    fullName: str(d.full_name ?? d.fullname ?? d.fullName ?? d.name),
-    bio: str(d.biography ?? d.bio),
+    username: str(d.username ?? d.user_name ?? deepFindByKeys(root, ["username", "user_name"])),
+    fullName: str(d.full_name ?? d.fullname ?? d.fullName ?? d.name ?? deepFindByKeys(root, ["full_name", "fullname", "fullName", "name"])),
+    bio: str(d.biography ?? d.bio ?? deepFindByKeys(root, ["biography", "bio"])),
     avatarUrl: str(
       d.hd_profile_pic_url_info?.url ??
         d.profile_pic_url_info?.url ??
@@ -1065,17 +1066,19 @@ function normalizeProfile(rawIn: any) {
         d.profile_pic_url_proxy ??
         d.avatarUrl ??
         d.profile_picture ??
-        d.avatar
+        d.avatar ??
+        pickFirst(root, [["profile_pic_url_hd"], ["profile_pic_url"], ["avatarUrl"], ["profile_picture"], ["avatar"]]) ??
+        deepFindByKeys(root, ["profile_pic_url_hd", "profile_pic_url", "profile_picture", "avatarUrl", "avatar"])
     ),
     isVerified: !!(d.is_verified ?? d.verified),
     followers: num(
-      d.follower_count ?? d.followers ?? d.followers_count ?? d.edge_followed_by?.count ?? d.edge_followed_by_count
+      d.follower_count ?? d.followers ?? d.followers_count ?? d.edge_followed_by?.count ?? d.edge_followed_by_count ?? deepFindByKeys(root, ["follower_count", "followers_count", "followers", "edge_followed_by_count"])
     ),
     following: num(
-      d.following_count ?? d.following ?? d.followings ?? d.edge_follow?.count ?? d.edge_follow_count
+      d.following_count ?? d.following ?? d.followings ?? d.edge_follow?.count ?? d.edge_follow_count ?? deepFindByKeys(root, ["following_count", "followings_count", "following", "followings", "edge_follow_count"])
     ),
     postsCount: num(
-      d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count ?? d.edge_owner_to_timeline_media_count
+      d.media_count ?? d.posts_count ?? d.post_count ?? d.edge_owner_to_timeline_media?.count ?? d.edge_owner_to_timeline_media_count ?? deepFindByKeys(root, ["media_count", "posts_count", "post_count", "edge_owner_to_timeline_media_count"])
     ),
     externalUrl: str(d.external_url ?? d.website ?? d.bio_links?.[0]?.url),
     category: str(d.category ?? d.category_name),
