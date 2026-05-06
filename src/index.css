@@ -10,8 +10,6 @@
 
 html,
 body {
-  height: 100%;
-  overflow: hidden;
   overscroll-behavior: none;
   overscroll-behavior-y: none;
   overscroll-behavior-x: none;
@@ -19,8 +17,6 @@ body {
 }
 
 #root {
-  height: 100%;
-  overflow: hidden;
   overscroll-behavior: none;
 }
 

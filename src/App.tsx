@@ -7,7 +7,7 @@ import BottomNav from "@/components/BottomNav";
 import AnalyticsTracker from "@/components/AnalyticsTracker";
 import SplashScreen from "@/components/SplashScreen";
 import LoginScreen from "@/screens/LoginScreen";
-import { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { isAuthenticated } from "@/lib/auth";
 import KeyGuard from "@/components/KeyGuard";
 import LoadingRing from "@/components/LoadingRing";
@@ -40,35 +40,8 @@ const queryClient = new QueryClient({
 const AppLayout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const hideBottomNav = location.pathname.startsWith("/reel-insights/") || location.pathname.startsWith("/analytics");
-  const shellRef = useRef<HTMLDivElement>(null);
-  const lastTouchY = useRef<number | null>(null);
-
-  const scrollShellBy = useCallback((delta: number) => {
-    const shell = shellRef.current;
-    if (!shell || Math.abs(delta) < 1) return;
-    shell.scrollTop += delta;
-  }, []);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    const y = e.touches[0]?.clientY;
-    if (y == null || lastTouchY.current == null) return;
-    const delta = lastTouchY.current - y;
-    scrollShellBy(delta);
-    if (Math.abs(delta) > 1) e.preventDefault();
-    lastTouchY.current = y;
-  }, [scrollShellBy]);
-
   return (
-    <div
-      ref={shellRef}
-      className="app-scroll-shell mx-auto max-w-[430px] h-[100dvh] overflow-y-auto overscroll-contain bg-background relative shadow-2xl md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-2xl md:border md:border-border/30"
-      style={{ WebkitOverflowScrolling: "touch" }}
-      onWheel={(e) => scrollShellBy(e.deltaY)}
-      onTouchStartCapture={(e) => { lastTouchY.current = e.touches[0]?.clientY ?? null; }}
-      onTouchMoveCapture={handleTouchMove}
-      onTouchEndCapture={() => { lastTouchY.current = null; }}
-      onTouchCancelCapture={() => { lastTouchY.current = null; }}
-    >
+    <div className="app-scroll-shell mx-auto max-w-[430px] min-h-screen bg-background relative shadow-2xl md:my-4 md:min-h-[calc(100vh-2rem)] md:rounded-2xl md:border md:border-border/30">
       <AnalyticsTracker />
       {children}
       {!hideBottomNav && <BottomNav />}
