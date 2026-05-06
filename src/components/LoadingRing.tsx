@@ -18,7 +18,7 @@ const LoadingRing = () => {
           transition={{ duration: 0.3 }}
           className="fixed inset-0 z-[100] flex items-center justify-center bg-background"
         >
-          <div className="relative h-10 w-10">
+          <div className="relative h-8 w-8">
             <svg
               className="animate-spin"
               viewBox="0 0 40 40"
@@ -28,14 +28,14 @@ const LoadingRing = () => {
               <circle
                 cx="20"
                 cy="20"
-                r="17"
+                r="18"
                 stroke="hsl(var(--border))"
-                strokeWidth="3"
+                strokeWidth="1.5"
               />
               <path
-                d="M20 3a17 17 0 0 1 17 17"
+                d="M20 2a18 18 0 0 1 18 18"
                 stroke="hsl(var(--muted-foreground) / 0.55)"
-                strokeWidth="3"
+                strokeWidth="1.5"
                 strokeLinecap="round"
               />
             </svg>
