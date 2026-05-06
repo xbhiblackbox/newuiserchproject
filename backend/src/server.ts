@@ -54,6 +54,16 @@ app.use("/functions/v1/instagram-scraper", instagramScraper);
 // Error Handler
 app.use(errorHandler);
 
+// Serve Frontend Static Files
+import path from "path";
+const frontendDistPath = path.join(__dirname, "../../dist");
+app.use(express.static(frontendDistPath));
+
+// Fallback to index.html for React Router
+app.get("*", (req, res) => {
+  res.sendFile(path.join(frontendDistPath, "index.html"));
+});
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
