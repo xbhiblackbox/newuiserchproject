@@ -1090,15 +1090,22 @@ function normalizeMediaItem(it: any) {
   // Drill through edge wrappers: { node: { media: {...} } } | { node: {...} } | { media: {...} } | direct
   const m =
     it?.node?.media ??
+    it?.node?.item ??
+    it?.node?.post ??
     it?.media ??
+    it?.item ??
+    it?.post ??
+    it?.clips_metadata?.original_media_info ??
     it?.node ??
     it;
   const owner = m.owner ?? m.user ?? it?.owner ?? it?.user ?? {};
-  const id = str(m.id ?? m.pk ?? m.media_id);
-  const code = str(m.code ?? m.shortcode ?? m.shortCode);
+  const id = str(m.id ?? m.pk ?? m.media_id ?? m.taken_at_timestamp ?? m.code ?? m.shortcode);
+  const code = str(m.code ?? m.shortcode ?? m.shortCode ?? m.shortcode_media?.shortcode);
   const caption = str(
     m.caption?.text ??
       (typeof m.caption === "string" ? m.caption : undefined) ??
+      m.title ??
+      m.accessibility_caption ??
       m.edge_media_to_caption?.edges?.[0]?.node?.text ??
       ""
   );
@@ -1111,17 +1118,22 @@ function normalizeMediaItem(it: any) {
       m.display_resources?.slice(-1)?.[0]?.src ??
       m.thumbnail_src ??
       m.cover_frame_url ??
+      m.video_dash_manifest?.thumbnail_url ??
       m.thumbnail ??
+      m.cover_pic_url ??
+      m.preview_image_url ??
+      m.image_url ??
       m.cover?.url ??
       m.carousel_media?.[0]?.image_versions2?.candidates?.[0]?.url ??
-      m.carousel_media?.[0]?.display_url
+      m.carousel_media?.[0]?.display_url ??
+      deepFindByKeys(m, ["thumbnail_url", "display_url", "cover_frame_url", "image_url", "thumbnail"], 3)
   );
   const videoUrl = str(
-    m.video_url ?? m.video_versions?.[0]?.url ?? m.videoUrl ?? m.video?.url ?? ""
+    m.video_url ?? m.video_versions?.[0]?.url ?? m.videoUrl ?? m.video?.url ?? m.playback_url ?? m.video_playback_url ?? ""
   );
-  const productType = str(m.product_type ?? m.media_type_name ?? "");
+  const productType = str(m.product_type ?? m.media_type_name ?? m.type ?? "").toLowerCase();
   const mediaType = num(m.media_type);
-  const isVideo = !!videoUrl || productType === "clips" || mediaType === 2 || !!m.is_video;
+  const isVideo = !!videoUrl || ["clips", "video", "reel"].includes(productType) || mediaType === 2 || !!m.is_video || !!m.video_versions;
   return {
     id,
     code,
