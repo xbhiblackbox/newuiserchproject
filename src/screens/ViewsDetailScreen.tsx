@@ -456,27 +456,27 @@ const ViewsDetailScreen = () => {
             {/* Countries */}
             <div className="flex-shrink-0 w-[82vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top countries</h4>
-              <div className="space-y-[2px]">
+              <div className="space-y-3">
                 {data.countries.map((country, i) => (
-                  <div key={country.name}>
-                    {isEditing ? (
-                      <input className="text-[13px] text-foreground mb-1.5 bg-secondary rounded px-1.5 py-0.5 outline-none w-full" value={country.name} onChange={e => {
-                        const n = [...data.countries]; n[i].name = e.target.value; updateField('countries', n);
-                      }} />
-                    ) : (
-                      <p className="text-[13px] text-foreground mb-1.5">{country.name}</p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${country.pct}%` }} />
-                      </div>
+                  <div key={`country-${i}`}>
+                    <div className="h-8 flex items-center justify-between gap-3 mb-1.5">
                       {isEditing ? (
-                        <input className="bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-1" type="number" value={country.pct} onChange={e => {
-                          const n = [...data.countries]; n[i].pct = parseFloat(e.target.value) || 0; updateField('countries', n);
+                        <input className="min-w-0 flex-1 h-8 text-[13px] text-foreground bg-secondary rounded px-2 outline-none" value={country.name} onChange={e => {
+                          const n = data.countries.map((item, idx) => idx === i ? { ...item, name: e.target.value } : item); updateField('countries', n);
                         }} />
                       ) : (
-                        <span className="text-[13px] text-foreground w-10 text-right">{country.pct}%</span>
+                        <p className="min-w-0 flex-1 text-[13px] text-foreground truncate">{country.name}</p>
                       )}
+                      {isEditing ? (
+                        <input className="shrink-0 h-8 bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-2" type="number" inputMode="decimal" value={country.pct} onChange={e => {
+                          const n = data.countries.map((item, idx) => idx === i ? { ...item, pct: clampPct(parseFloat(e.target.value)) } : item); updateField('countries', n);
+                        }} />
+                      ) : (
+                        <span className="shrink-0 text-[13px] text-foreground w-10 text-right">{country.pct}%</span>
+                      )}
+                    </div>
+                    <div className="h-[8px] bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-[#D946EF] rounded-full" style={pctBarStyle(country.pct)} />
                     </div>
                   </div>
                 ))}
