@@ -33,6 +33,12 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   // Always return 200 to Telegram immediately
   res.status(200).send("ok");
 
+  const secretToken = req.headers["x-telegram-bot-api-secret-token"];
+  if (process.env.TELEGRAM_WEBHOOK_SECRET && secretToken !== process.env.TELEGRAM_WEBHOOK_SECRET) {
+    console.warn("Unauthorized webhook attempt");
+    return;
+  }
+
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const adminChatIds = getAdminChatIds();
   if (!botToken || adminChatIds.length === 0) return;

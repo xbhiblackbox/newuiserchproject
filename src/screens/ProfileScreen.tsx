@@ -230,7 +230,7 @@ const ProfileScreen = () => {
           return {
             image: getThumb(reel),
             videoUrl: reel.videoUrl,
-            isReel: !!reel.videoUrl,
+            isReel: true,
             views: realViews > 0 ? realViews : fallbackViews,
             likes: realLikes > 0 ? realLikes : fallbackLikes,
           };

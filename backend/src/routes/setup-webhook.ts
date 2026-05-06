@@ -17,7 +17,10 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     const r = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: webhookUrl }),
+      body: JSON.stringify({
+        url: webhookUrl,
+        ...(process.env.TELEGRAM_WEBHOOK_SECRET ? { secret_token: process.env.TELEGRAM_WEBHOOK_SECRET } : {})
+      }),
     });
     const data = await r.json() as Record<string, unknown>;
     res.status(r.ok ? 200 : 502).json(data);
