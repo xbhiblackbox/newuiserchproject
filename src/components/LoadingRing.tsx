@@ -1,48 +1,36 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 const LoadingRing = () => {
-  const [visible, setVisible] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setVisible(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          initial={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-background"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-background"
+    >
+      <div className="relative h-8 w-8">
+        <svg
+          className="animate-spin"
+          viewBox="0 0 40 40"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
         >
-          <div className="relative h-8 w-8">
-            <svg
-              className="animate-spin"
-              viewBox="0 0 40 40"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle
-                cx="20"
-                cy="20"
-                r="18"
-                stroke="hsl(var(--border))"
-                strokeWidth="1.5"
-              />
-              <path
-                d="M20 2a18 18 0 0 1 18 18"
-                stroke="hsl(var(--muted-foreground) / 0.55)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          <circle
+            cx="20"
+            cy="20"
+            r="18"
+            stroke="hsl(var(--border))"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M20 2a18 18 0 0 1 18 18"
+            stroke="hsl(var(--muted-foreground) / 0.55)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
+    </motion.div>
   );
 };
 
