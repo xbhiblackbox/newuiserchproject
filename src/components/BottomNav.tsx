@@ -40,7 +40,7 @@ const BottomNav = () => {
   const msgLongPressTriggered = useRef(false);
   const [msgCount, setMsgCount] = useState(() => {
     const saved = localStorage.getItem("msg-badge-count");
-    return saved ? Number(saved) : 2;
+    return saved !== null ? Number(saved) : 0;
   });
 
   const toggleTheme = useCallback(() => {
