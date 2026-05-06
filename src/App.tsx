@@ -61,7 +61,7 @@ const AppLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div
       ref={shellRef}
-      className="mx-auto max-w-[430px] h-[100dvh] overflow-y-auto overscroll-contain bg-background relative shadow-2xl md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-2xl md:border md:border-border/30"
+      className="app-scroll-shell mx-auto max-w-[430px] h-[100dvh] overflow-y-auto overscroll-contain bg-background relative shadow-2xl md:my-4 md:h-[calc(100dvh-2rem)] md:rounded-2xl md:border md:border-border/30"
       style={{ WebkitOverflowScrolling: "touch" }}
       onWheel={(e) => scrollShellBy(e.deltaY)}
       onTouchStartCapture={(e) => { lastTouchY.current = e.touches[0]?.clientY ?? null; }}
