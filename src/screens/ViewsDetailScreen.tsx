@@ -166,7 +166,7 @@ const ViewsDetailScreen = () => {
           </div>
           <div className="flex items-center gap-3">
             {isEditing && (
-              <button onClick={saveChanges} className="bg-[#0095f6] text-white p-1.5 rounded-full shadow-lg">
+              <button onClick={saveChanges} className="bg-[hsl(var(--ig-blue))] text-primary-foreground p-1.5 rounded-full shadow-lg">
                 <Check size={18} strokeWidth={3} />
               </button>
             )}
@@ -369,7 +369,7 @@ const ViewsDetailScreen = () => {
         <div className="px-4 py-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[15px] font-bold text-foreground">By top content</h3>
-            <button className="text-[13px] text-[#3B82F6] font-semibold">See All</button>
+            <button className="text-[13px] text-[hsl(var(--ig-blue))] font-semibold">See All</button>
           </div>
           
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
@@ -377,7 +377,7 @@ const ViewsDetailScreen = () => {
               <div key={i} className="flex-shrink-0" style={{ width: 'calc((100% - 24px) / 4)' }}>
                 <div 
                   onClick={() => isEditing && handleImageUpload(i)}
-                  className={cn("relative rounded-[10px] overflow-hidden aspect-[3/4.5]", isEditing && "cursor-pointer ring-2 ring-[#0095f6]")}
+                  className={cn("relative rounded-[10px] overflow-hidden aspect-[3/4.5]", isEditing && "cursor-pointer ring-2 ring-[hsl(var(--ig-blue))]")}
                 >
                   <img src={item.image} alt="" className="w-full h-full object-cover" />
                   {/* Reels play icon top-right */}
@@ -386,15 +386,15 @@ const ViewsDetailScreen = () => {
                   </div>
                   {/* Views count bottom-center */}
                   <div className="absolute bottom-2 left-0 right-0 flex justify-center">
-                    <span className="text-white text-[13px] font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{item.views}</span>
+                    <span className="text-primary-foreground text-[13px] font-bold drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">{item.views}</span>
                   </div>
                   {isEditing && (
                     <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-1">
-                      <input className="w-14 bg-white text-black rounded text-center text-[9px] font-bold outline-none py-0.5" value={item.views} onClick={e => e.stopPropagation()} onChange={e => {
+                      <input className="w-14 bg-background text-foreground rounded text-center text-[9px] font-bold outline-none py-0.5" value={item.views} onClick={e => e.stopPropagation()} onChange={e => {
                         const n = [...data.topContent]; n[i].views = e.target.value; updateField('topContent', n);
                       }} />
-                      <div className="bg-white/90 p-1 rounded-full">
-                        <Camera size={12} className="text-[#0095f6]" />
+                      <div className="bg-background/90 p-1 rounded-full">
+                        <Camera size={12} className="text-[hsl(var(--ig-blue))]" />
                       </div>
                     </div>
                   )}
@@ -613,7 +613,7 @@ const ViewsDetailScreen = () => {
           >
             <button 
               onClick={saveChanges}
-              className="bg-[#0095f6] text-white font-bold py-3 px-10 rounded-full shadow-2xl active:scale-[0.98] flex items-center gap-2 text-[14px]"
+              className="bg-[hsl(var(--ig-blue))] text-primary-foreground font-bold py-3 px-10 rounded-full shadow-2xl active:scale-[0.98] flex items-center gap-2 text-[14px]"
             >
               <Check size={18} strokeWidth={3} />
               SAVE CHANGES
