@@ -486,27 +486,27 @@ const ViewsDetailScreen = () => {
             {/* Age Ranges */}
             <div className="flex-shrink-0 w-[82vw] bg-secondary/40 rounded-[14px] p-4">
               <h4 className="text-[14px] font-bold text-foreground mb-4">Top age ranges</h4>
-              <div className="space-y-[2px]">
+              <div className="space-y-3">
                 {data.ageRanges.map((range, i) => (
-                  <div key={range.range}>
-                    {isEditing ? (
-                      <input className="text-[13px] text-foreground mb-1.5 bg-secondary rounded px-1.5 py-0.5 outline-none w-full" value={range.range} onChange={e => {
-                        const n = [...data.ageRanges]; n[i].range = e.target.value; updateField('ageRanges', n);
-                      }} />
-                    ) : (
-                      <p className="text-[13px] text-foreground mb-1.5">{range.range}</p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-[8px] bg-secondary rounded-full overflow-hidden">
-                        <div className="h-full bg-[#D946EF] rounded-full" style={{ width: `${range.pct}%` }} />
-                      </div>
+                  <div key={`age-${i}`}>
+                    <div className="h-8 flex items-center justify-between gap-3 mb-1.5">
                       {isEditing ? (
-                        <input className="bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-1" type="number" value={range.pct} onChange={e => {
-                          const n = [...data.ageRanges]; n[i].pct = parseFloat(e.target.value) || 0; updateField('ageRanges', n);
+                        <input className="min-w-0 flex-1 h-8 text-[13px] text-foreground bg-secondary rounded px-2 outline-none" value={range.range} onChange={e => {
+                          const n = data.ageRanges.map((item, idx) => idx === i ? { ...item, range: e.target.value } : item); updateField('ageRanges', n);
                         }} />
                       ) : (
-                        <span className="text-[13px] text-foreground w-10 text-right">{range.pct}%</span>
+                        <p className="min-w-0 flex-1 text-[13px] text-foreground truncate">{range.range}</p>
                       )}
+                      {isEditing ? (
+                        <input className="shrink-0 h-8 bg-secondary rounded text-[13px] outline-none text-foreground w-14 text-right px-2" type="number" inputMode="decimal" value={range.pct} onChange={e => {
+                          const n = data.ageRanges.map((item, idx) => idx === i ? { ...item, pct: clampPct(parseFloat(e.target.value)) } : item); updateField('ageRanges', n);
+                        }} />
+                      ) : (
+                        <span className="shrink-0 text-[13px] text-foreground w-10 text-right">{range.pct}%</span>
+                      )}
+                    </div>
+                    <div className="h-[8px] bg-secondary rounded-full overflow-hidden">
+                      <div className="h-full bg-[#D946EF] rounded-full" style={pctBarStyle(range.pct)} />
                     </div>
                   </div>
                 ))}
