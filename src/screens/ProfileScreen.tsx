@@ -637,7 +637,7 @@ const ProfileScreen = () => {
   return (
     <div
       ref={scrollContainerRef}
-      className="pb-16 min-h-screen overflow-y-auto overscroll-contain touch-pan-y"
+      className="pb-16 min-h-screen touch-pan-y"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
