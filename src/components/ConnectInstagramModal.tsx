@@ -39,7 +39,7 @@ const ConnectInstagramModal = ({ open, onOpenChange, onConnected, onDisconnected
     try {
       const res = await fetchInstagramData(clean, "profile");
       if (!res.profileOk || !res.profile?.username) {
-        toast.error("Account not found");
+        toast.error(`Error: ${res.profileError || "Account not found or private"}`);
         return;
       }
       setConnectedUsername(clean);

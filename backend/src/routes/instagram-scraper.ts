@@ -50,6 +50,7 @@ async function tryVariants(variants: Variant[], username: string, cursor?: strin
   const varsToTry = cursor ? [decodeCursor(cursor)?.v].filter(Boolean) as Variant[] : variants;
   if (varsToTry.length === 0) return null;
 
+  const errors: any[] = [];
   for (const variant of varsToTry) {
     try {
       const q = new URLSearchParams({ username_or_id_or_url: username, ...variant.query });
@@ -57,14 +58,17 @@ async function tryVariants(variants: Variant[], username: string, cursor?: strin
          q.set("max_id", cursor);
       }
       const data = await callRapid(`${variant.path}?${q.toString()}`, { method: variant.method || "GET" }, () => {});
-      if (data && (data.data || data.result || data.user || data.items || data.graphql)) {
+      if (data && (data.data || data.result || data.user || data.items || data.graphql || data.edge_owner_to_timeline_media)) {
         return { data, variantUsed: variant };
+      } else if (data && data.message) {
+         throw new Error(`RapidAPI Error: ${data.message}`);
       }
-    } catch (e) {
-      console.warn(`Variant failed: ${variant.path}`, e);
+    } catch (e: any) {
+      errors.push(e.message);
+      console.warn(`Variant failed: ${variant.path}`, e.message);
     }
   }
-  return null;
+  throw new Error(`All variants failed. Errors: ${errors.join(" | ")}`);
 }
 
 async function scrapeProfile(username: string): Promise<any> {
@@ -181,19 +185,19 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   const doScrape = async () => {
     const result: any = { username: u };
     if (type === "profile" || type === "all") {
-       try { result.profile = await scrapeProfile(u); result.profileOk = true; } catch (e) { result.profileOk = false; }
+       try { result.profile = await scrapeProfile(u); result.profileOk = true; } catch (e: any) { result.profileOk = false; result.profileError = e.message; }
     }
     if (type === "reels" || type === "all") {
        try {
          const r = await scrapeMedia(u, REELS_VARIANTS, pages, cursor);
          result.reels = r.items; result.reelsHasMore = r.hasNext; result.reelsNextCursor = r.nextCursor; result.reelsOk = true;
-       } catch (e) { result.reelsOk = false; }
+       } catch (e: any) { result.reelsOk = false; result.reelsError = e.message; }
     }
     if (type === "posts" || type === "all") {
        try {
          const p = await scrapeMedia(u, POSTS_VARIANTS, pages, cursor);
          result.posts = p.items; result.postsHasMore = p.hasNext; result.postsNextCursor = p.nextCursor; result.postsOk = true;
-       } catch (e) { result.postsOk = false; }
+       } catch (e: any) { result.postsOk = false; result.postsError = e.message; }
     }
 
     if (cursor) result.paginated = true;
