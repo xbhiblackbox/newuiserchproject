@@ -856,8 +856,13 @@ const json = (d: unknown, status = 200, extraHeaders: Record<string, string> = {
 
 const num = (v: unknown): number => {
   if (typeof v === "number") return v;
-  if (typeof v === "string") return Number(v.replace(/[^\d.]/g, "")) || 0;
-  return 0;
+  if (typeof v !== "string") return 0;
+  const s = v.replace(/,/g, "").trim();
+  const m = s.match(/([\d.]+)\s*([kmb])?/i);
+  if (!m) return 0;
+  const base = Number(m[1]) || 0;
+  const mult = m[2]?.toLowerCase() === "k" ? 1_000 : m[2]?.toLowerCase() === "m" ? 1_000_000 : m[2]?.toLowerCase() === "b" ? 1_000_000_000 : 1;
+  return Math.round(base * mult);
 };
 const str = (v: unknown): string => (typeof v === "string" ? v : v == null ? "" : String(v));
 
