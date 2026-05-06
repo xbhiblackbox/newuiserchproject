@@ -144,7 +144,8 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   const { username, type, force, pages, cursor } = parsed.data;
   const u = username.toLowerCase().replace(/^@/, "");
 
-  const cacheKey = `v1:${u}:${type}:${pages}${cursor ? `:${cursor}` : ""}`;
+  // Scope cache to device fingerprint so data doesn't mix across users
+  const cacheKey = `v1:${deviceFp || "anon"}:${u}:${type}:${pages}${cursor ? `:${cursor}` : ""}`;
   
   if (!force) {
     const l1 = cacheGet(cacheKey);

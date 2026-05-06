@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { getDeviceFingerprint, clearAuthSession, getAuthSession } from "@/lib/auth";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://newuiserchproject-production.up.railway.app";
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export default function KeyGuard({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,7 @@ export default function KeyGuard({ children }: { children: React.ReactNode }) {
             try {
                 const currentFingerprint = session.deviceFingerprint || getDeviceFingerprint();
 
-                const res = await fetch(`${SUPABASE_URL}/functions/v1/check-key-status`, {
+                const res = await fetch(`${API_BASE_URL}/functions/v1/check-key-status`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -42,14 +42,14 @@ export default function KeyGuard({ children }: { children: React.ReactNode }) {
 
                 if (!res.ok) {
                     // Key revoked/expired/invalid — logout immediately
-                    if (res.status === 401 || res.status === 403 || res.status === 404 || data.valid === false) {
+                    if (res.status === 401 || res.status === 404 || data.logout === true || (res.status === 403 && data.error?.includes("expired"))) {
                         console.log("[KeyGuard] Key rejected — logging out immediately");
                         clearAuthSession();
                         window.location.href = "/";
                         return;
                     } else {
-                        // Server error — don't logout
-                        console.log("[KeyGuard] Server error, staying logged in.");
+                        // Server error or non-fatal 403 — don't logout
+                        console.log("[KeyGuard] Server error or non-fatal rejection, staying logged in.");
                     }
                 }
             } catch (err) {

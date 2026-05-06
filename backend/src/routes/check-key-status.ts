@@ -49,6 +49,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
         res.status(403).json({
           valid: false,
           error: `Device limit reached (${row.max_devices}). Contact support.`,
+          logout: true // Explicitly tell the client to logout
         });
         return;
       }

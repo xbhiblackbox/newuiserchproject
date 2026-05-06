@@ -74,9 +74,14 @@ const SearchScreen = () => {
   // Shuffle images differently per device
   const shuffledGrid = useMemo(() => seededShuffle(exploreGrid, getDeviceSeed()), []);
 
+  const searchSessionId = useRef<number>(0);
+
   const runSearch = async (raw: string) => {
     const u = raw.trim().replace(/^@/, "").toLowerCase();
     if (!u) return;
+    
+    const currentSession = ++searchSessionId.current;
+    
     setSubmitted(u);
     setLoading(true);
     setError(null);
@@ -84,15 +89,19 @@ const SearchScreen = () => {
     trackEvent("user_search", { username: u });
     try {
       const data = await fetchInstagramData(u, "all");
+      if (currentSession !== searchSessionId.current) return;
       if (!data?.profile?.username) {
         setError("User not found. Username check karo.");
       } else {
         setResult(data);
       }
     } catch (e: any) {
+      if (currentSession !== searchSessionId.current) return;
       setError(e?.message || "Search failed. Try again.");
     } finally {
-      setLoading(false);
+      if (currentSession === searchSessionId.current) {
+        setLoading(false);
+      }
     }
   };
 
