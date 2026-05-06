@@ -220,13 +220,21 @@ const ProfileScreen = () => {
     if (isJust4abhii) {
       return reelsData
         .filter((reel): reel is NonNullable<typeof reel> => !!reel && (!!reel.thumbnail || !!reel.videoUrl))
-        .map((reel) => ({
-          image: getThumb(reel),
-          videoUrl: reel.videoUrl,
-          isReel: !!reel.videoUrl,
-          views: reel.insights?.views ?? 0,
-          likes: reel.insights?.likes ?? 0,
-        }));
+        .map((reel, i) => {
+          const seed = (i * 9301 + 49297) % 233280;
+          const rand = seed / 233280;
+          const fallbackViews = Math.floor(12000 + rand * 13000); // 12k–25k
+          const fallbackLikes = Math.floor(800 + rand * 2200); // 800–3k
+          const realViews = Number(reel.insights?.views) || 0;
+          const realLikes = Number(reel.insights?.likes) || 0;
+          return {
+            image: getThumb(reel),
+            videoUrl: reel.videoUrl,
+            isReel: !!reel.videoUrl,
+            views: realViews > 0 ? realViews : fallbackViews,
+            likes: realLikes > 0 ? realLikes : fallbackLikes,
+          };
+        });
     }
     return account.posts.map((post, i) => ({
       image: getThumb(post),
