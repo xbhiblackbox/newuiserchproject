@@ -746,7 +746,7 @@ const ProfileScreen = () => {
         {(pullDistance > 8 || isRefreshing) && (
           <div
             className={cn(
-              "h-7 w-7 rounded-full border-[2.5px] border-muted-foreground/25 border-t-muted-foreground/70",
+              "h-7 w-7 rounded-full border-[2px] border-muted-foreground/20 border-t-muted-foreground/40",
               isRefreshing && "animate-spin"
             )}
             style={!isRefreshing ? { transform: `rotate(${pullDistance * 6}deg)` } : undefined}
