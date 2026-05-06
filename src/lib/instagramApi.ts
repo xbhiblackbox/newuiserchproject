@@ -65,7 +65,7 @@ const USERNAME_KEY = "ig_connected_username";
 const CACHE_PREFIX = "ig_cache_v8";
 const CACHE_SOFT_TTL_MS = 5 * 60 * 1000;       // serve without background refresh
 const CACHE_HARD_TTL_MS = 24 * 60 * 60 * 1000; // serve stale up to a day, refresh in bg
-const SCRAPER_TIMEOUT_MS = 18_000;
+const SCRAPER_TIMEOUT_MS = 60_000;
 
 export const getConnectedUsername = (): string | null => {
   try {
