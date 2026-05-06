@@ -81,6 +81,7 @@ const defaultData: ViewsData = {
 
 const ViewsDetailScreen = () => {
   const navigate = useNavigate();
+  const hasSavedRef = useRef<boolean>(typeof window !== "undefined" && !!localStorage.getItem("ig_views_detail_data"));
   const [data, setData] = useState<ViewsData>(() => {
     const saved = localStorage.getItem("ig_views_detail_data");
     return saved ? JSON.parse(saved) : defaultData;
@@ -88,7 +89,11 @@ const ViewsDetailScreen = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [contentTab, setContentTab] = useState("All");
   const usernameVersion = useActiveUsernameVersion();
-  const topContent = useMemo(() => isEditing ? data.topContent : getInsightTopReels("views", 4).map(item => ({ image: item.image, views: item.value, date: item.date })), [data.topContent, isEditing, usernameVersion]);
+  const topContent = useMemo(() => {
+    // If user has saved custom edits OR is currently editing, use saved data so edits persist
+    if (isEditing || hasSavedRef.current) return data.topContent;
+    return getInsightTopReels("views", 4).map(item => ({ image: item.image, views: item.value, date: item.date }));
+  }, [data.topContent, isEditing, usernameVersion]);
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -106,6 +111,7 @@ const ViewsDetailScreen = () => {
 
   const saveChanges = () => {
     localStorage.setItem("ig_views_detail_data", JSON.stringify(data));
+    hasSavedRef.current = true;
     setIsEditing(false);
   };
 
