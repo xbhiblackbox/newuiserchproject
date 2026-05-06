@@ -644,14 +644,6 @@ const ProfileScreen = () => {
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
     >
-      <div
-        className="fixed left-0 right-0 top-[48px] z-40 mx-auto flex max-w-lg items-center justify-center overflow-hidden bg-background/95 transition-[height] duration-200"
-        style={{ height: isRefreshing ? PULL_THRESHOLD : pullDistance }}
-      >
-        {(pullDistance > 8 || isRefreshing) && (
-          <div className={cn("h-8 w-8 rounded-full border-2 border-muted border-t-muted-foreground", isRefreshing && "animate-spin")} />
-        )}
-      </div>
       {/* Search Overlay */}
       <AnimatePresence>
         {searchOpen && (
@@ -746,6 +738,21 @@ const ProfileScreen = () => {
       {/* Spacer for fixed header */}
       <div className="h-[48px]" />
 
+      {/* Pull-to-refresh spinner — sits between header and profile, pushes name/avatar down */}
+      <div
+        className="flex items-center justify-center overflow-hidden transition-[height] duration-200"
+        style={{ height: isRefreshing ? PULL_THRESHOLD : pullDistance }}
+      >
+        {(pullDistance > 8 || isRefreshing) && (
+          <div
+            className={cn(
+              "h-7 w-7 rounded-full border-[2.5px] border-muted-foreground/25 border-t-muted-foreground/70",
+              isRefreshing && "animate-spin"
+            )}
+            style={!isRefreshing ? { transform: `rotate(${pullDistance * 6}deg)` } : undefined}
+          />
+        )}
+      </div>
 
       {/* Profile Info */}
       <div className="px-4 pt-0 overflow-visible">
