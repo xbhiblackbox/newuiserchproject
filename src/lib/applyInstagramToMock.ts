@@ -19,9 +19,16 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   // Accept stub profile (returned when API times out) — username is always set
   if (!p?.username) throw new Error("Account not found or is private. Try a different username.");
 
+  // If profile is a stub (API rate-limited) AND no media — don't overwrite existing data!
+  const isStub = !!(p as any)._stub;
   const reels = data.reels ?? [];
   const posts = data.posts ?? [];
   const highlights = data.highlights ?? [];
+  const hasMedia = reels.length > 0 || posts.length > 0;
+
+  if (isStub && !hasMedia) {
+    throw new Error("Instagram is temporarily rate-limiting requests. Your existing data is preserved. Please wait 2-3 minutes and try Refresh.");
+  }
 
   // Merge posts + reels, dedupe by id/code, then sort latest-first by takenAt and cap to MAX_REELS
   const seen = new Set<string>();
