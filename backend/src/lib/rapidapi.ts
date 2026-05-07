@@ -9,17 +9,24 @@ export async function getActiveRapidKey(): Promise<string> {
   if (ACTIVE_KEY_CACHE && Date.now() - ACTIVE_KEY_CACHE.at < ACTIVE_KEY_TTL_MS) {
     return ACTIVE_KEY_CACHE.key;
   }
-  const fallback = process.env.RAPIDAPI_KEY ?? "";
+  // PRIORITY: env var > Supabase DB
+  // If RAPIDAPI_KEY is set in Railway env, always use it (most up-to-date)
+  const envKey = process.env.RAPIDAPI_KEY?.trim();
+  if (envKey && envKey.length > 0) {
+    ACTIVE_KEY_CACHE = { key: envKey, at: Date.now() };
+    return envKey;
+  }
+  // Fallback: try Supabase api_settings table
   try {
     const row = await queryOne<{ current_key: string | null }>(
       "SELECT current_key FROM api_settings WHERE id = 1 LIMIT 1"
     );
     const k = row?.current_key?.trim();
-    const finalKey = k && k.length > 0 ? k : fallback;
+    const finalKey = k && k.length > 0 ? k : "";
     ACTIVE_KEY_CACHE = { key: finalKey, at: Date.now() };
     return finalKey;
   } catch {
-    return fallback;
+    return "";
   }
 }
 
