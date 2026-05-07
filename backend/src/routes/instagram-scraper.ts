@@ -1,6 +1,5 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { callRapid } from "../lib/rapidapi";
 import {
   cacheGet, cacheSet, l2Get, l2Set,
   getInflight, setInflight, deleteInflight,
@@ -20,48 +19,90 @@ const ScrapeReqSchema = z.object({
   cursor: z.string().optional(),
 });
 
-// ─── instagram-scraper-api2.p.rapidapi.com helpers ───────────────────────────
-// Set RAPIDAPI_HOST=instagram-scraper-api2.p.rapidapi.com in Railway env vars.
-// Free tier: 100 req/month. Subscribe at: https://rapidapi.com/herosAPI/api/instagram-scraper-api2
+// ─── instagram-scraper-stable-api.p.rapidapi.com ─────────────────────────────
+// POST endpoints with form-urlencoded body
+// Set in Railway env vars:
+//   RAPIDAPI_HOST = instagram-scraper-stable-api.p.rapidapi.com
+//   RAPIDAPI_KEY  = 765e47e809mshda12294101b09acp144800jsn331f56f88be4
 
-function normalizeProfile(raw: any) {
-  // instagram-scraper-api2 wraps data in data.data or data.data.user
-  const u =
-    raw?.data?.data?.user ??
-    raw?.data?.user ??
-    raw?.data ??
-    raw?.user ??
-    raw ?? {};
+async function stableCall(path: string, body: Record<string, string>): Promise<any> {
+  const host = process.env.RAPIDAPI_HOST ?? "instagram-scraper-stable-api.p.rapidapi.com";
+  const key  = process.env.RAPIDAPI_KEY  ?? "";
+
+  const params = new URLSearchParams(body).toString();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+
+  try {
+    const r = await fetch(`https://${host}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "x-rapidapi-host": host,
+        "x-rapidapi-key":  key,
+      },
+      body: params,
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const text = await r.text();
+    if (!r.ok) throw new Error(`API ${r.status}: ${text.slice(0, 200)}`);
+    try { return JSON.parse(text); } catch { return null; }
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+function igUrl(username: string) {
+  return `https://www.instagram.com/${username}/`;
+}
+
+// ── Profile ──────────────────────────────────────────────────────────────────
+function normalizeStableProfile(raw: any, username: string) {
+  // instagram-scraper-stable-api returns data directly or inside data{}
+  const d = raw?.data ?? raw?.user ?? raw ?? {};
   return {
-    username: str(u.username ?? u.user_name),
-    fullName: str(u.full_name ?? u.fullname ?? u.fullName ?? u.name),
-    bio: str(u.biography ?? u.bio),
-    avatarUrl: str(
-      u.hd_profile_pic_url_info?.url ??
-      u.profile_pic_url_hd ??
-      u.profile_pic_url ??
-      u.profile_picture
-    ),
-    isVerified: !!(u.is_verified ?? u.verified),
-    followers: num(u.follower_count ?? u.followers_count ?? u.edge_followed_by?.count),
-    following: num(u.following_count ?? u.following ?? u.edge_follow?.count),
-    postsCount: num(u.media_count ?? u.posts_count ?? u.edge_owner_to_timeline_media?.count),
-    externalUrl: str(u.external_url ?? u.bio_links?.[0]?.url),
-    category: str(u.category ?? u.category_name),
+    username:    str(d.username ?? d.user_name ?? username),
+    fullName:    str(d.full_name ?? d.fullname ?? d.fullName ?? d.name ?? ""),
+    bio:         str(d.biography ?? d.bio ?? ""),
+    avatarUrl:   str(d.hd_profile_pic_url_info?.url ?? d.profile_pic_url_hd ?? d.profile_pic_url ?? d.profile_picture ?? ""),
+    isVerified:  !!(d.is_verified ?? d.verified),
+    followers:   num(d.follower_count ?? d.followers_count ?? d.edge_followed_by?.count ?? 0),
+    following:   num(d.following_count ?? d.following ?? d.edge_follow?.count ?? 0),
+    postsCount:  num(d.media_count ?? d.posts_count ?? d.edge_owner_to_timeline_media?.count ?? 0),
+    externalUrl: str(d.external_url ?? d.bio_links?.[0]?.url ?? ""),
+    category:    str(d.category ?? d.category_name ?? ""),
   };
 }
 
 async function scrapeProfile(username: string): Promise<any> {
-  const data = await callRapid(
-    `/v1/info?username_or_id_or_url=${encodeURIComponent(username)}`,
-    { method: "GET" },
-    () => {}
-  );
-  const p = normalizeProfile(data);
-  if (!p.username) throw new Error(`Profile not found for @${username}`);
-  return p;
+  // Try multiple profile endpoints this API may have
+  const endpoints = [
+    "/get_ig_user_info_v2.php",
+    "/get_ig_profile.php",
+    "/profile.php",
+    "/get_profile.php",
+    "/user_info.php",
+  ];
+
+  for (const ep of endpoints) {
+    try {
+      const data = await stableCall(ep, { username_or_url: igUrl(username) });
+      if (!data) continue;
+      const p = normalizeStableProfile(data, username);
+      if (p.username && p.username !== "") {
+        console.log(`[stable] profile OK via ${ep}`);
+        return p;
+      }
+    } catch (e: any) {
+      console.warn(`[stable] ${ep} failed:`, e.message);
+    }
+  }
+  throw new Error(`Profile not found for @${username}`);
 }
 
+// ── Media (reels / posts) ─────────────────────────────────────────────────────
 async function scrapeMedia(
   username: string,
   mediaType: "reels" | "posts",
@@ -69,78 +110,64 @@ async function scrapeMedia(
   cursor?: string
 ): Promise<{ items: any[]; hasNext: boolean; nextCursor: string }> {
   const allItems: any[] = [];
-  let currentCursor = cursor || "";
+  let currentCursor = cursor ?? "";
   let hasNext = false;
 
-  const basePath = mediaType === "reels" ? "/v1/reels" : "/v1/posts";
+  const reelEndpoints = ["/get_ig_user_reels_v2.php", "/get_ig_reels.php", "/reels.php"];
+  const postEndpoints = ["/get_ig_user_posts_v2.php", "/get_ig_posts.php",  "/posts.php", "/get_ig_user_media_v2.php"];
+  const endpoints = mediaType === "reels" ? reelEndpoints : postEndpoints;
 
   for (let page = 0; page < pages; page++) {
-    const cursorParam = currentCursor ? `&max_id=${encodeURIComponent(currentCursor)}` : "";
-    let data: any = null;
+    const body: Record<string, string> = { username_or_url: igUrl(username), amount: "12" };
+    if (currentCursor) body.pagination_token = currentCursor;
 
-    try {
-      data = await callRapid(
-        `${basePath}?username_or_id_or_url=${encodeURIComponent(username)}${cursorParam}`,
-        { method: "GET" },
-        () => {}
-      );
-    } catch (e: any) {
-      console.warn(`[scraper] ${mediaType} page ${page} failed:`, e.message);
-      break;
+    let data: any = null;
+    for (const ep of endpoints) {
+      try {
+        data = await stableCall(ep, body);
+        if (data && (data.data || data.items || Array.isArray(data))) {
+          console.log(`[stable] ${mediaType} OK via ${ep}`);
+          break;
+        }
+        data = null;
+      } catch (e: any) {
+        console.warn(`[stable] ${ep} failed:`, e.message);
+        data = null;
+      }
     }
 
     if (!data) break;
 
-    // instagram-scraper-api2 response shape
-    const edges: any[] =
-      data?.data?.user?.edge_owner_to_timeline_media?.edges ??
-      data?.data?.user?.edge_felix_video_timeline?.edges ??
+    const rawArr: any[] =
       data?.data?.items ??
-      data?.data?.reels_media ??
+      data?.data ??
       data?.items ??
-      (Array.isArray(data?.data) ? data.data : []);
+      data?.reels_media ??
+      (Array.isArray(data) ? data : []);
 
-    const normalized = dedupeMediaItems(edges)
-      .map(normalizeMediaItem)
-      .filter(Boolean);
+    const normalized = dedupeMediaItems(rawArr).map(normalizeMediaItem).filter(Boolean);
     allItems.push(...normalized);
 
-    const pageInfo =
-      data?.data?.user?.edge_owner_to_timeline_media?.page_info ??
-      data?.data?.user?.edge_felix_video_timeline?.page_info ??
-      data?.data?.page_info ??
-      data?.page_info;
-
-    const nextCursor = str(
-      pageInfo?.end_cursor ??
-      data?.data?.next_max_id ??
-      data?.next_max_id ??
-      ""
-    );
-    hasNext = !!(pageInfo?.has_next_page ?? (nextCursor && nextCursor !== currentCursor));
-    currentCursor = nextCursor;
+    const nextToken = str(data?.pagination_token ?? data?.next_max_id ?? data?.next_cursor ?? "");
+    hasNext = !!(nextToken && nextToken !== currentCursor);
+    currentCursor = nextToken;
     if (!currentCursor || !hasNext) break;
   }
 
   return { items: allItems, hasNext, nextCursor: currentCursor };
 }
 
+// ── Highlights ────────────────────────────────────────────────────────────────
 async function scrapeHighlights(username: string): Promise<any[]> {
-  try {
-    const data = await callRapid(
-      `/v1/highlights?username_or_id_or_url=${encodeURIComponent(username)}`,
-      { method: "GET" },
-      () => {}
-    );
-    const rawArr: any[] =
-      data?.data?.tray ??
-      data?.data?.highlights ??
-      data?.tray ??
-      (Array.isArray(data?.data) ? data.data : []);
-    return rawArr.map(normalizeHighlight).filter(Boolean);
-  } catch {
-    return [];
+  const endpoints = ["/get_ig_highlights.php", "/highlights.php", "/get_ig_user_highlights_v2.php"];
+  for (const ep of endpoints) {
+    try {
+      const data = await stableCall(ep, { username_or_url: igUrl(username) });
+      const rawArr: any[] = data?.data ?? data?.tray ?? data?.highlights ?? (Array.isArray(data) ? data : []);
+      if (rawArr.length > 0) return rawArr.map(normalizeHighlight).filter(Boolean);
+    } catch {}
   }
+  return [];
 }
 
 // ─── Express Route ────────────────────────────────────────────────────────────
@@ -148,14 +175,14 @@ async function scrapeHighlights(username: string): Promise<any[]> {
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   const traceId = (req as any).traceId;
 
-  // Auth is bypass-able via MASTER_ACCESS_KEY env var for personal use.
-  // If MASTER_ACCESS_KEY is not set, all keys are accepted (open mode).
-  const accessKey = req.headers["x-access-key"] as string | undefined;
+  // Auth: if MASTER_ACCESS_KEY env var is set, enforce it. Otherwise open.
   const masterKey = process.env.MASTER_ACCESS_KEY;
-  if (masterKey && accessKey !== masterKey) {
-    // Only enforce if MASTER_ACCESS_KEY is explicitly set
-    res.status(403).json({ error: "Invalid access key" });
-    return;
+  if (masterKey) {
+    const accessKey = req.headers["x-access-key"] as string | undefined;
+    if (accessKey !== masterKey) {
+      res.status(403).json({ error: "Invalid access key" });
+      return;
+    }
   }
 
   const parsed = ScrapeReqSchema.safeParse(req.body);
@@ -167,57 +194,41 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
   const inflightKey = `${username}:${type}`;
   if (!force && getInflight(inflightKey)) {
-    res.status(202).json({ ok: false, queued: true, message: "Already in progress" });
+    res.status(202).json({ ok: false, queued: true });
     return;
   }
   setInflight(inflightKey, Promise.resolve());
 
   try {
-    // Cache check
     if (!force) {
       const l1 = cacheGet(username);
       const l2 = l1 ? null : await l2Get(username);
       const cached = l1?.payload ?? l2?.payload ?? null;
       if (cached) {
-        console.log(`[scraper] cache hit for @${username}`);
         res.json({ ok: true, cached: true, data: cached });
         return;
       }
     }
 
-    console.log(`[scraper:${traceId}] scraping @${username} type=${type}`);
+    console.log(`[scraper:${traceId}] @${username} type=${type}`);
 
     let profile: any = null;
     let reels: any[] = [];
     let posts: any[] = [];
     let highlights: any[] = [];
     let reelsMeta = { hasNext: false, nextCursor: "" };
-    let postsMeta = { hasNext: false, nextCursor: "" };
+    let postsMeta  = { hasNext: false, nextCursor: "" };
 
-    if (type === "profile" || type === "all") {
-      profile = await scrapeProfile(username);
-    }
-    if (type === "reels" || type === "all") {
-      const r = await scrapeMedia(username, "reels", pages, cursor);
-      reels = r.items;
-      reelsMeta = { hasNext: r.hasNext, nextCursor: r.nextCursor };
-    }
-    if (type === "posts" || type === "all") {
-      const p = await scrapeMedia(username, "posts", pages, cursor);
-      posts = p.items;
-      postsMeta = { hasNext: p.hasNext, nextCursor: p.nextCursor };
-    }
-    if (type === "highlights" || type === "all") {
-      highlights = await scrapeHighlights(username);
-    }
+    if (type === "profile" || type === "all") profile = await scrapeProfile(username);
+    if (type === "reels"   || type === "all") { const r = await scrapeMedia(username, "reels", pages, cursor); reels = r.items; reelsMeta = { hasNext: r.hasNext, nextCursor: r.nextCursor }; }
+    if (type === "posts"   || type === "all") { const p = await scrapeMedia(username, "posts", pages, cursor); posts = p.items; postsMeta = { hasNext: p.hasNext, nextCursor: p.nextCursor }; }
+    if (type === "highlights" || type === "all") highlights = await scrapeHighlights(username);
 
     const result = { profile, reels, posts, highlights, reelsMeta, postsMeta, scrapedAt: new Date().toISOString() };
-
     cacheSet(username, result);
-    const cacheKey = `${username}:${type}:${pages}`;
-    l2Set(cacheKey, username, type, pages, result).catch(() => null);
+    l2Set(`${username}:${type}:${pages}`, username, type, pages, result).catch(() => null);
 
-    console.log(`[scraper:${traceId}] done @${username}: profile=${!!profile?.username} reels=${reels.length} posts=${posts.length}`);
+    console.log(`[scraper:${traceId}] done @${username} reels=${reels.length} posts=${posts.length}`);
     res.json({ ok: true, cached: false, data: result });
   } catch (e: any) {
     console.error(`[scraper:${traceId}] error @${username}:`, e.message);
