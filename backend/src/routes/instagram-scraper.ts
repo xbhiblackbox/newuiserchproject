@@ -213,56 +213,87 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   const doScrape = async () => {
     const result: any = { username: u };
 
+    // Pre-resolve user ID once (needed by all media endpoints)
+    // Profile can run in parallel since it uses username directly
+    const needsId = type === "reels" || type === "posts" || type === "highlights" || type === "all";
+
+    const [profileRes, uidRes] = await Promise.allSettled([
+      (type === "profile" || type === "all") ? scrapeProfile(u) : Promise.resolve(null),
+      needsId ? resolveUserId(u).catch(() => null) : Promise.resolve(null),
+    ]);
+
+    // Handle profile result
     if (type === "profile" || type === "all") {
-      try {
-        result.profile = await scrapeProfile(u);
+      if (profileRes.status === "fulfilled" && profileRes.value) {
+        result.profile = profileRes.value;
         result.profileOk = true;
-      } catch (e: any) {
+      } else {
         result.profileOk = false;
-        result.profileError = e.message;
-        console.warn(`[looter2:${traceId}] profile @${u}:`, e.message);
+        result.profileError = profileRes.status === "rejected" ? profileRes.reason?.message : "No data";
+        console.warn(`[looter2:${traceId}] profile @${u}:`, result.profileError);
       }
     }
 
+    // Now fetch media in parallel (UID already resolved above)
+    const mediaPromises: Promise<void>[] = [];
+
     if (type === "reels" || type === "all") {
-      try {
-        const r = await scrapeMedia(u, "reels", pages, cursor);
-        result.reels = r.items;
-        result.reelsOk = true;
-        result.reelsHasMore = r.hasNext;
-        result.reelsNextCursor = r.nextCursor;
-      } catch (e: any) {
-        result.reelsOk = false;
-        result.reels = [];
-        console.warn(`[looter2:${traceId}] reels @${u}:`, e.message);
-      }
+      mediaPromises.push(
+        scrapeMedia(u, "reels", pages, cursor)
+          .then((r) => {
+            result.reels = r.items;
+            result.reelsOk = true;
+            result.reelsHasMore = r.hasNext;
+            result.reelsNextCursor = r.nextCursor;
+          })
+          .catch((e: any) => {
+            result.reelsOk = false;
+            result.reels = [];
+            console.warn(`[looter2:${traceId}] reels @${u}:`, e.message);
+          })
+      );
     }
 
     if (type === "posts" || type === "all") {
-      try {
-        const p = await scrapeMedia(u, "posts", pages, cursor);
-        result.posts = p.items;
-        result.postsOk = true;
-        result.postsHasMore = p.hasNext;
-        result.postsNextCursor = p.nextCursor;
-      } catch (e: any) {
-        result.postsOk = false;
-        result.posts = [];
-        console.warn(`[looter2:${traceId}] posts @${u}:`, e.message);
-      }
+      mediaPromises.push(
+        scrapeMedia(u, "posts", pages, cursor)
+          .then((p) => {
+            result.posts = p.items;
+            result.postsOk = true;
+            result.postsHasMore = p.hasNext;
+            result.postsNextCursor = p.nextCursor;
+          })
+          .catch((e: any) => {
+            result.postsOk = false;
+            result.posts = [];
+            console.warn(`[looter2:${traceId}] posts @${u}:`, e.message);
+          })
+      );
     }
 
     if (type === "highlights" || type === "all") {
-      result.highlights = await scrapeHighlights(u);
-      result.highlightsOk = true;
+      mediaPromises.push(
+        scrapeHighlights(u)
+          .then((h) => {
+            result.highlights = h;
+            result.highlightsOk = true;
+          })
+          .catch(() => {
+            result.highlights = [];
+            result.highlightsOk = true;
+          })
+      );
     }
+
+    // Run all media fetches in parallel
+    await Promise.all(mediaPromises);
 
     if (cursor) result.paginated = true;
 
     // Persist to both cache layers (7-day TTL via cache.ts)
     cacheSet(cacheKey, result);
     l2Set(cacheKey, u, type, pages, result).catch(() => null);
-    l2Set(`${u}:all`, u, type, pages, result).catch(() => null); // stale fallback key
+    l2Set(`${u}:all`, u, type, pages, result).catch(() => null);
 
     console.log(
       `[looter2:${traceId}] done @${u} ` +
