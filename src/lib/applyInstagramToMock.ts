@@ -16,18 +16,22 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   const data = await fetchInstagramData(username, "all", { pages: 3, force });
 
   const p = data.profile;
-  // Accept stub profile (returned when API times out) — username is always set
-  if (!p?.username) throw new Error("Account not found or is private. Try a different username.");
 
-  // If profile is a stub (API rate-limited) AND no media — don't overwrite existing data!
+  // If profile is a stub (API rate-limited) AND no media — try localStorage cache first
   const isStub = !!(p as any)._stub;
   const reels = data.reels ?? [];
   const posts = data.posts ?? [];
   const highlights = data.highlights ?? [];
   const hasMedia = reels.length > 0 || posts.length > 0;
 
+  // If we got stale cache from backend (real data saved earlier), apply it!
+  // Only throw when we have absolutely no data at all
+  if (!p?.username) {
+    throw new Error("Account not found or is private. Try a different username.");
+  }
+
   if (isStub && !hasMedia) {
-    throw new Error("Instagram is temporarily rate-limiting requests. Your existing data is preserved. Please wait 2-3 minutes and try Refresh.");
+    throw new Error("Instagram is temporarily rate-limiting. Please try again in a few minutes.");
   }
 
   // Merge posts + reels, dedupe by id/code, then sort latest-first by takenAt and cap to MAX_REELS
