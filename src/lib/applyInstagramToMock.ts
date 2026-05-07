@@ -11,28 +11,15 @@ const MAX_REELS = 15;
  */
 export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaScrapeResult> {
   const username = usernameRaw.trim().replace(/^@/, "");
-  const force = username.toLowerCase() === "kick.byamh.7";
-  // Cloning needs ~15 reels — request 3 pages up-front (server will SWR-cache it).
-  const data = await fetchInstagramData(username, "all", { pages: 3, force });
+  // Request 3 pages to get ~15 reels for a rich profile
+  const data = await fetchInstagramData(username, "all", { pages: 3 });
 
   const p = data.profile;
+  if (!p?.username) throw new Error("Account not found or is private.");
 
-  // If profile is a stub (API rate-limited) AND no media — try localStorage cache first
-  const isStub = !!(p as any)._stub;
   const reels = data.reels ?? [];
   const posts = data.posts ?? [];
   const highlights = data.highlights ?? [];
-  const hasMedia = reels.length > 0 || posts.length > 0;
-
-  // If we got stale cache from backend (real data saved earlier), apply it!
-  // Only throw when we have absolutely no data at all
-  if (!p?.username) {
-    throw new Error("Account not found or is private. Try a different username.");
-  }
-
-  if (isStub && !hasMedia) {
-    throw new Error("Instagram is temporarily rate-limiting. Please try again in a few minutes.");
-  }
 
   // Merge posts + reels, dedupe by id/code, then sort latest-first by takenAt and cap to MAX_REELS
   const seen = new Set<string>();

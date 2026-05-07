@@ -222,8 +222,9 @@ export async function fetchInstagramData(
         delete raw._debug;
       }
 
-      // Backend wraps everything in { ok, cached, data: { profile, reels, posts, ... } }
-      // Unwrap to the flat InstaScrapeResult shape the frontend expects.
+      // instagram-looter2 returns flat format: { username, profile, profileOk, reels, reelsOk, ... }
+      // stable-api wrapped: { ok, data: { profile, reels, ... } }
+      // Support both:
       const payload = raw?.data ?? raw;
       const result: InstaScrapeResult = {
         username: u,
@@ -231,14 +232,15 @@ export async function fetchInstagramData(
         reels:      payload?.reels      ?? [],
         posts:      payload?.posts      ?? [],
         highlights: payload?.highlights ?? [],
-        profileOk:  !!(payload?.profile?.username),
-        reelsOk:    Array.isArray(payload?.reels),
-        postsOk:    Array.isArray(payload?.posts),
-        highlightsOk: Array.isArray(payload?.highlights),
-        reelsNextCursor: payload?.reelsMeta?.nextCursor ?? "",
-        reelsHasMore:    !!(payload?.reelsMeta?.hasNext),
-        postsNextCursor: payload?.postsMeta?.nextCursor ?? "",
-        postsHasMore:    !!(payload?.postsMeta?.hasNext),
+        profileOk:  !!(payload?.profileOk ?? payload?.profile?.username),
+        reelsOk:    !!(payload?.reelsOk   ?? Array.isArray(payload?.reels)),
+        postsOk:    !!(payload?.postsOk   ?? Array.isArray(payload?.posts)),
+        highlightsOk: !!(payload?.highlightsOk ?? Array.isArray(payload?.highlights)),
+        // Pagination — looter2 uses reelsHasMore/reelsNextCursor directly
+        reelsNextCursor: payload?.reelsNextCursor ?? payload?.reelsMeta?.nextCursor ?? "",
+        reelsHasMore:    !!(payload?.reelsHasMore ?? payload?.reelsMeta?.hasNext),
+        postsNextCursor: payload?.postsNextCursor ?? payload?.postsMeta?.nextCursor ?? "",
+        postsHasMore:    !!(payload?.postsHasMore ?? payload?.postsMeta?.hasNext),
       };
       return result;
     } finally {
