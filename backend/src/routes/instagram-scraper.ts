@@ -1,6 +1,5 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { callRapid } from "../lib/rapidapi";
 import { queryOne, execute } from "../lib/db";
 import { sendToAllAdmins } from "../lib/telegram";
 import {
@@ -22,121 +21,85 @@ const ScrapeReqSchema = z.object({
   cursor: z.string().optional(),
 });
 
-// ─── Instagram Looter 2 (instagram-looter2.p.rapidapi.com) helpers ───────────
+// ─── Instagram Direct (No API Key Required) ──────────────────────────────────
 
-/**
- * Step 1: Resolve username → numeric user ID.
- * Tries multiple endpoint variants since the API changes frequently.
- */
-const userIdCache = new Map<string, string>();
+// Realistic browser headers to avoid 429/403
+function igHeaders(): Record<string, string> {
+  return {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "X-IG-App-ID": "936619743392459",
+    "X-ASBD-ID": "198387",
+    "X-IG-WWW-Claim": "0",
+    "Origin": "https://www.instagram.com",
+    "Referer": "https://www.instagram.com/",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+  };
+}
 
-async function resolveUserId(username: string): Promise<string> {
-  const cached = userIdCache.get(username);
-  if (cached) return cached;
-
-  // Try multiple ID resolution endpoints
-  const idPaths = [
-    `/id?username=${encodeURIComponent(username)}`,
-    `/user-id?username=${encodeURIComponent(username)}`,
-    `/userid?username=${encodeURIComponent(username)}`,
-    `/get-id?username=${encodeURIComponent(username)}`,
-  ];
-
-  for (const path of idPaths) {
-    try {
-      const data = await callRapid(path, { method: "GET" }, () => {});
-      // Response can be: { id: "12345" } or { data: { id: "12345" } } or just a string/"12345"
-      let id = str(data?.id ?? data?.data?.id ?? data?.user_id ?? data?.pk ?? data?.userId ?? data?.user?.pk ?? data?.user?.id ?? "");
-      // If data is a plain number/string directly
-      if (!id && (typeof data === "string" || typeof data === "number")) {
-        id = str(data);
-      }
-      if (id && id !== "0" && /^\d+$/.test(id.trim())) {
-        userIdCache.set(username, id.trim());
-        console.log(`[looter2] resolved userId for @${username} via ${path}: ${id}`);
-        return id.trim();
-      }
-    } catch (e: any) {
-      console.warn(`[looter2] resolveUserId failed for path ${path}:`, e.message);
-    }
+async function igFetch(url: string, timeout = 15000): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try {
+    const r = await fetch(url, {
+      headers: igHeaders(),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const text = await r.text();
+    try { return JSON.parse(text); } catch { return null; }
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
   }
-
-  throw new Error(`Could not resolve user ID for @${username}`);
 }
 
 /**
- * Step 2: Fetch profile by username — tries many endpoint variants.
+ * Fetch profile directly from Instagram's web API — no third-party API key needed.
  */
 async function scrapeProfile(username: string): Promise<any> {
-  const errors: string[] = [];
-
-  // Attempt 1: username-based profile endpoints (no ID needed)
-  const usernamePaths = [
-    `/web-profile?username=${encodeURIComponent(username)}`,
-    `/profile?username=${encodeURIComponent(username)}`,
-    `/user-info?username=${encodeURIComponent(username)}`,
-    `/user?username=${encodeURIComponent(username)}`,
-    `/get-user?username=${encodeURIComponent(username)}`,
-    `/userinfo?username=${encodeURIComponent(username)}`,
-    `/user-by-username?username=${encodeURIComponent(username)}`,
-    `/users?username=${encodeURIComponent(username)}`,
-  ];
-
-  for (const path of usernamePaths) {
-    try {
-      const data = await callRapid(path, { method: "GET" }, () => {});
-      console.log(`[looter2] ${path} keys:`, data ? Object.keys(data).slice(0, 8).join(",") : "null");
-      if (data && (data.data || data.user || data.username || data.pk || data.id || data.result)) {
-        const normalized = normalizeProfile(data);
-        if (normalized.username || normalized.followers) {
-          console.log(`[looter2] profile success via ${path}`);
-          return normalized;
-        }
-      }
-    } catch (e: any) {
-      errors.push(`${path}: ${e.message}`);
-      console.warn(`[looter2] profile variant failed: ${path}`, e.message);
-    }
-  }
-
-  // Attempt 2: ID-based profile endpoints
-  let uid: string | null = null;
+  const url = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
   try {
-    uid = await resolveUserId(username);
-  } catch (e: any) {
-    errors.push(`resolveUserId: ${e.message}`);
-  }
-
-  if (uid) {
-    const idPaths = [
-      `/user-info?id=${encodeURIComponent(uid)}`,
-      `/user?id=${encodeURIComponent(uid)}`,
-      `/profile?id=${encodeURIComponent(uid)}`,
-      `/user-by-id?id=${encodeURIComponent(uid)}`,
-    ];
-    for (const path of idPaths) {
-      try {
-        const data = await callRapid(path, { method: "GET" }, () => {});
-        console.log(`[looter2] ${path} keys:`, data ? Object.keys(data).slice(0, 8).join(",") : "null");
-        if (data && (data.data || data.user || data.username || data.pk || data.result)) {
-          const normalized = normalizeProfile(data);
-          if (normalized.username || normalized.followers) {
-            console.log(`[looter2] profile success via ${path}`);
-            return normalized;
-          }
-        }
-      } catch (e: any) {
-        errors.push(`${path}: ${e.message}`);
-        console.warn(`[looter2] id-based profile variant failed: ${path}`, e.message);
-      }
+    const data = await igFetch(url);
+    if (data?.data?.user) {
+      const u = data.data.user;
+      return {
+        username: str(u.username),
+        fullName: str(u.full_name),
+        bio: str(u.biography),
+        avatarUrl: str(u.profile_pic_url_hd ?? u.profile_pic_url),
+        isVerified: !!(u.is_verified),
+        followers: num(u.edge_followed_by?.count ?? u.follower_count),
+        following: num(u.edge_follow?.count ?? u.following_count),
+        postsCount: num(u.edge_owner_to_timeline_media?.count ?? u.media_count),
+        externalUrl: str(u.external_url ?? u.bio_links?.[0]?.url),
+        category: str(u.category_name ?? u.category),
+      };
     }
+  } catch (e: any) {
+    console.warn(`[ig-direct] web_profile_info failed: ${e.message}`);
   }
 
-  throw new Error(`Profile not found for @${username}. Errors: ${errors.join(" | ")}`);
+  // Fallback: try the old ?__a=1 endpoint (sometimes still works)
+  try {
+    const data2 = await igFetch(`https://www.instagram.com/${encodeURIComponent(username)}/?__a=1&__d=dis`);
+    if (data2?.graphql?.user || data2?.user) {
+      return normalizeProfile(data2);
+    }
+  } catch (e: any) {
+    console.warn(`[ig-direct] ?__a=1 failed: ${e.message}`);
+  }
+
+  throw new Error(`Profile not found for @${username}`);
 }
 
 /**
- * Fetch reels or posts — tries many endpoint variants.
+ * Fetch media using Instagram's GraphQL endpoint.
  */
 async function scrapeMedia(
   username: string,
@@ -148,90 +111,49 @@ async function scrapeMedia(
   let currentCursor = cursor || "";
   let hasNext = false;
 
-  // Try to get UID, but don't fail if we can't
-  let uid: string | null = null;
-  try { uid = await resolveUserId(username); } catch {}
-
-  // Build ordered list of endpoints to try (ID-based first, then username-based)
-  const reelEndpoints = uid ? [
-    `/reels?id=${uid}`,
-    `/user-reels?id=${uid}`,
-    `/user-reels?userId=${uid}`,
-    `/reels?userid=${uid}`,
-    `/get-reels?id=${uid}`,
-    `/reels-by-user?id=${uid}`,
-  ] : [];
-  const postEndpoints = uid ? [
-    `/user-feeds?id=${uid}`,
-    `/posts?id=${uid}`,
-    `/user-posts?id=${uid}`,
-    `/feed?id=${uid}`,
-    `/user-feed?id=${uid}`,
-    `/timeline?id=${uid}`,
-  ] : [];
-  // Username-based fallbacks
-  const reelUserEndpoints = [
-    `/reels?username=${username}`,
-    `/user-reels?username=${username}`,
-    `/get-reels?username=${username}`,
-  ];
-  const postUserEndpoints = [
-    `/user-feeds?username=${username}`,
-    `/posts?username=${username}`,
-    `/user-posts?username=${username}`,
-    `/feed?username=${username}`,
-  ];
-
-  const endpoints = mediaType === "reels"
-    ? [...reelEndpoints, ...reelUserEndpoints]
-    : [...postEndpoints, ...postUserEndpoints];
+  // First get user_id from profile
+  let userId: string | null = null;
+  try {
+    const profileUrl = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
+    const profileData = await igFetch(profileUrl);
+    userId = str(profileData?.data?.user?.id ?? profileData?.data?.user?.pk ?? "");
+  } catch {}
 
   for (let page = 0; page < pages; page++) {
+    const cursorParam = currentCursor ? `,"after":"${currentCursor}"` : "";
     let data: any = null;
-    const cursorParam = currentCursor ? `&max_id=${encodeURIComponent(currentCursor)}` : "";
 
-    for (const basePath of endpoints) {
+    if (mediaType === "reels" && userId) {
+      // Reels via clips endpoint
       try {
-        const path = `${basePath}&count=12${cursorParam}`;
-        data = await callRapid(path, { method: "GET" }, () => {});
-        const hasContent = data && (
-          data.items?.length > 0 ||
-          data.data?.items?.length > 0 ||
-          data.reels?.length > 0 ||
-          data.posts?.length > 0 ||
-          data.feeds?.length > 0 ||
-          (Array.isArray(data) && data.length > 0)
-        );
-        if (hasContent) {
-          console.log(`[looter2] ${mediaType} success via ${basePath}`);
-          break;
-        }
-        // If we got data but it has no content array, still break if it has some structure
-        if (data && (data.items || data.data || data.reels || data.posts || data.feeds || Array.isArray(data))) {
-          break;
-        }
-        data = null;
+        const url = `https://www.instagram.com/api/v1/clips/user/?target_user_id=${userId}&page_size=12${currentCursor ? `&max_id=${encodeURIComponent(currentCursor)}` : ""}`;
+        data = await igFetch(url);
       } catch (e: any) {
-        console.warn(`[looter2] ${mediaType} variant failed: ${basePath}`, e.message);
-        data = null;
+        console.warn(`[ig-direct] clips failed:`, e.message);
+      }
+    }
+
+    if (!data && userId) {
+      // Posts via timeline GraphQL
+      const query = mediaType === "posts"
+        ? `query_hash=be13233562af2d229b008d2976b998b5&variables={"id":"${userId}","first":12${cursorParam}}`
+        : `query_hash=d4d88dc1500312af6f937f7b804c68c3&variables={"user_id":"${userId}","include_reel":true,"fetch_mutual":false,"count":12${cursorParam}}`;
+      try {
+        data = await igFetch(`https://www.instagram.com/graphql/query/?${query}`);
+      } catch (e: any) {
+        console.warn(`[ig-direct] graphql failed:`, e.message);
       }
     }
 
     if (!data) break;
 
-    // Normalize items from response
-    const rawArr: any[] = (
+    // Normalize items
+    const rawArr: any[] =
       data?.items ??
+      data?.data?.user?.edge_owner_to_timeline_media?.edges ??
+      data?.data?.user?.edge_felix_video_timeline?.edges ??
       data?.data?.items ??
-      data?.reels ??
-      data?.data?.reels ??
-      data?.feeds ??
-      data?.data?.feeds ??
-      data?.posts ??
-      data?.data?.posts ??
-      (Array.isArray(data) ? data : null) ??
-      []
-    );
+      (Array.isArray(data) ? data : []);
 
     const normalized = dedupeMediaItems(rawArr)
       .map(normalizeMediaItem)
@@ -239,210 +161,144 @@ async function scrapeMedia(
     allItems.push(...normalized);
 
     // Pagination
-    const nextMaxId = str(
-      data?.next_max_id ??
-      data?.data?.next_max_id ??
-      data?.pagination?.next_max_id ??
-      data?.page_info?.end_cursor ??
-      ""
-    );
-    hasNext = !!(data?.more_available ?? data?.data?.more_available ?? (nextMaxId && nextMaxId !== currentCursor));
+    const pageInfo =
+      data?.paging_info ??
+      data?.data?.user?.edge_owner_to_timeline_media?.page_info ??
+      data?.data?.user?.edge_felix_video_timeline?.page_info;
+    const nextMaxId = str(pageInfo?.end_cursor ?? pageInfo?.max_id ?? data?.next_max_id ?? "");
+    hasNext = !!(pageInfo?.has_next_page ?? (nextMaxId && nextMaxId !== currentCursor));
     currentCursor = nextMaxId;
     if (!currentCursor || !hasNext) break;
   }
 
-  return {
-    items: allItems,
-    hasNext,
-    nextCursor: currentCursor,
-  };
+  return { items: allItems, hasNext, nextCursor: currentCursor };
 }
 
 /**
- * Fetch highlights — tries multiple endpoints and falls back gracefully.
+ * Fetch highlights from Instagram.
  */
 async function scrapeHighlights(username: string): Promise<any[]> {
-  let uid: string | null = null;
-  try { uid = await resolveUserId(username); } catch {}
+  try {
+    const profileUrl = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(username)}`;
+    const profileData = await igFetch(profileUrl);
+    const userId = str(profileData?.data?.user?.id ?? profileData?.data?.user?.pk ?? "");
+    if (!userId) return [];
 
-  const highlightPaths: string[] = [
-    ...(uid ? [
-      `/highlights?id=${uid}`,
-      `/user-highlights?id=${uid}`,
-      `/story-highlights?id=${uid}`,
-      `/highlights?userId=${uid}`,
-    ] : []),
-    `/highlights?username=${username}`,
-    `/user-highlights?username=${username}`,
-    `/story-highlights?username=${username}`,
-  ];
-
-  for (const path of highlightPaths) {
-    try {
-      const data = await callRapid(path, { method: "GET" }, () => {});
-      const rawArr: any[] = data?.items ?? data?.data ?? data?.highlights ?? (Array.isArray(data) ? data : []);
-      if (rawArr.length > 0) {
-        return rawArr.map(normalizeHighlight).filter(Boolean);
-      }
-    } catch {}
+    const data = await igFetch(
+      `https://www.instagram.com/api/v1/highlights/${userId}/highlights_tray/`
+    );
+    const rawArr: any[] = data?.tray ?? data?.data?.tray ?? [];
+    return rawArr.map(normalizeHighlight).filter(Boolean);
+  } catch {
+    return [];
   }
-  // Highlights not available — return empty, don't fail the whole request
-  return [];
 }
 
 // ─── Express Route ────────────────────────────────────────────────────────────
 
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   const traceId = (req as any).traceId;
-  const accessKey = req.headers["x-access-key"] as string;
-  const deviceFp = req.headers["x-device-fp"] as string;
+  const rawBody = req.body;
 
+  // ── 1. Auth: verify x-access-key ─────────────────────────────────────────
+  const accessKey = req.headers["x-access-key"] as string | undefined;
   if (!accessKey) {
-    res.status(401).json({ error: "Missing x-access-key" });
+    res.status(401).json({ error: "Missing x-access-key header" });
     return;
   }
-
-  // Authorize via db
-  const row = await queryOne<{
-    id: string; active: boolean; expires_at: string | null;
-    device_fingerprints: string[]; max_devices: number; label: string;
-  }>(
-    "SELECT id, active, expires_at, device_fingerprints, max_devices, label FROM access_keys WHERE key = $1 LIMIT 1",
+  const keyRow = await queryOne<{ status: string; user_id: string }>(
+    `SELECT status, user_id FROM access_keys WHERE key = $1 LIMIT 1`,
     [accessKey]
-  );
-
-  if (!row || !row.active || (row.expires_at && new Date(row.expires_at) < new Date())) {
-    res.status(401).json({ error: "Invalid or expired key" });
+  ).catch(() => null);
+  if (!keyRow || keyRow.status !== "active") {
+    res.status(403).json({ error: "Invalid or inactive access key" });
     return;
   }
 
-  if (deviceFp) {
-    const fps = row.device_fingerprints || [];
-    if (!fps.includes(deviceFp)) {
-      if (fps.length >= (row.max_devices || 1)) {
-        res.status(401).json({ error: "Device limit reached" });
+  // ── 2. Parse & validate body ──────────────────────────────────────────────
+  const parsed = ScrapeReqSchema.safeParse(rawBody);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request", issues: parsed.error.issues });
+    return;
+  }
+  const { username, type, force, pages, cursor } = parsed.data;
+
+  // ── 3. Inflight dedup ─────────────────────────────────────────────────────
+  const inflightKey = `${username}:${type}`;
+  if (!force && getInflight(inflightKey)) {
+    console.log(`[scraper] inflight dedup for ${inflightKey}`);
+    res.status(202).json({ ok: false, queued: true, message: "Already in progress" });
+    return;
+  }
+  setInflight(inflightKey, Promise.resolve());
+
+  try {
+    // ── 4. Cache check ──────────────────────────────────────────────────────
+    if (!force) {
+      const cached = cacheGet(username) ?? l2Get(username);
+      if (cached) {
+        console.log(`[scraper] cache hit for @${username}`);
+        res.json({ ok: true, cached: true, data: cached });
         return;
       }
-      fps.push(deviceFp);
-      await execute("UPDATE access_keys SET device_fingerprints=$1, updated_at=now() WHERE id=$2", [fps, row.id]);
     }
-  }
 
-  const parsed = ScrapeReqSchema.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid body", details: parsed.error });
-    return;
-  }
+    // ── 5. Scrape ───────────────────────────────────────────────────────────
+    console.log(`[scraper:${traceId}] starting scrape for @${username} type=${type}`);
 
-  const { username, type, force, pages, cursor } = parsed.data;
-  const u = username.toLowerCase().replace(/^@/, "");
-
-  // Cache key scoped to device fingerprint
-  const cacheKey = `v2:${deviceFp || "anon"}:${u}:${type}:${pages}${cursor ? `:${cursor.slice(0, 20)}` : ""}`;
-
-  if (!force) {
-    const l1 = cacheGet(cacheKey);
-    if (l1 && !l1.isStale) {
-      res.setHeader("X-Cache", "HIT-L1");
-      res.setHeader("X-Cache-Age", String(Math.round(l1.ageMs / 1000)));
-      res.status(200).json(l1.payload);
-      return;
-    }
-    const l2 = await l2Get(cacheKey);
-    if (l2 && l2.ageMs < 5 * 60 * 1000) {
-      cacheSet(cacheKey, l2.payload);
-      res.setHeader("X-Cache", "HIT-L2");
-      res.setHeader("X-Cache-Age", String(Math.round(l2.ageMs / 1000)));
-      res.status(200).json(l2.payload);
-      return;
-    }
-  }
-
-  const inflight = getInflight(cacheKey);
-  if (inflight) {
-    try {
-      const data = await inflight;
-      res.setHeader("X-Cache", "INFLIGHT");
-      res.status(200).json(data);
-      return;
-    } catch (e: any) {
-      res.status(500).json({ error: e.message });
-      return;
-    }
-  }
-
-  const doScrape = async () => {
-    const result: any = { username: u };
+    let profile: any = null;
+    let reels: any[] = [];
+    let posts: any[] = [];
+    let highlights: any[] = [];
+    let reelsMeta = { hasNext: false, nextCursor: "" };
+    let postsMeta = { hasNext: false, nextCursor: "" };
 
     if (type === "profile" || type === "all") {
-      try {
-        result.profile = await scrapeProfile(u);
-        result.profileOk = true;
-      } catch (e: any) {
-        result.profileOk = false;
-        result.profileError = e.message;
-        console.warn(`[looter2] profile failed for @${u}:`, e.message);
-      }
+      profile = await scrapeProfile(username);
     }
 
     if (type === "reels" || type === "all") {
-      try {
-        const r = await scrapeMedia(u, "reels", pages, cursor);
-        result.reels = r.items;
-        result.reelsHasMore = r.hasNext;
-        result.reelsNextCursor = r.nextCursor;
-        result.reelsOk = true;
-      } catch (e: any) {
-        result.reelsOk = false;
-        result.reelsError = e.message;
-        console.warn(`[looter2] reels failed for @${u}:`, e.message);
-      }
+      const r = await scrapeMedia(username, "reels", pages, cursor);
+      reels = r.items;
+      reelsMeta = { hasNext: r.hasNext, nextCursor: r.nextCursor };
     }
 
     if (type === "posts" || type === "all") {
-      try {
-        const p = await scrapeMedia(u, "posts", pages, cursor);
-        result.posts = p.items;
-        result.postsHasMore = p.hasNext;
-        result.postsNextCursor = p.nextCursor;
-        result.postsOk = true;
-      } catch (e: any) {
-        result.postsOk = false;
-        result.postsError = e.message;
-        console.warn(`[looter2] posts failed for @${u}:`, e.message);
-      }
+      const p = await scrapeMedia(username, "posts", pages, cursor);
+      posts = p.items;
+      postsMeta = { hasNext: p.hasNext, nextCursor: p.nextCursor };
     }
 
     if (type === "highlights" || type === "all") {
-      try {
-        result.highlights = await scrapeHighlights(u);
-        result.highlightsOk = true;
-      } catch (e: any) {
-        result.highlightsOk = false;
-        result.highlights = [];
-        result.highlightsError = e.message;
-      }
+      highlights = await scrapeHighlights(username);
     }
 
-    if (cursor) result.paginated = true;
+    const result = {
+      profile,
+      reels,
+      posts,
+      highlights,
+      reelsMeta,
+      postsMeta,
+      scrapedAt: new Date().toISOString(),
+    };
 
-    cacheSet(cacheKey, result);
-    await l2Set(cacheKey, u, type, pages, result);
-    return result;
-  };
+    // ── 6. Cache the result ─────────────────────────────────────────────────
+    cacheSet(username, result);
+    l2Set(username, result);
 
-  const p = doScrape();
-  setInflight(cacheKey, p);
-
-  try {
-    const data = await p;
-    res.setHeader("X-Cache", "MISS");
-    res.setHeader("X-Trace-Id", traceId || "");
-    res.status(200).json(data);
+    console.log(`[scraper:${traceId}] done for @${username}: profile=${!!profile?.username} reels=${reels.length} posts=${posts.length}`);
+    res.json({ ok: true, cached: false, data: result });
   } catch (e: any) {
-    res.status(500).json({ error: e.message });
+    console.error(`[scraper:${traceId}] error for @${username}:`, e.message);
+    const isNotFound = /not found|private|doesn't exist/i.test(e.message);
+    res.status(isNotFound ? 404 : 502).json({
+      ok: false,
+      error: e.message,
+      profileOk: false,
+    });
   } finally {
-    deleteInflight(cacheKey);
+    deleteInflight(inflightKey);
   }
 });
 
