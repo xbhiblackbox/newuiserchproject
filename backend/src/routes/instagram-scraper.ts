@@ -205,13 +205,24 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     res.status(401).json({ error: "Missing x-access-key header" });
     return;
   }
-  const keyRow = await queryOne<{ status: string; user_id: string }>(
-    `SELECT status, user_id FROM access_keys WHERE key = $1 LIMIT 1`,
-    [accessKey]
-  ).catch(() => null);
-  if (!keyRow || keyRow.status !== "active") {
-    res.status(403).json({ error: "Invalid or inactive access key" });
-    return;
+
+  // Allow master key bypass (set MASTER_ACCESS_KEY env var in Railway)
+  const masterKey = process.env.MASTER_ACCESS_KEY;
+  const isMasterKey = masterKey && accessKey === masterKey;
+
+  if (!isMasterKey) {
+    const keyRow = await queryOne<{ active: boolean; expires_at: string | null }>(
+      `SELECT active, expires_at FROM access_keys WHERE key = $1 LIMIT 1`,
+      [accessKey]
+    ).catch(() => null);
+    if (!keyRow || !keyRow.active) {
+      res.status(403).json({ error: "Invalid or inactive access key" });
+      return;
+    }
+    if (keyRow.expires_at && new Date(keyRow.expires_at) < new Date()) {
+      res.status(403).json({ error: "Access key expired" });
+      return;
+    }
   }
 
   // ── 2. Parse & validate body ──────────────────────────────────────────────
