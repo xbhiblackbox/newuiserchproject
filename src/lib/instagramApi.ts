@@ -202,9 +202,9 @@ export async function fetchInstagramData(
       );
       if (cacheHeat) console.debug(`[ig-scraper] heatmap ${cacheHeat}`);
       // Strip server-side `_debug` payload before handing off to consumers / cache.
-      let raw: InstaScrapeResult & { _debug?: unknown };
+      let raw: any;
       try {
-        raw = (await res.json()) as InstaScrapeResult & { _debug?: unknown };
+        raw = await res.json();
       } catch (e: any) {
         const err = new Error(`Parse failed: ${e?.message || "invalid JSON"}`) as Error & {
           __trace?: { traceId: string; serverTraceId: string; status: number; url: string };
@@ -221,7 +221,26 @@ export async function fetchInstagramData(
         if (raw._debug) console.debug(`[ig-scraper] _debug`, raw._debug);
         delete raw._debug;
       }
-      return raw as InstaScrapeResult;
+
+      // Backend wraps everything in { ok, cached, data: { profile, reels, posts, ... } }
+      // Unwrap to the flat InstaScrapeResult shape the frontend expects.
+      const payload = raw?.data ?? raw;
+      const result: InstaScrapeResult = {
+        username: u,
+        profile:    payload?.profile    ?? undefined,
+        reels:      payload?.reels      ?? [],
+        posts:      payload?.posts      ?? [],
+        highlights: payload?.highlights ?? [],
+        profileOk:  !!(payload?.profile?.username),
+        reelsOk:    Array.isArray(payload?.reels),
+        postsOk:    Array.isArray(payload?.posts),
+        highlightsOk: Array.isArray(payload?.highlights),
+        reelsNextCursor: payload?.reelsMeta?.nextCursor ?? "",
+        reelsHasMore:    !!(payload?.reelsMeta?.hasNext),
+        postsNextCursor: payload?.postsMeta?.nextCursor ?? "",
+        postsHasMore:    !!(payload?.postsMeta?.hasNext),
+      };
+      return result;
     } finally {
       inflight.delete(key);
     }
