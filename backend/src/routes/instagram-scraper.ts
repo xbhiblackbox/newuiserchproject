@@ -20,89 +20,113 @@ const ScrapeReqSchema = z.object({
 });
 
 // ─── instagram-scraper-stable-api.p.rapidapi.com ─────────────────────────────
-// POST endpoints with form-urlencoded body
-// Set in Railway env vars:
-//   RAPIDAPI_HOST = instagram-scraper-stable-api.p.rapidapi.com
-//   RAPIDAPI_KEY  = 765e47e809mshda12294101b09acp144800jsn331f56f88be4
+// All endpoints are POST with application/x-www-form-urlencoded
+// HARDCODED key & host — no env var needed
 
-async function stableCall(path: string, body: Record<string, string>): Promise<any> {
-  const host = process.env.RAPIDAPI_HOST ?? "instagram-scraper-stable-api.p.rapidapi.com";
-  const key  = process.env.RAPIDAPI_KEY  ?? "";
+const RAPID_KEY  = "765e47e809mshda12294101b09acp144800jsn331f56f88be4";
+const RAPID_HOST = "instagram-scraper-stable-api.p.rapidapi.com";
 
+async function stablePost(endpoint: string, body: Record<string, string>): Promise<any> {
   const params = new URLSearchParams(body).toString();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
+  const timer = setTimeout(() => controller.abort(), 25000);
 
   try {
-    const r = await fetch(`https://${host}${path}`, {
+    const r = await fetch(`https://${RAPID_HOST}${endpoint}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
-        "x-rapidapi-host": host,
-        "x-rapidapi-key":  key,
+        "x-rapidapi-host": RAPID_HOST,
+        "x-rapidapi-key":  process.env.RAPIDAPI_KEY ?? RAPID_KEY,
       },
       body: params,
       signal: controller.signal,
     });
     clearTimeout(timer);
     const text = await r.text();
-    if (!r.ok) throw new Error(`API ${r.status}: ${text.slice(0, 200)}`);
-    try { return JSON.parse(text); } catch { return null; }
+    if (!r.ok) throw new Error(`Stable API ${r.status}: ${text.slice(0, 200)}`);
+    try {
+      const j = JSON.parse(text);
+      // API returns error field when Instagram blocks the proxy
+      if (j?.error && typeof j.error === "string") {
+        throw new Error(`Instagram blocked: ${j.error}`);
+      }
+      return j;
+    } catch (e: any) {
+      if (e.message.startsWith("Instagram blocked")) throw e;
+      return null;
+    }
   } catch (e) {
     clearTimeout(timer);
     throw e;
   }
 }
 
-function igUrl(username: string) {
-  return `https://www.instagram.com/${username}/`;
-}
+// ─── PROFILE ──────────────────────────────────────────────────────────────────
+// Endpoint confirmed from RapidAPI playground: /ig_get_fb_profile_v3.php
+// Parameter: username_or_url = just the username (NOT full URL)
 
-// ── Profile ──────────────────────────────────────────────────────────────────
-function normalizeStableProfile(raw: any, username: string) {
-  // instagram-scraper-stable-api returns data directly or inside data{}
-  const d = raw?.data ?? raw?.user ?? raw ?? {};
+function normalizeProfile(raw: any, username: string) {
+  // Account Data V2 (/ig_get_fb_profile_v3.php) response shape
+  const u =
+    raw?.data?.user ??
+    raw?.user ??
+    raw?.data ??
+    raw ?? {};
+
   return {
-    username:    str(d.username ?? d.user_name ?? username),
-    fullName:    str(d.full_name ?? d.fullname ?? d.fullName ?? d.name ?? ""),
-    bio:         str(d.biography ?? d.bio ?? ""),
-    avatarUrl:   str(d.hd_profile_pic_url_info?.url ?? d.profile_pic_url_hd ?? d.profile_pic_url ?? d.profile_picture ?? ""),
-    isVerified:  !!(d.is_verified ?? d.verified),
-    followers:   num(d.follower_count ?? d.followers_count ?? d.edge_followed_by?.count ?? 0),
-    following:   num(d.following_count ?? d.following ?? d.edge_follow?.count ?? 0),
-    postsCount:  num(d.media_count ?? d.posts_count ?? d.edge_owner_to_timeline_media?.count ?? 0),
-    externalUrl: str(d.external_url ?? d.bio_links?.[0]?.url ?? ""),
-    category:    str(d.category ?? d.category_name ?? ""),
+    username:    str(u.username ?? u.user_name ?? username),
+    fullName:    str(u.full_name ?? u.fullname ?? u.name ?? ""),
+    bio:         str(u.biography ?? u.bio ?? ""),
+    avatarUrl:   str(
+      u.hd_profile_pic_url_info?.url ??
+      u.profile_pic_url_hd ??
+      u.profile_pic_url ??
+      u.profile_picture ?? ""
+    ),
+    isVerified:  !!(u.is_verified ?? u.verified ?? false),
+    followers:   num(u.follower_count ?? u.followers ?? u.edge_followed_by?.count ?? 0),
+    following:   num(u.following_count ?? u.following ?? u.edge_follow?.count ?? 0),
+    postsCount:  num(u.media_count ?? u.posts ?? u.edge_owner_to_timeline_media?.count ?? 0),
+    externalUrl: str(u.external_url ?? u.bio_links?.[0]?.url ?? ""),
+    category:    str(u.category ?? u.category_name ?? ""),
   };
 }
 
 async function scrapeProfile(username: string): Promise<any> {
-  // Try multiple profile endpoints this API may have
-  const endpoints = [
-    "/get_ig_user_info_v2.php",
-    "/get_ig_profile.php",
-    "/profile.php",
-    "/get_profile.php",
-    "/user_info.php",
-  ];
-
-  for (const ep of endpoints) {
-    try {
-      const data = await stableCall(ep, { username_or_url: igUrl(username) });
-      if (!data) continue;
-      const p = normalizeStableProfile(data, username);
-      if (p.username && p.username !== "") {
-        console.log(`[stable] profile OK via ${ep}`);
+  // Primary: Account Data V2
+  try {
+    const data = await stablePost("/ig_get_fb_profile_v3.php", { username_or_url: username });
+    if (data) {
+      const p = normalizeProfile(data, username);
+      if (p.username) {
+        console.log(`[stable] profile OK via ig_get_fb_profile_v3`);
         return p;
       }
-    } catch (e: any) {
-      console.warn(`[stable] ${ep} failed:`, e.message);
     }
+  } catch (e: any) {
+    console.warn("[stable] ig_get_fb_profile_v3 failed:", e.message);
   }
+
+  // Fallback: Account Data (v2)
+  const fallbacks = ["/ig_get_fb_profile_v2.php", "/ig_get_fb_profile.php", "/get_ig_profile_v2.php"];
+  for (const ep of fallbacks) {
+    try {
+      const data = await stablePost(ep, { username_or_url: username });
+      if (data) {
+        const p = normalizeProfile(data, username);
+        if (p.username) {
+          console.log(`[stable] profile OK via ${ep}`);
+          return p;
+        }
+      }
+    } catch {}
+  }
+
   throw new Error(`Profile not found for @${username}`);
 }
 
-// ── Media (reels / posts) ─────────────────────────────────────────────────────
+// ─── MEDIA (Posts / Reels) ────────────────────────────────────────────────────
 async function scrapeMedia(
   username: string,
   mediaType: "reels" | "posts",
@@ -113,42 +137,37 @@ async function scrapeMedia(
   let currentCursor = cursor ?? "";
   let hasNext = false;
 
-  const reelEndpoints = ["/get_ig_user_reels_v2.php", "/get_ig_reels.php", "/reels.php"];
-  const postEndpoints = ["/get_ig_user_posts_v2.php", "/get_ig_posts.php",  "/posts.php", "/get_ig_user_media_v2.php"];
-  const endpoints = mediaType === "reels" ? reelEndpoints : postEndpoints;
+  // Endpoint candidates for posts/reels
+  const postEps  = ["/ig_get_user_posts_v2.php", "/ig_get_user_posts.php", "/get_ig_user_posts.php"];
+  const reelEps  = ["/ig_get_user_reels_v2.php", "/ig_get_user_reels.php", "/get_ig_user_reels.php"];
+  const endpoints = mediaType === "reels" ? reelEps : postEps;
 
   for (let page = 0; page < pages; page++) {
-    const body: Record<string, string> = { username_or_url: igUrl(username), amount: "12" };
+    const body: Record<string, string> = { username_or_url: username, amount: "12" };
     if (currentCursor) body.pagination_token = currentCursor;
 
     let data: any = null;
     for (const ep of endpoints) {
       try {
-        data = await stableCall(ep, body);
+        data = await stablePost(ep, body);
         if (data && (data.data || data.items || Array.isArray(data))) {
           console.log(`[stable] ${mediaType} OK via ${ep}`);
           break;
         }
         data = null;
-      } catch (e: any) {
-        console.warn(`[stable] ${ep} failed:`, e.message);
-        data = null;
-      }
+      } catch {}
     }
 
     if (!data) break;
 
     const rawArr: any[] =
-      data?.data?.items ??
-      data?.data ??
-      data?.items ??
-      data?.reels_media ??
+      data?.data?.items ?? data?.data ?? data?.items ??
       (Array.isArray(data) ? data : []);
 
     const normalized = dedupeMediaItems(rawArr).map(normalizeMediaItem).filter(Boolean);
     allItems.push(...normalized);
 
-    const nextToken = str(data?.pagination_token ?? data?.next_max_id ?? data?.next_cursor ?? "");
+    const nextToken = str(data?.pagination_token ?? data?.next_max_id ?? "");
     hasNext = !!(nextToken && nextToken !== currentCursor);
     currentCursor = nextToken;
     if (!currentCursor || !hasNext) break;
@@ -157,25 +176,25 @@ async function scrapeMedia(
   return { items: allItems, hasNext, nextCursor: currentCursor };
 }
 
-// ── Highlights ────────────────────────────────────────────────────────────────
+// ─── HIGHLIGHTS ───────────────────────────────────────────────────────────────
 async function scrapeHighlights(username: string): Promise<any[]> {
-  const endpoints = ["/get_ig_highlights.php", "/highlights.php", "/get_ig_user_highlights_v2.php"];
-  for (const ep of endpoints) {
+  const eps = ["/ig_get_user_highlights_v2.php", "/ig_get_user_highlights.php", "/get_ig_highlights.php"];
+  for (const ep of eps) {
     try {
-      const data = await stableCall(ep, { username_or_url: igUrl(username) });
-      const rawArr: any[] = data?.data ?? data?.tray ?? data?.highlights ?? (Array.isArray(data) ? data : []);
-      if (rawArr.length > 0) return rawArr.map(normalizeHighlight).filter(Boolean);
+      const data = await stablePost(ep, { username_or_url: username });
+      const arr: any[] = data?.data ?? data?.tray ?? data?.highlights ?? (Array.isArray(data) ? data : []);
+      if (arr.length > 0) return arr.map(normalizeHighlight).filter(Boolean);
     } catch {}
   }
   return [];
 }
 
-// ─── Express Route ────────────────────────────────────────────────────────────
+// ─── EXPRESS ROUTE ────────────────────────────────────────────────────────────
 
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   const traceId = (req as any).traceId;
 
-  // Auth: if MASTER_ACCESS_KEY env var is set, enforce it. Otherwise open.
+  // Auth: MASTER_ACCESS_KEY env var se enforce, nahi set toh open
   const masterKey = process.env.MASTER_ACCESS_KEY;
   if (masterKey) {
     const accessKey = req.headers["x-access-key"] as string | undefined;
@@ -200,6 +219,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   setInflight(inflightKey, Promise.resolve());
 
   try {
+    // Cache check
     if (!force) {
       const l1 = cacheGet(username);
       const l2 = l1 ? null : await l2Get(username);
@@ -219,21 +239,42 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     let reelsMeta = { hasNext: false, nextCursor: "" };
     let postsMeta  = { hasNext: false, nextCursor: "" };
 
-    if (type === "profile" || type === "all") profile = await scrapeProfile(username);
-    if (type === "reels"   || type === "all") { const r = await scrapeMedia(username, "reels", pages, cursor); reels = r.items; reelsMeta = { hasNext: r.hasNext, nextCursor: r.nextCursor }; }
-    if (type === "posts"   || type === "all") { const p = await scrapeMedia(username, "posts", pages, cursor); posts = p.items; postsMeta = { hasNext: p.hasNext, nextCursor: p.nextCursor }; }
-    if (type === "highlights" || type === "all") highlights = await scrapeHighlights(username);
+    if (type === "profile" || type === "all") {
+      profile = await scrapeProfile(username);
+    }
+    if (type === "reels" || type === "all") {
+      const r = await scrapeMedia(username, "reels", pages, cursor);
+      reels = r.items; reelsMeta = { hasNext: r.hasNext, nextCursor: r.nextCursor };
+    }
+    if (type === "posts" || type === "all") {
+      const p = await scrapeMedia(username, "posts", pages, cursor);
+      posts = p.items; postsMeta = { hasNext: p.hasNext, nextCursor: p.nextCursor };
+    }
+    if (type === "highlights" || type === "all") {
+      highlights = await scrapeHighlights(username);
+    }
 
-    const result = { profile, reels, posts, highlights, reelsMeta, postsMeta, scrapedAt: new Date().toISOString() };
+    const result = {
+      profile, reels, posts, highlights,
+      reelsMeta, postsMeta,
+      scrapedAt: new Date().toISOString(),
+    };
+
     cacheSet(username, result);
     l2Set(`${username}:${type}:${pages}`, username, type, pages, result).catch(() => null);
 
-    console.log(`[scraper:${traceId}] done @${username} reels=${reels.length} posts=${posts.length}`);
+    console.log(`[scraper:${traceId}] done @${username} profile=${!!profile?.username} reels=${reels.length} posts=${posts.length}`);
     res.json({ ok: true, cached: false, data: result });
+
   } catch (e: any) {
     console.error(`[scraper:${traceId}] error @${username}:`, e.message);
     const isNotFound = /not found|private|doesn't exist/i.test(e.message);
-    res.status(isNotFound ? 404 : 502).json({ ok: false, error: e.message, profileOk: false });
+    const isBlocked  = /blocked|try again/i.test(e.message);
+    res.status(isNotFound ? 404 : 502).json({
+      ok: false,
+      error: isBlocked ? "Instagram is temporarily blocking requests. Try again in a few minutes." : e.message,
+      profileOk: false,
+    });
   } finally {
     deleteInflight(inflightKey);
   }
