@@ -284,15 +284,30 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   setInflight(inflightKey, Promise.resolve());
 
   try {
+    // ── Cache lookup (L1 in-memory, then L2 Postgres) ──────────────────────
+    // L2 keys are saved as "username:type:pages" but we try all combinations
     if (!force) {
       const l1 = cacheGet(username);
-      const l2 = l1 ? null : await l2Get(username);
-      const cached = (l1 as any)?.payload ?? (l2 as any)?.payload ?? null;
-      if (cached) {
-        res.json({ ok: true, cached: true, data: cached });
+      if (l1?.payload) {
+        res.json({ ok: true, cached: true, data: l1.payload });
         return;
       }
+      // Try multiple key formats that might have been used previously
+      const keyVariants = [
+        username,
+        `${username}:all:1`, `${username}:all:2`, `${username}:all:3`,
+        `${username}:${type}:${pages}`, `${username}:${type}:1`,
+      ];
+      for (const k of keyVariants) {
+        const l2 = await l2Get(k);
+        if (l2?.payload) {
+          cacheSet(username, l2.payload); // promote to L1
+          res.json({ ok: true, cached: true, data: l2.payload });
+          return;
+        }
+      }
     }
+    // Also: try stale L2 cache even when force=true IF api completely fails later
 
     console.log(`[scraper:${traceId}] start @${username} type=${type}`);
 
@@ -331,13 +346,34 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
     const result = { profile, reels, posts, highlights, reelsMeta, postsMeta, scrapedAt: new Date().toISOString() };
 
     cacheSet(username, result);
+    // Save under both key formats so future lookups always hit
+    l2Set(username, username, type, pages, result).catch(() => null);
     l2Set(`${username}:${type}:${pages}`, username, type, pages, result).catch(() => null);
+    if (type === "all") {
+      l2Set(`${username}:all:3`, username, type, pages, result).catch(() => null);
+    }
 
     console.log(`[scraper:${traceId}] done @${username} profile=${!!profile?.username}(stub=${!!(profile as any)?._stub}) embedded=${embeddedMedia.length} reels=${reels.length} posts=${posts.length}`);
     res.json({ ok: true, cached: false, data: result });
 
   } catch (e: any) {
     console.error(`[scraper:${traceId}] fatal @${username}:`, e.message);
+    // Last resort: serve stale L2 cache (ignoring TTL) when API is completely blocked
+    try {
+      const staleKeys = [
+        `${username}:all:3`, `${username}:all:2`, `${username}:all:1`,
+        username, `${username}:${type}:${pages}`,
+      ];
+      for (const k of staleKeys) {
+        const stale = await l2Get(k, true); // ignoreExpiry=true
+        if (stale?.payload) {
+          console.log(`[scraper:${traceId}] serving stale cache key=${k}`);
+          cacheSet(username, stale.payload);
+          res.json({ ok: true, cached: true, stale: true, data: stale.payload });
+          return;
+        }
+      }
+    } catch {}
     res.status(502).json({ ok: false, error: e.message });
   } finally {
     deleteInflight(inflightKey);

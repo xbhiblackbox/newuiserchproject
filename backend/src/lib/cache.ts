@@ -13,8 +13,8 @@ const RESP_CACHE_MAX = 500;
 const SOFT_TTL_MS = 5 * 60 * 1000;   // 5 min
 const HARD_TTL_MS = 60 * 60 * 1000;  // 60 min
 
-// L2 Postgres cache TTL
-const L2_TTL_SECONDS = 30 * 60; // 30 min
+// L2 Postgres cache TTL — 7 days so data survives API downtime windows
+const L2_TTL_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 export interface CacheLookup {
   payload: unknown;
@@ -56,7 +56,8 @@ export function cacheDelete(k: string): void {
 
 // L2 Postgres cache
 export async function l2Get(
-  cacheKey: string
+  cacheKey: string,
+  ignoreExpiry = false
 ): Promise<{ payload: unknown; ageMs: number } | null> {
   try {
     const row = await queryOne<{
@@ -68,7 +69,7 @@ export async function l2Get(
       [cacheKey]
     );
     if (!row) return null;
-    if (Date.now() > new Date(row.expires_at).getTime()) return null;
+    if (!ignoreExpiry && Date.now() > new Date(row.expires_at).getTime()) return null;
     return {
       payload: row.payload,
       ageMs: Date.now() - new Date(row.stored_at).getTime(),
