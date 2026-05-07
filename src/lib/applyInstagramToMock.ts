@@ -14,7 +14,8 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   // Always clear old cached data so Clone always gets fresh real data
   clearInstagramCache(username);
   // force=true bypasses backend L1/L2 cache too — ensures fresh API call
-  const data = await fetchInstagramData(username, "all", { pages: 3, force: true });
+  // pages:1 = fast initial load (~12 reels/posts), more can be loaded later
+  const data = await fetchInstagramData(username, "all", { pages: 1, force: true });
 
   const p = data.profile;
   if (!p?.username) throw new Error("Account not found or is private.");
