@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
+import { callRapid, incrementApiUsageAndAlert } from "../lib/rapidapi";
 import { queryOne, execute } from "../lib/db";
 import {
   cacheGet, cacheSet, l2Get, l2Set,
@@ -21,36 +22,15 @@ const ScrapeReqSchema = z.object({
   cursor: z.string().optional(),
 });
 
-// ─── API Config ────────────────────────────────────────────────────────────────
-// Set in Railway: RAPIDAPI_KEY and RAPIDAPI_HOST
-const RAPID_HOST = process.env.RAPIDAPI_HOST ?? "instagram-looter2.p.rapidapi.com";
-const RAPID_KEY  = process.env.RAPIDAPI_KEY  ?? "";
-
-// ─── HTTP helper ───────────────────────────────────────────────────────────────
-async function igGet(path: string, timeoutMs = 25000): Promise<any> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const r = await fetch(`https://${RAPID_HOST}${path}`, {
-      method: "GET",
-      headers: {
-        "x-rapidapi-host": RAPID_HOST,
-        "x-rapidapi-key":  RAPID_KEY,
-        "Content-Type":    "application/json",
-      },
-      signal: controller.signal,
-    }) as any;
-    clearTimeout(timer);
-    const text = await r.text();
-    if (!r.ok) throw new Error(`API ${r.status}: ${text.slice(0, 200)}`);
-    try { return JSON.parse(text); } catch { return null; }
-  } catch (e) {
-    clearTimeout(timer);
-    throw e;
-  }
+// ─── API helper (uses callRapid → key from Supabase api_settings or env var) ──
+async function igGet(path: string): Promise<any> {
+  return callRapid(path, { method: "GET" }, () => {
+    // Count each profile/media call for quota alerts
+    incrementApiUsageAndAlert().catch(() => null);
+  });
 }
 
-// ─── User ID resolution (cached in-process) ────────────────────────────────────
+// ─── User ID resolution (in-memory cache for request lifecycle) ────────────────
 const uidCache = new Map<string, string>();
 
 async function resolveUserId(username: string): Promise<string> {
@@ -64,7 +44,6 @@ async function resolveUserId(username: string): Promise<string> {
 
 // ─── Profile ───────────────────────────────────────────────────────────────────
 async function scrapeProfile(username: string): Promise<any> {
-  // Try direct profile endpoints first
   for (const path of [
     `/web-profile?username=${encodeURIComponent(username)}`,
     `/profile?username=${encodeURIComponent(username)}`,
@@ -79,7 +58,7 @@ async function scrapeProfile(username: string): Promise<any> {
     }
   }
 
-  // Fallback: resolve user ID → user-info
+  // Fallback via user ID
   const uid = await resolveUserId(username);
   const data = await igGet(`/user-info?id=${encodeURIComponent(uid)}`);
   if (data && (data.data || data.user || data.username || data.pk)) {
@@ -110,7 +89,10 @@ async function scrapeMedia(
     for (const ep of [primaryEp, fallbackEp]) {
       try {
         data = await igGet(`${ep}?id=${encodeURIComponent(uid)}&count=12${cursorParam}`);
-        if (data && (data.items || data.data || data.reels || data.posts || data.feeds || Array.isArray(data))) break;
+        const hasItems = data && (
+          data.items || data.data || data.reels || data.posts || data.feeds || Array.isArray(data)
+        );
+        if (hasItems) break;
         data = null;
       } catch (e: any) {
         console.warn(`[looter2] ${mediaType} ${ep} failed:`, e.message);
@@ -149,7 +131,7 @@ async function scrapeHighlights(username: string): Promise<any[]> {
     const arr: any[] = data?.items ?? data?.data ?? (Array.isArray(data) ? data : []);
     return arr.map(normalizeHighlight).filter(Boolean);
   } catch {
-    return []; // Highlights are optional — never fail the request
+    return []; // Highlights are optional — never block the request
   }
 }
 
@@ -157,7 +139,7 @@ async function scrapeHighlights(username: string): Promise<any[]> {
 router.post("/", async (req: Request, res: Response): Promise<void> => {
   const traceId = (req as any).traceId ?? "?";
 
-  // Auth: check x-access-key against db (or open if MASTER_ACCESS_KEY not set)
+  // ── Auth ──────────────────────────────────────────────────────────────────────
   const masterKey = process.env.MASTER_ACCESS_KEY;
   if (masterKey) {
     const provided = req.headers["x-access-key"] as string | undefined;
@@ -183,11 +165,15 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
           res.status(401).json({ error: "Device limit reached" }); return;
         }
         fps.push(fp);
-        execute("UPDATE access_keys SET device_fingerprints=$1, updated_at=now() WHERE id=$2", [fps, row.id]).catch(() => null);
+        execute(
+          "UPDATE access_keys SET device_fingerprints=$1, updated_at=now() WHERE id=$2",
+          [fps, row.id]
+        ).catch(() => null);
       }
     }
   }
 
+  // ── Parse body ────────────────────────────────────────────────────────────────
   const parsed = ScrapeReqSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
 
@@ -196,40 +182,34 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   const fp = req.headers["x-device-fp"] as string | undefined;
   const cacheKey = `v3:${fp ?? "anon"}:${u}:${type}:${pages}${cursor ? `:${cursor.slice(0, 20)}` : ""}`;
 
-  // ── Cache lookup ──
+  // ── Cache lookup ──────────────────────────────────────────────────────────────
   if (!force) {
     const l1 = cacheGet(cacheKey);
     if (l1 && !l1.isStale) {
-      res.setHeader("X-Cache", "HIT-L1");
-      res.setHeader("X-Cache-Age", String(Math.round(l1.ageMs / 1000)));
-      res.json(l1.payload);
-      return;
+      res.setHeader("X-Cache", "HIT-L1").setHeader("X-Cache-Age", String(Math.round(l1.ageMs / 1000)));
+      res.json(l1.payload); return;
     }
     const l2 = await l2Get(cacheKey);
-    if (l2 && l2.ageMs < 10 * 60 * 1000) { // 10 min fresh
+    if (l2 && l2.ageMs < 10 * 60 * 1000) {
       cacheSet(cacheKey, l2.payload);
-      res.setHeader("X-Cache", "HIT-L2");
-      res.setHeader("X-Cache-Age", String(Math.round(l2.ageMs / 1000)));
-      res.json(l2.payload);
-      return;
+      res.setHeader("X-Cache", "HIT-L2").setHeader("X-Cache-Age", String(Math.round(l2.ageMs / 1000)));
+      res.json(l2.payload); return;
     }
   }
 
-  // ── In-flight coalescing ──
+  // ── In-flight coalescing ──────────────────────────────────────────────────────
   const existing = getInflight(cacheKey);
   if (existing) {
     try {
       const data = await existing;
-      res.setHeader("X-Cache", "INFLIGHT");
-      res.json(data);
-      return;
+      res.setHeader("X-Cache", "INFLIGHT").json(data);
     } catch (e: any) {
       res.status(502).json({ error: e.message });
-      return;
     }
+    return;
   }
 
-  // ── Scrape ──
+  // ── Scrape ────────────────────────────────────────────────────────────────────
   const doScrape = async () => {
     const result: any = { username: u };
 
@@ -240,7 +220,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       } catch (e: any) {
         result.profileOk = false;
         result.profileError = e.message;
-        console.warn(`[looter2] profile @${u}:`, e.message);
+        console.warn(`[looter2:${traceId}] profile @${u}:`, e.message);
       }
     }
 
@@ -254,7 +234,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       } catch (e: any) {
         result.reelsOk = false;
         result.reels = [];
-        console.warn(`[looter2] reels @${u}:`, e.message);
+        console.warn(`[looter2:${traceId}] reels @${u}:`, e.message);
       }
     }
 
@@ -268,7 +248,7 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
       } catch (e: any) {
         result.postsOk = false;
         result.posts = [];
-        console.warn(`[looter2] posts @${u}:`, e.message);
+        console.warn(`[looter2:${traceId}] posts @${u}:`, e.message);
       }
     }
 
@@ -279,13 +259,15 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
     if (cursor) result.paginated = true;
 
-    // Save to both cache layers
+    // Persist to both cache layers (7-day TTL via cache.ts)
     cacheSet(cacheKey, result);
     l2Set(cacheKey, u, type, pages, result).catch(() => null);
-    // Also save by plain username for stale fallback
-    l2Set(`${u}:all`, u, type, pages, result).catch(() => null);
+    l2Set(`${u}:all`, u, type, pages, result).catch(() => null); // stale fallback key
 
-    console.log(`[looter2:${traceId}] done @${u} profile=${result.profileOk} reels=${result.reels?.length ?? 0} posts=${result.posts?.length ?? 0}`);
+    console.log(
+      `[looter2:${traceId}] done @${u} ` +
+      `profile=${result.profileOk} reels=${result.reels?.length ?? 0} posts=${result.posts?.length ?? 0}`
+    );
     return result;
   };
 
@@ -294,18 +276,15 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
   try {
     const data = await p;
-    res.setHeader("X-Cache", "MISS");
-    res.setHeader("X-Trace-Id", traceId);
-    res.json(data);
+    res.setHeader("X-Cache", "MISS").setHeader("X-Trace-Id", traceId).json(data);
   } catch (e: any) {
-    // Last resort: try stale L2 cache (ignore TTL)
+    // Last resort: stale Supabase cache (ignoreExpiry=true)
     try {
       const stale = await l2Get(`${u}:all`, true);
       if (stale?.payload) {
         console.log(`[looter2:${traceId}] serving stale cache for @${u}`);
         cacheSet(cacheKey, stale.payload);
-        res.setHeader("X-Cache", "STALE");
-        res.json(stale.payload);
+        res.setHeader("X-Cache", "STALE").json(stale.payload);
         return;
       }
     } catch {}

@@ -1,104 +1,101 @@
 import { Router, Request, Response } from "express";
-import { getAdminChatIds, getActiveRapidKey } from "../lib/rapidapi";
+import { getAdminChatIds } from "../lib/rapidapi";
 
 const router = Router();
 
 async function checkRapidApi() {
-  const key = process.env.RAPIDAPI_KEY;
-  const host = process.env.RAPIDAPI_HOST;
-  if (!key || !host) return { ok: false, configured: false, error: "Missing RAPIDAPI_KEY or RAPIDAPI_HOST" };
+  const key  = process.env.RAPIDAPI_KEY;
+  const host = process.env.RAPIDAPI_HOST ?? "instagram-looter2.p.rapidapi.com";
+  if (!key) return { ok: false, configured: false, error: "Missing RAPIDAPI_KEY env var" };
   try {
-    const res = await fetch(`https://${host}/`, {
-      headers: { "x-rapidapi-key": key, "x-rapidapi-host": host },
-      signal: AbortSignal.timeout(8000),
-    } as RequestInit);
+    // Probe a known lightweight endpoint
+    const res = await fetch(
+      `https://${host}/id?username=instagram`,
+      {
+        headers: { "x-rapidapi-key": key, "x-rapidapi-host": host },
+        signal: AbortSignal.timeout(10000),
+      } as RequestInit
+    );
     const text = await res.text();
-    const authRejected = res.status === 401 || res.status === 403;
-    return { ok: !authRejected, configured: true, status: res.status, host, authAccepted: !authRejected, sample: text.slice(0, 200) };
+    const authOk = res.status !== 401 && res.status !== 403;
+    return {
+      ok: authOk && res.status < 500,
+      configured: true,
+      status: res.status,
+      host,
+      sample: text.slice(0, 200),
+    };
   } catch (e: any) {
     return { ok: false, configured: true, error: String(e) };
   }
 }
 
 async function checkTelegram() {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token   = process.env.TELEGRAM_BOT_TOKEN;
   const chatIds = (process.env.TELEGRAM_CHAT_ID ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   if (!token) return { ok: false, configured: false, error: "Missing TELEGRAM_BOT_TOKEN" };
   try {
-    const meRes = await fetch(`https://api.telegram.org/bot${token}/getMe`);
-    const me = await meRes.json() as any;
-    if (!meRes.ok || !me.ok) return { ok: false, configured: true, status: meRes.status, error: me.description ?? "getMe failed" };
+    const meRes  = await fetch(`https://api.telegram.org/bot${token}/getMe`);
+    const me     = await meRes.json() as any;
+    if (!meRes.ok || !me.ok) return { ok: false, configured: true, error: me.description ?? "getMe failed" };
 
     const sendResults: any[] = [];
     for (const chatId of chatIds) {
-      const sendRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: chatId, text: "✅ Integration check: bot is responding correctly." }),
       });
-      const sendJson = await sendRes.json() as any;
-      sendResults.push({ chatId, ok: sendRes.ok && sendJson.ok, status: sendRes.status, description: sendJson.description });
+      const j = await r.json() as any;
+      sendResults.push({ chatId, ok: r.ok && j.ok, status: r.status });
     }
-    return { ok: sendResults.every((r) => r.ok), configured: true, bot: { id: me.result.id, username: me.result.username, name: me.result.first_name }, chatIds, sendResults };
+    return {
+      ok: sendResults.every((r) => r.ok),
+      configured: true,
+      bot: { id: me.result.id, username: me.result.username },
+      chatIds,
+      sendResults,
+    };
   } catch (e: any) {
     return { ok: false, configured: true, error: String(e) };
   }
 }
 
-// Probe endpoint: tests all known stable API paths
-async function probeStableApiPaths(username: string) {
-  const host = process.env.RAPIDAPI_HOST ?? "instagram-scraper-stable-api.p.rapidapi.com";
+// Probe instagram-looter2 endpoints for a given username
+async function probeLooter2Paths(username: string) {
+  const host = process.env.RAPIDAPI_HOST ?? "instagram-looter2.p.rapidapi.com";
   const key  = process.env.RAPIDAPI_KEY  ?? "";
-  const igUrl = `https://www.instagram.com/${username}/`;
+  const headers = { "x-rapidapi-key": key, "x-rapidapi-host": host };
 
   const paths = [
-    "/get_ig_user_info_v2.php",
-    "/get_ig_user_info.php",
-    "/get_ig_profile.php",
-    "/profile.php",
-    "/get_profile.php",
-    "/user_info.php",
-    "/get_user.php",
-    "/user.php",
-    "/get_ig_user_reels_v2.php",
-    "/get_ig_user_posts_v2.php",
-    "/get_ig_user_media_v2.php",
-    "/get_ig_highlights.php",
+    `/id?username=${username}`,
+    `/web-profile?username=${username}`,
+    `/profile?username=${username}`,
+    `/reels?id=25025320`,          // instagram's own ID as smoke-test
+    `/user-feeds?id=25025320`,
+    `/highlights?id=25025320`,
+    `/user-reels?id=25025320`,
+    `/posts?id=25025320`,
   ];
 
-  const results: Array<{ path: string; status: number; sample: string; hasData: boolean }> = [];
+  const results: Array<{ path: string; status: number; sample: string; ok: boolean }> = [];
   for (const path of paths) {
     try {
-      const body = new URLSearchParams({ username_or_url: igUrl, amount: "3" }).toString();
       const res = await fetch(`https://${host}${path}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "x-rapidapi-host": host,
-          "x-rapidapi-key": key,
-        },
-        body,
+        headers,
         signal: AbortSignal.timeout(8000),
       } as RequestInit);
       const text = await res.text();
-      let parsed: any = {};
-      try { parsed = JSON.parse(text); } catch {}
-      const hasData = res.ok && !text.includes("not exist") && !text.includes("not found") && (
-        parsed?.username || parsed?.data?.username || parsed?.user?.username ||
-        parsed?.data?.user_name || parsed?.data?.follower_count ||
-        (Array.isArray(parsed?.data) && parsed.data.length > 0) ||
-        parsed?.data?.items?.length > 0
-      );
-      results.push({ path, status: res.status, sample: text.slice(0, 200), hasData: !!hasData });
+      results.push({ path, status: res.status, sample: text.slice(0, 150), ok: res.ok });
     } catch (e: any) {
-      results.push({ path, status: 0, sample: String(e).slice(0, 100), hasData: false });
+      results.push({ path, status: 0, sample: String(e).slice(0, 100), ok: false });
     }
   }
   return results;
 }
 
 router.all("/", async (req: Request, res: Response): Promise<void> => {
-  const target = (req.query.target as string | undefined);
+  const target = req.query.target as string | undefined;
   const result: Record<string, unknown> = {};
   if (!target || target === "rapidapi") result.rapidapi = await checkRapidApi();
   if (!target || target === "telegram") result.telegram = await checkTelegram();
@@ -106,13 +103,13 @@ router.all("/", async (req: Request, res: Response): Promise<void> => {
   res.status(allOk ? 200 : 502).json({ ok: allOk, ...result });
 });
 
-// GET /functions/v1/integration-check/probe?username=whop
+// GET /integration-check/probe?username=whop
 router.get("/probe", async (req: Request, res: Response): Promise<void> => {
   const username = (req.query.username as string) || "instagram";
   try {
-    const results = await probeStableApiPaths(username);
-    const working = results.filter(r => r.hasData);
-    res.json({ username, working, all: results });
+    const results = await probeLooter2Paths(username);
+    const working = results.filter((r) => r.ok);
+    res.json({ username, api: process.env.RAPIDAPI_HOST ?? "instagram-looter2.p.rapidapi.com", working, all: results });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
