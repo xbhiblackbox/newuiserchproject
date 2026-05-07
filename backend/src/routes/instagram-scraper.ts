@@ -1,14 +1,13 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { queryOne, execute } from "../lib/db";
-import { sendToAllAdmins } from "../lib/telegram";
+import { queryOne } from "../lib/db";
 import {
   cacheGet, cacheSet, l2Get, l2Set,
   getInflight, setInflight, deleteInflight,
 } from "../lib/cache";
 import {
   normalizeProfile, normalizeMediaItem, dedupeMediaItems,
-  normalizeHighlight, newTraceId, str, num
+  normalizeHighlight, str, num
 } from "../lib/scraperHelpers";
 
 const router = Router();
@@ -235,7 +234,9 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
   try {
     // ── 4. Cache check ──────────────────────────────────────────────────────
     if (!force) {
-      const cached = cacheGet(username) ?? l2Get(username);
+      const l1 = cacheGet(username);
+      const l2 = l1 ? null : await l2Get(username);
+      const cached = l1?.payload ?? l2?.payload ?? null;
       if (cached) {
         console.log(`[scraper] cache hit for @${username}`);
         res.json({ ok: true, cached: true, data: cached });
@@ -285,7 +286,8 @@ router.post("/", async (req: Request, res: Response): Promise<void> => {
 
     // ── 6. Cache the result ─────────────────────────────────────────────────
     cacheSet(username, result);
-    l2Set(username, result);
+    const cacheKey = `${username}:${type}:${pages}`;
+    l2Set(cacheKey, username, type, pages, result).catch(() => null); // fire-and-forget
 
     console.log(`[scraper:${traceId}] done for @${username}: profile=${!!profile?.username} reels=${reels.length} posts=${posts.length}`);
     res.json({ ok: true, cached: false, data: result });
