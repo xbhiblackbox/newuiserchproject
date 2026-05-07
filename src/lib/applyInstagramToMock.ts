@@ -16,7 +16,8 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   const data = await fetchInstagramData(username, "all", { pages: 3, force });
 
   const p = data.profile;
-  if (!p?.username) throw new Error("Account not found");
+  // Accept stub profile (returned when API times out) — username is always set
+  if (!p?.username) throw new Error("Account not found or is private. Try a different username.");
 
   const reels = data.reels ?? [];
   const posts = data.posts ?? [];
@@ -33,7 +34,8 @@ export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaS
   }
   merged.sort((a, b) => (Number((b as any).takenAt) || 0) - (Number((a as any).takenAt) || 0));
   const combined = merged.slice(0, MAX_REELS);
-  if (combined.length === 0) throw new Error("No posts found. Please try Refresh data once.");
+  // Don't throw if media is empty — profile still loads (API may be rate-limited)
+  // if (combined.length === 0) throw new Error("No posts found. Please try Refresh data once.");
   const postItems: PostItem[] = combined.map((m) => ({
     thumbnail: proxyIgImage(m.thumbnail) || m.thumbnail,
     videoUrl: m.videoUrl || undefined,
