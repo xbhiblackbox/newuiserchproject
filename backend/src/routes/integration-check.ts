@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { getActiveRapidKey } from "../lib/rapidapi";
+import { getAdminChatIds, getActiveRapidKey } from "../lib/rapidapi";
 
 const router = Router();
 
