@@ -26,7 +26,7 @@ const ScrapeReqSchema = z.object({
 
 /**
  * Step 1: Resolve username → numeric user ID.
- * Uses /id endpoint. Cached in memory for the request lifecycle.
+ * Tries multiple endpoint variants since the API changes frequently.
  */
 const userIdCache = new Map<string, string>();
 
@@ -34,34 +34,64 @@ async function resolveUserId(username: string): Promise<string> {
   const cached = userIdCache.get(username);
   if (cached) return cached;
 
-  try {
-    const data = await callRapid(`/id?username=${encodeURIComponent(username)}`, { method: "GET" }, () => {});
-    // Response can be: { id: "12345" } or { data: { id: "12345" } } or just a string
-    const id = str(data?.id ?? data?.data?.id ?? data?.user_id ?? data?.pk ?? data);
-    if (!id || id === "0") throw new Error("User ID not found");
-    userIdCache.set(username, id);
-    return id;
-  } catch (e: any) {
-    throw new Error(`Could not resolve user ID for @${username}: ${e.message}`);
+  // Try multiple ID resolution endpoints
+  const idPaths = [
+    `/id?username=${encodeURIComponent(username)}`,
+    `/user-id?username=${encodeURIComponent(username)}`,
+    `/userid?username=${encodeURIComponent(username)}`,
+    `/get-id?username=${encodeURIComponent(username)}`,
+  ];
+
+  for (const path of idPaths) {
+    try {
+      const data = await callRapid(path, { method: "GET" }, () => {});
+      // Response can be: { id: "12345" } or { data: { id: "12345" } } or just a string/"12345"
+      let id = str(data?.id ?? data?.data?.id ?? data?.user_id ?? data?.pk ?? data?.userId ?? data?.user?.pk ?? data?.user?.id ?? "");
+      // If data is a plain number/string directly
+      if (!id && (typeof data === "string" || typeof data === "number")) {
+        id = str(data);
+      }
+      if (id && id !== "0" && /^\d+$/.test(id.trim())) {
+        userIdCache.set(username, id.trim());
+        console.log(`[looter2] resolved userId for @${username} via ${path}: ${id}`);
+        return id.trim();
+      }
+    } catch (e: any) {
+      console.warn(`[looter2] resolveUserId failed for path ${path}:`, e.message);
+    }
   }
+
+  throw new Error(`Could not resolve user ID for @${username}`);
 }
 
 /**
- * Step 2: Fetch profile by username using /profile or /web-profile endpoint.
+ * Step 2: Fetch profile by username — tries many endpoint variants.
  */
 async function scrapeProfile(username: string): Promise<any> {
   const errors: string[] = [];
 
-  // Try /web-profile first (more detailed)
-  for (const path of ["/web-profile", "/profile"]) {
+  // Attempt 1: username-based profile endpoints (no ID needed)
+  const usernamePaths = [
+    `/web-profile?username=${encodeURIComponent(username)}`,
+    `/profile?username=${encodeURIComponent(username)}`,
+    `/user-info?username=${encodeURIComponent(username)}`,
+    `/user?username=${encodeURIComponent(username)}`,
+    `/get-user?username=${encodeURIComponent(username)}`,
+    `/userinfo?username=${encodeURIComponent(username)}`,
+    `/user-by-username?username=${encodeURIComponent(username)}`,
+    `/users?username=${encodeURIComponent(username)}`,
+  ];
+
+  for (const path of usernamePaths) {
     try {
-      const data = await callRapid(
-        `${path}?username=${encodeURIComponent(username)}`,
-        { method: "GET" },
-        () => {}
-      );
-      if (data && (data.data || data.user || data.username || data.pk)) {
-        return normalizeProfile(data);
+      const data = await callRapid(path, { method: "GET" }, () => {});
+      console.log(`[looter2] ${path} keys:`, data ? Object.keys(data).slice(0, 8).join(",") : "null");
+      if (data && (data.data || data.user || data.username || data.pk || data.id || data.result)) {
+        const normalized = normalizeProfile(data);
+        if (normalized.username || normalized.followers) {
+          console.log(`[looter2] profile success via ${path}`);
+          return normalized;
+        }
       }
     } catch (e: any) {
       errors.push(`${path}: ${e.message}`);
@@ -69,26 +99,44 @@ async function scrapeProfile(username: string): Promise<any> {
     }
   }
 
-  // Fallback: try resolving via user ID then /user-info
+  // Attempt 2: ID-based profile endpoints
+  let uid: string | null = null;
   try {
-    const uid = await resolveUserId(username);
-    const data = await callRapid(
-      `/user-info?id=${encodeURIComponent(uid)}`,
-      { method: "GET" },
-      () => {}
-    );
-    if (data && (data.data || data.user || data.username || data.pk)) {
-      return normalizeProfile(data);
-    }
+    uid = await resolveUserId(username);
   } catch (e: any) {
-    errors.push(`/user-info: ${e.message}`);
+    errors.push(`resolveUserId: ${e.message}`);
+  }
+
+  if (uid) {
+    const idPaths = [
+      `/user-info?id=${encodeURIComponent(uid)}`,
+      `/user?id=${encodeURIComponent(uid)}`,
+      `/profile?id=${encodeURIComponent(uid)}`,
+      `/user-by-id?id=${encodeURIComponent(uid)}`,
+    ];
+    for (const path of idPaths) {
+      try {
+        const data = await callRapid(path, { method: "GET" }, () => {});
+        console.log(`[looter2] ${path} keys:`, data ? Object.keys(data).slice(0, 8).join(",") : "null");
+        if (data && (data.data || data.user || data.username || data.pk || data.result)) {
+          const normalized = normalizeProfile(data);
+          if (normalized.username || normalized.followers) {
+            console.log(`[looter2] profile success via ${path}`);
+            return normalized;
+          }
+        }
+      } catch (e: any) {
+        errors.push(`${path}: ${e.message}`);
+        console.warn(`[looter2] id-based profile variant failed: ${path}`, e.message);
+      }
+    }
   }
 
   throw new Error(`Profile not found for @${username}. Errors: ${errors.join(" | ")}`);
 }
 
 /**
- * Fetch reels or posts using user ID-based endpoints.
+ * Fetch reels or posts — tries many endpoint variants.
  */
 async function scrapeMedia(
   username: string,
@@ -96,35 +144,75 @@ async function scrapeMedia(
   pages: number,
   cursor?: string
 ): Promise<{ items: any[]; hasNext: boolean; nextCursor: string }> {
-  // Must get user ID first
-  const uid = await resolveUserId(username);
-
   const allItems: any[] = [];
   let currentCursor = cursor || "";
   let hasNext = false;
 
-  // Endpoint paths for each media type
-  const endpointPrimary = mediaType === "reels" ? "/reels" : "/user-feeds";
-  const endpointFallback = mediaType === "reels" ? "/user-reels" : "/posts";
+  // Try to get UID, but don't fail if we can't
+  let uid: string | null = null;
+  try { uid = await resolveUserId(username); } catch {}
+
+  // Build ordered list of endpoints to try (ID-based first, then username-based)
+  const reelEndpoints = uid ? [
+    `/reels?id=${uid}`,
+    `/user-reels?id=${uid}`,
+    `/user-reels?userId=${uid}`,
+    `/reels?userid=${uid}`,
+    `/get-reels?id=${uid}`,
+    `/reels-by-user?id=${uid}`,
+  ] : [];
+  const postEndpoints = uid ? [
+    `/user-feeds?id=${uid}`,
+    `/posts?id=${uid}`,
+    `/user-posts?id=${uid}`,
+    `/feed?id=${uid}`,
+    `/user-feed?id=${uid}`,
+    `/timeline?id=${uid}`,
+  ] : [];
+  // Username-based fallbacks
+  const reelUserEndpoints = [
+    `/reels?username=${username}`,
+    `/user-reels?username=${username}`,
+    `/get-reels?username=${username}`,
+  ];
+  const postUserEndpoints = [
+    `/user-feeds?username=${username}`,
+    `/posts?username=${username}`,
+    `/user-posts?username=${username}`,
+    `/feed?username=${username}`,
+  ];
+
+  const endpoints = mediaType === "reels"
+    ? [...reelEndpoints, ...reelUserEndpoints]
+    : [...postEndpoints, ...postUserEndpoints];
 
   for (let page = 0; page < pages; page++) {
     let data: any = null;
     const cursorParam = currentCursor ? `&max_id=${encodeURIComponent(currentCursor)}` : "";
 
-    // Try primary endpoint
-    for (const path of [endpointPrimary, endpointFallback]) {
+    for (const basePath of endpoints) {
       try {
-        data = await callRapid(
-          `${path}?id=${encodeURIComponent(uid)}&count=12${cursorParam}`,
-          { method: "GET" },
-          () => {}
+        const path = `${basePath}&count=12${cursorParam}`;
+        data = await callRapid(path, { method: "GET" }, () => {});
+        const hasContent = data && (
+          data.items?.length > 0 ||
+          data.data?.items?.length > 0 ||
+          data.reels?.length > 0 ||
+          data.posts?.length > 0 ||
+          data.feeds?.length > 0 ||
+          (Array.isArray(data) && data.length > 0)
         );
+        if (hasContent) {
+          console.log(`[looter2] ${mediaType} success via ${basePath}`);
+          break;
+        }
+        // If we got data but it has no content array, still break if it has some structure
         if (data && (data.items || data.data || data.reels || data.posts || data.feeds || Array.isArray(data))) {
           break;
         }
         data = null;
       } catch (e: any) {
-        console.warn(`[looter2] ${mediaType} variant failed: ${path}`, e.message);
+        console.warn(`[looter2] ${mediaType} variant failed: ${basePath}`, e.message);
         data = null;
       }
     }
@@ -171,24 +259,35 @@ async function scrapeMedia(
 }
 
 /**
- * Fetch highlights — Instagram Looter 2 doesn't have a direct endpoint,
- * so we try to extract from web-profile or return empty gracefully.
+ * Fetch highlights — tries multiple endpoints and falls back gracefully.
  */
 async function scrapeHighlights(username: string): Promise<any[]> {
-  try {
-    const uid = await resolveUserId(username);
-    // Try highlights endpoint if it exists
-    const data = await callRapid(
-      `/highlights?id=${encodeURIComponent(uid)}`,
-      { method: "GET" },
-      () => {}
-    );
-    const rawArr: any[] = data?.items ?? data?.data ?? (Array.isArray(data) ? data : []);
-    return rawArr.map(normalizeHighlight).filter(Boolean);
-  } catch {
-    // Highlights not available — return empty, don't fail the whole request
-    return [];
+  let uid: string | null = null;
+  try { uid = await resolveUserId(username); } catch {}
+
+  const highlightPaths: string[] = [
+    ...(uid ? [
+      `/highlights?id=${uid}`,
+      `/user-highlights?id=${uid}`,
+      `/story-highlights?id=${uid}`,
+      `/highlights?userId=${uid}`,
+    ] : []),
+    `/highlights?username=${username}`,
+    `/user-highlights?username=${username}`,
+    `/story-highlights?username=${username}`,
+  ];
+
+  for (const path of highlightPaths) {
+    try {
+      const data = await callRapid(path, { method: "GET" }, () => {});
+      const rawArr: any[] = data?.items ?? data?.data ?? data?.highlights ?? (Array.isArray(data) ? data : []);
+      if (rawArr.length > 0) {
+        return rawArr.map(normalizeHighlight).filter(Boolean);
+      }
+    } catch {}
   }
+  // Highlights not available — return empty, don't fail the whole request
+  return [];
 }
 
 // ─── Express Route ────────────────────────────────────────────────────────────
