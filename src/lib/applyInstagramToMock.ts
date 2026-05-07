@@ -1,5 +1,5 @@
 import { mockAccounts, currentUser, saveProfileOverrides, type PostItem } from "@/data/mockData";
-import { fetchInstagramData, proxyIgImage, setConnectedUsername, type InstaScrapeResult } from "@/lib/instagramApi";
+import { fetchInstagramData, clearInstagramCache, proxyIgImage, setConnectedUsername, type InstaScrapeResult } from "@/lib/instagramApi";
 import { saveReelsData, type ExtendedPostItem } from "@/data/reelInsightsData";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -11,8 +11,10 @@ const MAX_REELS = 15;
  */
 export async function cloneInstagramAccount(usernameRaw: string): Promise<InstaScrapeResult> {
   const username = usernameRaw.trim().replace(/^@/, "");
-  // Request 3 pages to get ~15 reels for a rich profile
-  const data = await fetchInstagramData(username, "all", { pages: 3 });
+  // Always clear old cached data so Clone always gets fresh real data
+  clearInstagramCache(username);
+  // force=true bypasses backend L1/L2 cache too — ensures fresh API call
+  const data = await fetchInstagramData(username, "all", { pages: 3, force: true });
 
   const p = data.profile;
   if (!p?.username) throw new Error("Account not found or is private.");
