@@ -45,45 +45,51 @@ async function checkTelegram() {
   }
 }
 
-// Probe endpoint: tests all known instagram-looter2 paths to find which ones work
-async function probeRapidApiPaths(username: string) {
-  const host = process.env.RAPIDAPI_HOST ?? "instagram-looter2.p.rapidapi.com";
-  const key = await getActiveRapidKey();
+// Probe endpoint: tests all known stable API paths
+async function probeStableApiPaths(username: string) {
+  const host = process.env.RAPIDAPI_HOST ?? "instagram-scraper-stable-api.p.rapidapi.com";
+  const key  = process.env.RAPIDAPI_KEY  ?? "";
+  const igUrl = `https://www.instagram.com/${username}/`;
 
   const paths = [
-    `/web-profile-info?username=${username}`,
-    `/web-profile?username=${username}`,
-    `/profile?username=${username}`,
-    `/user-info?username=${username}`,
-    `/account-info?username=${username}`,
-    `/userinfo?username=${username}`,
-    `/user?username=${username}`,
-    `/get-user?username=${username}`,
-    `/users?username=${username}`,
-    `/user-by-username?username=${username}`,
-    `/v1/info?username_or_id_or_url=${username}`,
-    `/v1/user?username=${username}`,
-    `/v2/user?username=${username}`,
-    `/id?username=${username}`,
-    `/user-id?username=${username}`,
+    "/get_ig_user_info_v2.php",
+    "/get_ig_user_info.php",
+    "/get_ig_profile.php",
+    "/profile.php",
+    "/get_profile.php",
+    "/user_info.php",
+    "/get_user.php",
+    "/user.php",
+    "/get_ig_user_reels_v2.php",
+    "/get_ig_user_posts_v2.php",
+    "/get_ig_user_media_v2.php",
+    "/get_ig_highlights.php",
   ];
 
   const results: Array<{ path: string; status: number; sample: string; hasData: boolean }> = [];
   for (const path of paths) {
     try {
+      const body = new URLSearchParams({ username_or_url: igUrl, amount: "3" }).toString();
       const res = await fetch(`https://${host}${path}`, {
-        headers: { "x-rapidapi-key": key, "x-rapidapi-host": host },
-        signal: AbortSignal.timeout(6000),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "x-rapidapi-host": host,
+          "x-rapidapi-key": key,
+        },
+        body,
+        signal: AbortSignal.timeout(8000),
       } as RequestInit);
       const text = await res.text();
       let parsed: any = {};
       try { parsed = JSON.parse(text); } catch {}
-      const hasData = res.ok && !text.includes("does not exist") && !text.includes("not found") && (
+      const hasData = res.ok && !text.includes("not exist") && !text.includes("not found") && (
         parsed?.username || parsed?.data?.username || parsed?.user?.username ||
-        parsed?.pk || parsed?.id || parsed?.data?.id ||
-        (typeof parsed === "string" && /^\d{5,}$/.test(parsed.trim()))
+        parsed?.data?.user_name || parsed?.data?.follower_count ||
+        (Array.isArray(parsed?.data) && parsed.data.length > 0) ||
+        parsed?.data?.items?.length > 0
       );
-      results.push({ path, status: res.status, sample: text.slice(0, 150), hasData: !!hasData });
+      results.push({ path, status: res.status, sample: text.slice(0, 200), hasData: !!hasData });
     } catch (e: any) {
       results.push({ path, status: 0, sample: String(e).slice(0, 100), hasData: false });
     }
@@ -104,7 +110,7 @@ router.all("/", async (req: Request, res: Response): Promise<void> => {
 router.get("/probe", async (req: Request, res: Response): Promise<void> => {
   const username = (req.query.username as string) || "instagram";
   try {
-    const results = await probeRapidApiPaths(username);
+    const results = await probeStableApiPaths(username);
     const working = results.filter(r => r.hasData);
     res.json({ username, working, all: results });
   } catch (e: any) {
